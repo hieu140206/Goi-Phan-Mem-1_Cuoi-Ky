@@ -1,0 +1,48 @@
+# Giao diện "sổ cái không màu": khung chữ đen trên nền xám xanh nhạt,
+# một màu xanh duy nhất cho dữ liệu chính, đỏ chỉ dành cho cảnh báo.
+[theme]
+base = "light"
+primaryColor = "#141414"
+backgroundColor = "#f3f5f8"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0a0a0a"
+borderColor = "#e3e6ea"
+linkColor = "#1d5fbf"
+linkUnderline = false
+redColor = "#c4242a"
+greenColor = "#2e7d32"
+blueColor = "#1d5fbf"
+orangeColor = "#92400e"
+grayColor = "#6b6b6b"
+font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+headingFont = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+codeFont = "'Geist Mono':https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap"
+baseFontSize = 15
+headingFontSizes = ["24px", "16px", "14px", "14px", "13px", "12px"]
+headingFontWeights = [600, 600, 600, 500, 500, 500]
+baseRadius = "8px"
+buttonRadius = "6px"
+showWidgetBorder = true
+showSidebarBorder = true
+paddingTop = "1.5rem"
+paddingBottom = "3rem"
+dataframeBorderColor = "#eceef1"
+dataframeHeaderBackgroundColor = "#ffffff"
+chartCategoricalColors = ["#1d5fbf", "#141414", "#8a8a8a", "#c4242a"]
+
+[theme.sidebar]
+backgroundColor = "#f3f5f8"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0a0a0a"
+borderColor = "#dfe2e7"
+primaryColor = "#141414"
+paddingTop = "0.5rem"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = false
+
+[client]
+toolbarMode = "minimal"

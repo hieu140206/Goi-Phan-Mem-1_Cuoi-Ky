@@ -1,0 +1,2 @@
+﻿date,started,finished,symbols,cycles,raw_snapshots,lo_snapshots,rows_saved,rows_dropped,errors,status_fallbacks,end_reason,statuses_seen
+2026-10-28,08:59:40,09:01:17,0,3,0,0,0,0,2,3,dừng bằng Ctrl+C,PRE|ATO

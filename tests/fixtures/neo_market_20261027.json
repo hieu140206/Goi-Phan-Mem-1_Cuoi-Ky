@@ -1,0 +1,2447 @@
+{
+ "4.4 marketStatus": [
+  {
+   "marketCode": "HOSE",
+   "indexCode": "VNINDEX",
+   "marketStatus": "PRE"
+  },
+  {
+   "marketCode": "UPCOM",
+   "indexCode": "UPCOMINDEX",
+   "marketStatus": "PRE"
+  },
+  {
+   "marketCode": "FU",
+   "indexCode": "FU",
+   "marketStatus": "PRE"
+  },
+  {
+   "marketCode": "HNX",
+   "indexCode": "HNXINDEX",
+   "marketStatus": "PRE"
+  }
+ ],
+ "4.3 marketIndexDetail": [
+  {
+   "indexCode": "VNINDEX",
+   "indexValue": 1761.87,
+   "prevIndexValue": 1763.55,
+   "indexColor": "down",
+   "indexChange": -1.68,
+   "indexPercentChange": -0.1,
+   "sumVolume": 631689544,
+   "sumValue": 13922251594097,
+   "totalTrading": 0,
+   "totalVolume": 631689544,
+   "totalValue": 13922251594097,
+   "marketStatus": "PRE",
+   "advances": 123.0,
+   "declines": 197.0,
+   "noChange": 56.0,
+   "numberOfCe": 5.0,
+   "numberOfFl": 5.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "HNXINDEX",
+   "indexValue": 259.5,
+   "prevIndexValue": 259.32,
+   "indexColor": "up",
+   "indexChange": 0.18,
+   "indexPercentChange": 0.07,
+   "sumVolume": 36685304,
+   "sumValue": 513237338700,
+   "totalTrading": 0,
+   "totalVolume": 36685304,
+   "totalValue": 513237338700,
+   "marketStatus": "PRE",
+   "advances": 61.0,
+   "declines": 81.0,
+   "noChange": 44.0,
+   "numberOfCe": 7.0,
+   "numberOfFl": 6.0,
+   "indexTime": "15:05:10",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "UPCOMINDEX",
+   "indexValue": 126.09,
+   "prevIndexValue": 126.28,
+   "indexColor": "down",
+   "indexChange": -0.19,
+   "indexPercentChange": -0.15,
+   "sumVolume": 45986084,
+   "sumValue": 947002035300,
+   "totalTrading": 0,
+   "totalVolume": 45986084,
+   "totalValue": 947002035300,
+   "marketStatus": "PRE",
+   "advances": 98.0,
+   "declines": 115.0,
+   "noChange": 78.0,
+   "numberOfCe": 8.0,
+   "numberOfFl": 8.0,
+   "indexTime": "15:05:10",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNX50",
+   "indexValue": 3133.17,
+   "prevIndexValue": 3141.65,
+   "indexColor": "down",
+   "indexChange": -8.48,
+   "indexPercentChange": -0.27,
+   "sumVolume": 411760056,
+   "sumValue": 10035377121640,
+   "totalTrading": 0,
+   "totalVolume": 411760056,
+   "totalValue": 10035377121640,
+   "marketStatus": "PRE",
+   "advances": 14.0,
+   "declines": 29.0,
+   "noChange": 7.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 0.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "HNX30",
+   "indexValue": 441.04,
+   "prevIndexValue": 443.26,
+   "indexColor": "down",
+   "indexChange": -2.22,
+   "indexPercentChange": -0.5,
+   "sumVolume": 22816387,
+   "sumValue": 387301937700,
+   "totalTrading": 0,
+   "totalVolume": 22816387,
+   "totalValue": 387301937700,
+   "marketStatus": "PRE",
+   "advances": 8.0,
+   "declines": 19.0,
+   "noChange": 2.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 0.0,
+   "indexTime": "15:05:10",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNSI",
+   "indexValue": 3077.74,
+   "prevIndexValue": 3086.88,
+   "indexColor": "down",
+   "indexChange": -9.14,
+   "indexPercentChange": -0.3,
+   "sumVolume": 121744929,
+   "sumValue": 3577343360500,
+   "totalTrading": 0,
+   "totalVolume": 121744929,
+   "totalValue": 3577343360500,
+   "marketStatus": "PRE",
+   "advances": 5.0,
+   "declines": 11.0,
+   "noChange": 4.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 0.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VN30",
+   "indexValue": 1888.4,
+   "prevIndexValue": 1889.53,
+   "indexColor": "down",
+   "indexChange": -1.13,
+   "indexPercentChange": -0.06,
+   "sumVolume": 239404655,
+   "sumValue": 7099906373290,
+   "totalTrading": 0,
+   "totalVolume": 239404655,
+   "totalValue": 7099906373290,
+   "marketStatus": "PRE",
+   "advances": 10.0,
+   "declines": 15.0,
+   "noChange": 5.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 0.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNALL",
+   "indexValue": 1768.6,
+   "prevIndexValue": 1773.45,
+   "indexColor": "down",
+   "indexChange": -4.85,
+   "indexPercentChange": -0.27,
+   "sumVolume": 619429913,
+   "sumValue": 13746003740617,
+   "totalTrading": 0,
+   "totalVolume": 619429913,
+   "totalValue": 13746003740617,
+   "marketStatus": "PRE",
+   "advances": 98.0,
+   "declines": 165.0,
+   "noChange": 43.0,
+   "numberOfCe": 1.0,
+   "numberOfFl": 4.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNMID",
+   "indexValue": 1853.57,
+   "prevIndexValue": 1865.55,
+   "indexColor": "down",
+   "indexChange": -11.98,
+   "indexPercentChange": -0.64,
+   "sumVolume": 318273357,
+   "sumValue": 5761129627820,
+   "totalTrading": 0,
+   "totalVolume": 318273357,
+   "totalValue": 5761129627820,
+   "marketStatus": "PRE",
+   "advances": 15.0,
+   "declines": 48.0,
+   "noChange": 7.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 1.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNXALL",
+   "indexValue": 2782.22,
+   "prevIndexValue": 2789.46,
+   "indexColor": "down",
+   "indexChange": -7.24,
+   "indexPercentChange": -0.26,
+   "sumVolume": 643113884,
+   "sumValue": 13650046078237,
+   "totalTrading": 0,
+   "totalVolume": 643113884,
+   "totalValue": 13650046078237,
+   "marketStatus": "PRE",
+   "advances": 140.0,
+   "declines": 233.0,
+   "noChange": 78.0,
+   "numberOfCe": 3.0,
+   "numberOfFl": 8.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNSML",
+   "indexValue": 1244.87,
+   "prevIndexValue": 1252.21,
+   "indexColor": "down",
+   "indexChange": -7.34,
+   "indexPercentChange": -0.59,
+   "sumVolume": 61751901,
+   "sumValue": 884967739507,
+   "totalTrading": 0,
+   "totalVolume": 61751901,
+   "totalValue": 884967739507,
+   "marketStatus": "PRE",
+   "advances": 73.0,
+   "declines": 102.0,
+   "noChange": 31.0,
+   "numberOfCe": 1.0,
+   "numberOfFl": 3.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VN100",
+   "indexValue": 1791.65,
+   "prevIndexValue": 1796.18,
+   "indexColor": "down",
+   "indexChange": -4.53,
+   "indexPercentChange": -0.25,
+   "sumVolume": 557678012,
+   "sumValue": 12861036001110,
+   "totalTrading": 0,
+   "totalVolume": 557678012,
+   "totalValue": 12861036001110,
+   "marketStatus": "PRE",
+   "advances": 25.0,
+   "declines": 63.0,
+   "noChange": 12.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 1.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "FU",
+   "indexValue": 1888.4,
+   "prevIndexValue": 1954.91,
+   "indexColor": "down",
+   "indexChange": -66.51,
+   "indexPercentChange": -3.4,
+   "sumVolume": 239404655,
+   "sumValue": 7099906373290,
+   "totalTrading": 0,
+   "totalVolume": 239404655,
+   "totalValue": 7099906373290,
+   "marketStatus": "PRE",
+   "advances": 10.0,
+   "declines": 15.0,
+   "noChange": 5.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 0.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  },
+  {
+   "indexCode": "VNDIAMOND",
+   "indexValue": 2168.12,
+   "prevIndexValue": 2183.07,
+   "indexColor": "down",
+   "indexChange": -14.95,
+   "indexPercentChange": -0.68,
+   "sumVolume": 164676260,
+   "sumValue": 4324890831100,
+   "totalTrading": 0,
+   "totalVolume": 164676260,
+   "totalValue": 4324890831100,
+   "marketStatus": "PRE",
+   "advances": 4.0,
+   "declines": 13.0,
+   "noChange": 1.0,
+   "numberOfCe": 0.0,
+   "numberOfFl": 0.0,
+   "indexTime": "15:05:05",
+   "oddLotTotalValue": 0,
+   "oddLotTotalVolume": 0
+  }
+ ],
+ "4.2 intradayMarketIndex": {
+  "indexCode": "VN30",
+  "indexValue": 1888.4,
+  "prevIndexValue": 1889.53,
+  "indexColor": "down",
+  "indexChange": -1.13,
+  "indexPercentChange": -0.06,
+  "sumVolume": 239404655,
+  "sumValue": 7099906373290,
+  "totalTrading": 0,
+  "totalVolume": 239404655,
+  "totalValue": 7099906373290,
+  "marketStatus": "PRE",
+  "marketCode": "HOSE",
+  "advances": 10.0,
+  "declines": 15.0,
+  "noChange": 5.0,
+  "numberOfCe": 0.0,
+  "numberOfFl": 0.0,
+  "indexTime": "15:05:05",
+  "oddLotTotalValue": 0.0,
+  "oddLotTotalVolume": 0.0,
+  "index": [
+   {
+    "indexValue": 1886.46,
+    "indexTime": "09:00:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.99,
+    "indexTime": "09:01:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.03,
+    "indexTime": "09:02:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.41,
+    "indexTime": "09:03:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1885.83,
+    "indexTime": "09:04:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.27,
+    "indexTime": "09:05:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.75,
+    "indexTime": "09:06:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.43,
+    "indexTime": "09:07:55",
+    "totalVolume": 0,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.0,
+    "indexTime": "09:08:55",
+    "totalVolume": 1386,
+    "volume": 1386
+   },
+   {
+    "indexValue": 1888.29,
+    "indexTime": "09:09:55",
+    "totalVolume": 10300,
+    "volume": 8914
+   },
+   {
+    "indexValue": 1886.73,
+    "indexTime": "09:10:55",
+    "totalVolume": 10300,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.95,
+    "indexTime": "09:11:55",
+    "totalVolume": 10300,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.32,
+    "indexTime": "09:12:55",
+    "totalVolume": 10300,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.19,
+    "indexTime": "09:13:55",
+    "totalVolume": 10300,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.78,
+    "indexTime": "09:14:55",
+    "totalVolume": 10300,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.63,
+    "indexTime": "09:15:55",
+    "totalVolume": 2528094,
+    "volume": 2517794
+   },
+   {
+    "indexValue": 1888.8,
+    "indexTime": "09:16:55",
+    "totalVolume": 2900956,
+    "volume": 372862
+   },
+   {
+    "indexValue": 1890.47,
+    "indexTime": "09:17:55",
+    "totalVolume": 3378527,
+    "volume": 477571
+   },
+   {
+    "indexValue": 1889.59,
+    "indexTime": "09:18:55",
+    "totalVolume": 3940886,
+    "volume": 562359
+   },
+   {
+    "indexValue": 1889.16,
+    "indexTime": "09:19:55",
+    "totalVolume": 4570501,
+    "volume": 629615
+   },
+   {
+    "indexValue": 1888.19,
+    "indexTime": "09:20:55",
+    "totalVolume": 5056085,
+    "volume": 485584
+   },
+   {
+    "indexValue": 1887.64,
+    "indexTime": "09:21:55",
+    "totalVolume": 5533808,
+    "volume": 477723
+   },
+   {
+    "indexValue": 1887.21,
+    "indexTime": "09:22:55",
+    "totalVolume": 6215004,
+    "volume": 681196
+   },
+   {
+    "indexValue": 1887.41,
+    "indexTime": "09:23:55",
+    "totalVolume": 6670848,
+    "volume": 455844
+   },
+   {
+    "indexValue": 1888.45,
+    "indexTime": "09:24:55",
+    "totalVolume": 7357832,
+    "volume": 686984
+   },
+   {
+    "indexValue": 1889.51,
+    "indexTime": "09:25:55",
+    "totalVolume": 7936013,
+    "volume": 578181
+   },
+   {
+    "indexValue": 1889.98,
+    "indexTime": "09:26:55",
+    "totalVolume": 8253191,
+    "volume": 317178
+   },
+   {
+    "indexValue": 1890.68,
+    "indexTime": "09:27:55",
+    "totalVolume": 8493640,
+    "volume": 240449
+   },
+   {
+    "indexValue": 1890.21,
+    "indexTime": "09:28:55",
+    "totalVolume": 9206283,
+    "volume": 712643
+   },
+   {
+    "indexValue": 1890.69,
+    "indexTime": "09:29:55",
+    "totalVolume": 9590114,
+    "volume": 383831
+   },
+   {
+    "indexValue": 1892.66,
+    "indexTime": "09:30:55",
+    "totalVolume": 10389666,
+    "volume": 799552
+   },
+   {
+    "indexValue": 1894.48,
+    "indexTime": "09:31:55",
+    "totalVolume": 11549205,
+    "volume": 1159539
+   },
+   {
+    "indexValue": 1893.12,
+    "indexTime": "09:32:55",
+    "totalVolume": 12030903,
+    "volume": 481698
+   },
+   {
+    "indexValue": 1893.78,
+    "indexTime": "09:33:55",
+    "totalVolume": 12587058,
+    "volume": 556155
+   },
+   {
+    "indexValue": 1893.9,
+    "indexTime": "09:34:55",
+    "totalVolume": 12985137,
+    "volume": 398079
+   },
+   {
+    "indexValue": 1892.05,
+    "indexTime": "09:35:55",
+    "totalVolume": 13619268,
+    "volume": 634131
+   },
+   {
+    "indexValue": 1890.39,
+    "indexTime": "09:36:55",
+    "totalVolume": 13912686,
+    "volume": 293418
+   },
+   {
+    "indexValue": 1890.8,
+    "indexTime": "09:37:55",
+    "totalVolume": 14319892,
+    "volume": 407206
+   },
+   {
+    "indexValue": 1889.95,
+    "indexTime": "09:38:55",
+    "totalVolume": 15206488,
+    "volume": 886596
+   },
+   {
+    "indexValue": 1889.01,
+    "indexTime": "09:39:55",
+    "totalVolume": 15838428,
+    "volume": 631940
+   },
+   {
+    "indexValue": 1888.32,
+    "indexTime": "09:40:55",
+    "totalVolume": 16758005,
+    "volume": 919577
+   },
+   {
+    "indexValue": 1889.77,
+    "indexTime": "09:41:55",
+    "totalVolume": 17427245,
+    "volume": 669240
+   },
+   {
+    "indexValue": 1889.03,
+    "indexTime": "09:42:55",
+    "totalVolume": 17976515,
+    "volume": 549270
+   },
+   {
+    "indexValue": 1888.72,
+    "indexTime": "09:43:55",
+    "totalVolume": 18200701,
+    "volume": 224186
+   },
+   {
+    "indexValue": 1888.11,
+    "indexTime": "09:44:55",
+    "totalVolume": 18540490,
+    "volume": 339789
+   },
+   {
+    "indexValue": 1888.73,
+    "indexTime": "09:45:55",
+    "totalVolume": 18772407,
+    "volume": 231917
+   },
+   {
+    "indexValue": 1887.95,
+    "indexTime": "09:46:55",
+    "totalVolume": 19150217,
+    "volume": 377810
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "09:47:55",
+    "totalVolume": 19628840,
+    "volume": 478623
+   },
+   {
+    "indexValue": 1888.29,
+    "indexTime": "09:48:55",
+    "totalVolume": 19959737,
+    "volume": 330897
+   },
+   {
+    "indexValue": 1887.18,
+    "indexTime": "09:49:55",
+    "totalVolume": 20927103,
+    "volume": 967366
+   },
+   {
+    "indexValue": 1887.17,
+    "indexTime": "09:50:55",
+    "totalVolume": 21191598,
+    "volume": 264495
+   },
+   {
+    "indexValue": 1886.42,
+    "indexTime": "09:51:55",
+    "totalVolume": 21774098,
+    "volume": 582500
+   },
+   {
+    "indexValue": 1885.71,
+    "indexTime": "09:52:55",
+    "totalVolume": 22507691,
+    "volume": 733593
+   },
+   {
+    "indexValue": 1886.03,
+    "indexTime": "09:53:55",
+    "totalVolume": 23058761,
+    "volume": 551070
+   },
+   {
+    "indexValue": 1885.85,
+    "indexTime": "09:54:55",
+    "totalVolume": 24070540,
+    "volume": 1011779
+   },
+   {
+    "indexValue": 1886.12,
+    "indexTime": "09:55:55",
+    "totalVolume": 24735151,
+    "volume": 664611
+   },
+   {
+    "indexValue": 1886.34,
+    "indexTime": "09:56:55",
+    "totalVolume": 25109894,
+    "volume": 374743
+   },
+   {
+    "indexValue": 1886.7,
+    "indexTime": "09:57:55",
+    "totalVolume": 25726905,
+    "volume": 617011
+   },
+   {
+    "indexValue": 1888.71,
+    "indexTime": "09:58:55",
+    "totalVolume": 26515329,
+    "volume": 788424
+   },
+   {
+    "indexValue": 1888.93,
+    "indexTime": "09:59:55",
+    "totalVolume": 27029090,
+    "volume": 513761
+   },
+   {
+    "indexValue": 1889.21,
+    "indexTime": "10:00:55",
+    "totalVolume": 27596587,
+    "volume": 567497
+   },
+   {
+    "indexValue": 1889.89,
+    "indexTime": "10:01:55",
+    "totalVolume": 27980599,
+    "volume": 384012
+   },
+   {
+    "indexValue": 1889.33,
+    "indexTime": "10:02:55",
+    "totalVolume": 29129004,
+    "volume": 1148405
+   },
+   {
+    "indexValue": 1889.71,
+    "indexTime": "10:03:55",
+    "totalVolume": 29769712,
+    "volume": 640708
+   },
+   {
+    "indexValue": 1889.42,
+    "indexTime": "10:04:55",
+    "totalVolume": 30152203,
+    "volume": 382491
+   },
+   {
+    "indexValue": 1888.8,
+    "indexTime": "10:05:55",
+    "totalVolume": 30459718,
+    "volume": 307515
+   },
+   {
+    "indexValue": 1888.17,
+    "indexTime": "10:06:55",
+    "totalVolume": 30753171,
+    "volume": 293453
+   },
+   {
+    "indexValue": 1888.57,
+    "indexTime": "10:07:55",
+    "totalVolume": 31101202,
+    "volume": 348031
+   },
+   {
+    "indexValue": 1887.07,
+    "indexTime": "10:08:55",
+    "totalVolume": 31466904,
+    "volume": 365702
+   },
+   {
+    "indexValue": 1887.39,
+    "indexTime": "10:09:55",
+    "totalVolume": 31802651,
+    "volume": 335747
+   },
+   {
+    "indexValue": 1887.81,
+    "indexTime": "10:10:55",
+    "totalVolume": 32104350,
+    "volume": 301699
+   },
+   {
+    "indexValue": 1887.34,
+    "indexTime": "10:11:55",
+    "totalVolume": 32330980,
+    "volume": 226630
+   },
+   {
+    "indexValue": 1888.28,
+    "indexTime": "10:12:55",
+    "totalVolume": 32534875,
+    "volume": 203895
+   },
+   {
+    "indexValue": 1887.99,
+    "indexTime": "10:13:55",
+    "totalVolume": 32836589,
+    "volume": 301714
+   },
+   {
+    "indexValue": 1888.2,
+    "indexTime": "10:14:55",
+    "totalVolume": 34030893,
+    "volume": 1194304
+   },
+   {
+    "indexValue": 1888.84,
+    "indexTime": "10:15:55",
+    "totalVolume": 34479611,
+    "volume": 448718
+   },
+   {
+    "indexValue": 1888.67,
+    "indexTime": "10:16:55",
+    "totalVolume": 34735693,
+    "volume": 256082
+   },
+   {
+    "indexValue": 1887.96,
+    "indexTime": "10:17:55",
+    "totalVolume": 34983351,
+    "volume": 247658
+   },
+   {
+    "indexValue": 1888.75,
+    "indexTime": "10:18:55",
+    "totalVolume": 35295266,
+    "volume": 311915
+   },
+   {
+    "indexValue": 1888.72,
+    "indexTime": "10:19:55",
+    "totalVolume": 35690820,
+    "volume": 395554
+   },
+   {
+    "indexValue": 1890.55,
+    "indexTime": "10:20:55",
+    "totalVolume": 36404581,
+    "volume": 713761
+   },
+   {
+    "indexValue": 1891.57,
+    "indexTime": "10:21:55",
+    "totalVolume": 36781525,
+    "volume": 376944
+   },
+   {
+    "indexValue": 1892.5,
+    "indexTime": "10:22:55",
+    "totalVolume": 37366125,
+    "volume": 584600
+   },
+   {
+    "indexValue": 1892.81,
+    "indexTime": "10:23:55",
+    "totalVolume": 37755738,
+    "volume": 389613
+   },
+   {
+    "indexValue": 1892.72,
+    "indexTime": "10:24:55",
+    "totalVolume": 38414355,
+    "volume": 658617
+   },
+   {
+    "indexValue": 1892.95,
+    "indexTime": "10:25:55",
+    "totalVolume": 38759586,
+    "volume": 345231
+   },
+   {
+    "indexValue": 1893.76,
+    "indexTime": "10:26:55",
+    "totalVolume": 39247147,
+    "volume": 487561
+   },
+   {
+    "indexValue": 1893.77,
+    "indexTime": "10:27:55",
+    "totalVolume": 39746584,
+    "volume": 499437
+   },
+   {
+    "indexValue": 1893.58,
+    "indexTime": "10:28:55",
+    "totalVolume": 40194838,
+    "volume": 448254
+   },
+   {
+    "indexValue": 1894.2,
+    "indexTime": "10:29:55",
+    "totalVolume": 40862290,
+    "volume": 667452
+   },
+   {
+    "indexValue": 1892.78,
+    "indexTime": "10:30:55",
+    "totalVolume": 41246764,
+    "volume": 384474
+   },
+   {
+    "indexValue": 1892.93,
+    "indexTime": "10:31:55",
+    "totalVolume": 41622261,
+    "volume": 375497
+   },
+   {
+    "indexValue": 1892.04,
+    "indexTime": "10:32:55",
+    "totalVolume": 42593811,
+    "volume": 971550
+   },
+   {
+    "indexValue": 1892.01,
+    "indexTime": "10:33:55",
+    "totalVolume": 43081472,
+    "volume": 487661
+   },
+   {
+    "indexValue": 1892.5,
+    "indexTime": "10:34:55",
+    "totalVolume": 43512730,
+    "volume": 431258
+   },
+   {
+    "indexValue": 1892.41,
+    "indexTime": "10:35:55",
+    "totalVolume": 43992909,
+    "volume": 480179
+   },
+   {
+    "indexValue": 1892.51,
+    "indexTime": "10:36:55",
+    "totalVolume": 44391167,
+    "volume": 398258
+   },
+   {
+    "indexValue": 1892.25,
+    "indexTime": "10:37:55",
+    "totalVolume": 44787826,
+    "volume": 396659
+   },
+   {
+    "indexValue": 1892.91,
+    "indexTime": "10:38:55",
+    "totalVolume": 44998899,
+    "volume": 211073
+   },
+   {
+    "indexValue": 1892.95,
+    "indexTime": "10:39:55",
+    "totalVolume": 45198472,
+    "volume": 199573
+   },
+   {
+    "indexValue": 1894.1,
+    "indexTime": "10:40:55",
+    "totalVolume": 45856049,
+    "volume": 657577
+   },
+   {
+    "indexValue": 1894.09,
+    "indexTime": "10:41:55",
+    "totalVolume": 46983209,
+    "volume": 1127160
+   },
+   {
+    "indexValue": 1894.0,
+    "indexTime": "10:42:55",
+    "totalVolume": 47263195,
+    "volume": 279986
+   },
+   {
+    "indexValue": 1896.32,
+    "indexTime": "10:43:55",
+    "totalVolume": 47962490,
+    "volume": 699295
+   },
+   {
+    "indexValue": 1898.77,
+    "indexTime": "10:44:55",
+    "totalVolume": 49220718,
+    "volume": 1258228
+   },
+   {
+    "indexValue": 1896.88,
+    "indexTime": "10:45:55",
+    "totalVolume": 49741820,
+    "volume": 521102
+   },
+   {
+    "indexValue": 1896.12,
+    "indexTime": "10:46:55",
+    "totalVolume": 52406779,
+    "volume": 2664959
+   },
+   {
+    "indexValue": 1896.0,
+    "indexTime": "10:47:55",
+    "totalVolume": 53294938,
+    "volume": 888159
+   },
+   {
+    "indexValue": 1896.26,
+    "indexTime": "10:48:55",
+    "totalVolume": 54109352,
+    "volume": 814414
+   },
+   {
+    "indexValue": 1896.27,
+    "indexTime": "10:49:55",
+    "totalVolume": 54666855,
+    "volume": 557503
+   },
+   {
+    "indexValue": 1896.5,
+    "indexTime": "10:50:55",
+    "totalVolume": 55184876,
+    "volume": 518021
+   },
+   {
+    "indexValue": 1897.17,
+    "indexTime": "10:51:55",
+    "totalVolume": 55766765,
+    "volume": 581889
+   },
+   {
+    "indexValue": 1896.44,
+    "indexTime": "10:52:55",
+    "totalVolume": 56117059,
+    "volume": 350294
+   },
+   {
+    "indexValue": 1896.44,
+    "indexTime": "10:53:55",
+    "totalVolume": 56519118,
+    "volume": 402059
+   },
+   {
+    "indexValue": 1895.14,
+    "indexTime": "10:54:55",
+    "totalVolume": 57055744,
+    "volume": 536626
+   },
+   {
+    "indexValue": 1894.87,
+    "indexTime": "10:55:55",
+    "totalVolume": 57319106,
+    "volume": 263362
+   },
+   {
+    "indexValue": 1894.66,
+    "indexTime": "10:56:55",
+    "totalVolume": 57779516,
+    "volume": 460410
+   },
+   {
+    "indexValue": 1893.25,
+    "indexTime": "10:57:55",
+    "totalVolume": 58040793,
+    "volume": 261277
+   },
+   {
+    "indexValue": 1893.41,
+    "indexTime": "10:58:55",
+    "totalVolume": 58347247,
+    "volume": 306454
+   },
+   {
+    "indexValue": 1893.46,
+    "indexTime": "10:59:55",
+    "totalVolume": 58649544,
+    "volume": 302297
+   },
+   {
+    "indexValue": 1892.13,
+    "indexTime": "11:00:55",
+    "totalVolume": 58884557,
+    "volume": 235013
+   },
+   {
+    "indexValue": 1893.01,
+    "indexTime": "11:01:55",
+    "totalVolume": 59085003,
+    "volume": 200446
+   },
+   {
+    "indexValue": 1893.34,
+    "indexTime": "11:02:55",
+    "totalVolume": 59307549,
+    "volume": 222546
+   },
+   {
+    "indexValue": 1893.41,
+    "indexTime": "11:03:55",
+    "totalVolume": 59485445,
+    "volume": 177896
+   },
+   {
+    "indexValue": 1894.01,
+    "indexTime": "11:04:55",
+    "totalVolume": 59875098,
+    "volume": 389653
+   },
+   {
+    "indexValue": 1895.05,
+    "indexTime": "11:05:55",
+    "totalVolume": 60099806,
+    "volume": 224708
+   },
+   {
+    "indexValue": 1894.9,
+    "indexTime": "11:06:55",
+    "totalVolume": 60301356,
+    "volume": 201550
+   },
+   {
+    "indexValue": 1895.4,
+    "indexTime": "11:07:55",
+    "totalVolume": 60671279,
+    "volume": 369923
+   },
+   {
+    "indexValue": 1894.37,
+    "indexTime": "11:08:55",
+    "totalVolume": 61136097,
+    "volume": 464818
+   },
+   {
+    "indexValue": 1894.37,
+    "indexTime": "11:09:55",
+    "totalVolume": 61373529,
+    "volume": 237432
+   },
+   {
+    "indexValue": 1893.79,
+    "indexTime": "11:10:55",
+    "totalVolume": 61552809,
+    "volume": 179280
+   },
+   {
+    "indexValue": 1893.93,
+    "indexTime": "11:11:55",
+    "totalVolume": 61808157,
+    "volume": 255348
+   },
+   {
+    "indexValue": 1893.56,
+    "indexTime": "11:12:55",
+    "totalVolume": 62007536,
+    "volume": 199379
+   },
+   {
+    "indexValue": 1893.49,
+    "indexTime": "11:13:55",
+    "totalVolume": 62399719,
+    "volume": 392183
+   },
+   {
+    "indexValue": 1893.45,
+    "indexTime": "11:14:55",
+    "totalVolume": 62986551,
+    "volume": 586832
+   },
+   {
+    "indexValue": 1891.31,
+    "indexTime": "11:15:55",
+    "totalVolume": 63284453,
+    "volume": 297902
+   },
+   {
+    "indexValue": 1891.1,
+    "indexTime": "11:16:55",
+    "totalVolume": 63548393,
+    "volume": 263940
+   },
+   {
+    "indexValue": 1890.08,
+    "indexTime": "11:17:55",
+    "totalVolume": 64064130,
+    "volume": 515737
+   },
+   {
+    "indexValue": 1890.54,
+    "indexTime": "11:18:55",
+    "totalVolume": 64436523,
+    "volume": 372393
+   },
+   {
+    "indexValue": 1889.89,
+    "indexTime": "11:19:55",
+    "totalVolume": 65404206,
+    "volume": 967683
+   },
+   {
+    "indexValue": 1889.79,
+    "indexTime": "11:20:55",
+    "totalVolume": 67637537,
+    "volume": 2233331
+   },
+   {
+    "indexValue": 1889.22,
+    "indexTime": "11:21:55",
+    "totalVolume": 68696074,
+    "volume": 1058537
+   },
+   {
+    "indexValue": 1889.82,
+    "indexTime": "11:22:55",
+    "totalVolume": 69738585,
+    "volume": 1042511
+   },
+   {
+    "indexValue": 1888.23,
+    "indexTime": "11:23:55",
+    "totalVolume": 70360404,
+    "volume": 621819
+   },
+   {
+    "indexValue": 1888.14,
+    "indexTime": "11:24:55",
+    "totalVolume": 70844187,
+    "volume": 483783
+   },
+   {
+    "indexValue": 1888.16,
+    "indexTime": "11:25:55",
+    "totalVolume": 71533913,
+    "volume": 689726
+   },
+   {
+    "indexValue": 1889.01,
+    "indexTime": "11:26:55",
+    "totalVolume": 72103209,
+    "volume": 569296
+   },
+   {
+    "indexValue": 1887.01,
+    "indexTime": "11:27:55",
+    "totalVolume": 72413237,
+    "volume": 310028
+   },
+   {
+    "indexValue": 1888.26,
+    "indexTime": "11:28:55",
+    "totalVolume": 73066548,
+    "volume": 653311
+   },
+   {
+    "indexValue": 1888.06,
+    "indexTime": "11:29:55",
+    "totalVolume": 73567840,
+    "volume": 501292
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:30:55",
+    "totalVolume": 73595640,
+    "volume": 27800
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:31:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:32:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:33:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:34:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:35:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:36:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:37:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:38:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:39:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:40:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:41:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:42:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:43:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:44:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:45:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:46:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:47:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:48:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:49:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:50:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:51:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:52:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:53:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:54:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:55:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:56:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:57:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:58:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "11:59:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:00:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:01:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:02:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:03:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:04:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:05:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:06:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:07:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:08:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:09:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:10:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:11:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:12:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:13:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:14:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:15:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:16:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:17:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:18:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:19:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:20:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:21:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:22:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:23:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:24:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:25:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:26:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:27:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:28:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:29:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:30:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:31:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:32:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:33:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:34:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:35:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:36:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:37:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:38:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:39:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:40:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:41:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:42:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:43:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:44:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:45:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:46:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:47:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:48:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:49:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:50:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:51:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:52:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:53:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:54:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:55:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:56:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:57:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:58:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.55,
+    "indexTime": "12:59:55",
+    "totalVolume": 73595640,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.99,
+    "indexTime": "13:00:55",
+    "totalVolume": 75250075,
+    "volume": 1654435
+   },
+   {
+    "indexValue": 1885.5,
+    "indexTime": "13:01:55",
+    "totalVolume": 76006638,
+    "volume": 756563
+   },
+   {
+    "indexValue": 1887.02,
+    "indexTime": "13:02:55",
+    "totalVolume": 77027888,
+    "volume": 1021250
+   },
+   {
+    "indexValue": 1886.33,
+    "indexTime": "13:03:55",
+    "totalVolume": 77577626,
+    "volume": 549738
+   },
+   {
+    "indexValue": 1886.38,
+    "indexTime": "13:04:55",
+    "totalVolume": 78253909,
+    "volume": 676283
+   },
+   {
+    "indexValue": 1885.71,
+    "indexTime": "13:05:55",
+    "totalVolume": 78768540,
+    "volume": 514631
+   },
+   {
+    "indexValue": 1887.97,
+    "indexTime": "13:06:55",
+    "totalVolume": 79495707,
+    "volume": 727167
+   },
+   {
+    "indexValue": 1886.73,
+    "indexTime": "13:07:55",
+    "totalVolume": 80408362,
+    "volume": 912655
+   },
+   {
+    "indexValue": 1887.44,
+    "indexTime": "13:08:55",
+    "totalVolume": 81116871,
+    "volume": 708509
+   },
+   {
+    "indexValue": 1886.57,
+    "indexTime": "13:09:55",
+    "totalVolume": 81566063,
+    "volume": 449192
+   },
+   {
+    "indexValue": 1887.0,
+    "indexTime": "13:10:55",
+    "totalVolume": 85010470,
+    "volume": 3444407
+   },
+   {
+    "indexValue": 1887.87,
+    "indexTime": "13:11:55",
+    "totalVolume": 85908839,
+    "volume": 898369
+   },
+   {
+    "indexValue": 1886.63,
+    "indexTime": "13:12:55",
+    "totalVolume": 86349794,
+    "volume": 440955
+   },
+   {
+    "indexValue": 1887.09,
+    "indexTime": "13:13:55",
+    "totalVolume": 87074823,
+    "volume": 725029
+   },
+   {
+    "indexValue": 1887.25,
+    "indexTime": "13:14:55",
+    "totalVolume": 87435121,
+    "volume": 360298
+   },
+   {
+    "indexValue": 1886.4,
+    "indexTime": "13:15:55",
+    "totalVolume": 90159787,
+    "volume": 2724666
+   },
+   {
+    "indexValue": 1886.79,
+    "indexTime": "13:16:55",
+    "totalVolume": 90589881,
+    "volume": 430094
+   },
+   {
+    "indexValue": 1886.89,
+    "indexTime": "13:17:55",
+    "totalVolume": 91452067,
+    "volume": 862186
+   },
+   {
+    "indexValue": 1887.86,
+    "indexTime": "13:18:55",
+    "totalVolume": 92523468,
+    "volume": 1071401
+   },
+   {
+    "indexValue": 1887.57,
+    "indexTime": "13:19:55",
+    "totalVolume": 93074297,
+    "volume": 550829
+   },
+   {
+    "indexValue": 1887.79,
+    "indexTime": "13:20:55",
+    "totalVolume": 93568138,
+    "volume": 493841
+   },
+   {
+    "indexValue": 1887.04,
+    "indexTime": "13:21:55",
+    "totalVolume": 94283154,
+    "volume": 715016
+   },
+   {
+    "indexValue": 1886.81,
+    "indexTime": "13:22:55",
+    "totalVolume": 94526736,
+    "volume": 243582
+   },
+   {
+    "indexValue": 1886.84,
+    "indexTime": "13:23:55",
+    "totalVolume": 94803203,
+    "volume": 276467
+   },
+   {
+    "indexValue": 1887.84,
+    "indexTime": "13:24:55",
+    "totalVolume": 95171454,
+    "volume": 368251
+   },
+   {
+    "indexValue": 1887.35,
+    "indexTime": "13:25:55",
+    "totalVolume": 95790044,
+    "volume": 618590
+   },
+   {
+    "indexValue": 1888.14,
+    "indexTime": "13:26:55",
+    "totalVolume": 96122941,
+    "volume": 332897
+   },
+   {
+    "indexValue": 1887.69,
+    "indexTime": "13:27:55",
+    "totalVolume": 97055420,
+    "volume": 932479
+   },
+   {
+    "indexValue": 1886.57,
+    "indexTime": "13:28:55",
+    "totalVolume": 98214367,
+    "volume": 1158947
+   },
+   {
+    "indexValue": 1887.44,
+    "indexTime": "13:29:55",
+    "totalVolume": 108733687,
+    "volume": 10519320
+   },
+   {
+    "indexValue": 1887.05,
+    "indexTime": "13:30:55",
+    "totalVolume": 109484094,
+    "volume": 750407
+   },
+   {
+    "indexValue": 1887.14,
+    "indexTime": "13:31:55",
+    "totalVolume": 110035183,
+    "volume": 551089
+   },
+   {
+    "indexValue": 1887.22,
+    "indexTime": "13:32:55",
+    "totalVolume": 110734307,
+    "volume": 699124
+   },
+   {
+    "indexValue": 1886.84,
+    "indexTime": "13:33:55",
+    "totalVolume": 111311541,
+    "volume": 577234
+   },
+   {
+    "indexValue": 1887.0,
+    "indexTime": "13:34:55",
+    "totalVolume": 111852341,
+    "volume": 540800
+   },
+   {
+    "indexValue": 1887.26,
+    "indexTime": "13:35:55",
+    "totalVolume": 112587964,
+    "volume": 735623
+   },
+   {
+    "indexValue": 1887.26,
+    "indexTime": "13:37:00",
+    "totalVolume": 113006879,
+    "volume": 418915
+   },
+   {
+    "indexValue": 1887.26,
+    "indexTime": "13:37:55",
+    "totalVolume": 118101488,
+    "volume": 5094609
+   },
+   {
+    "indexValue": 1887.1,
+    "indexTime": "13:38:55",
+    "totalVolume": 118853477,
+    "volume": 751989
+   },
+   {
+    "indexValue": 1889.79,
+    "indexTime": "13:39:55",
+    "totalVolume": 119472667,
+    "volume": 619190
+   },
+   {
+    "indexValue": 1889.48,
+    "indexTime": "13:40:55",
+    "totalVolume": 120319149,
+    "volume": 846482
+   },
+   {
+    "indexValue": 1889.85,
+    "indexTime": "13:41:55",
+    "totalVolume": 121215558,
+    "volume": 896409
+   },
+   {
+    "indexValue": 1890.6,
+    "indexTime": "13:42:55",
+    "totalVolume": 122168394,
+    "volume": 952836
+   },
+   {
+    "indexValue": 1891.68,
+    "indexTime": "13:43:55",
+    "totalVolume": 122958882,
+    "volume": 790488
+   },
+   {
+    "indexValue": 1891.24,
+    "indexTime": "13:44:55",
+    "totalVolume": 124729210,
+    "volume": 1770328
+   },
+   {
+    "indexValue": 1891.2,
+    "indexTime": "13:45:55",
+    "totalVolume": 125405858,
+    "volume": 676648
+   },
+   {
+    "indexValue": 1891.57,
+    "indexTime": "13:46:55",
+    "totalVolume": 136271349,
+    "volume": 10865491
+   },
+   {
+    "indexValue": 1891.74,
+    "indexTime": "13:47:55",
+    "totalVolume": 141537257,
+    "volume": 5265908
+   },
+   {
+    "indexValue": 1891.11,
+    "indexTime": "13:48:55",
+    "totalVolume": 143983357,
+    "volume": 2446100
+   },
+   {
+    "indexValue": 1891.52,
+    "indexTime": "13:49:55",
+    "totalVolume": 145154159,
+    "volume": 1170802
+   },
+   {
+    "indexValue": 1891.39,
+    "indexTime": "13:50:55",
+    "totalVolume": 146170254,
+    "volume": 1016095
+   },
+   {
+    "indexValue": 1891.23,
+    "indexTime": "13:51:55",
+    "totalVolume": 146535827,
+    "volume": 365573
+   },
+   {
+    "indexValue": 1891.8,
+    "indexTime": "13:52:55",
+    "totalVolume": 147262939,
+    "volume": 727112
+   },
+   {
+    "indexValue": 1890.49,
+    "indexTime": "13:53:55",
+    "totalVolume": 147649257,
+    "volume": 386318
+   },
+   {
+    "indexValue": 1891.58,
+    "indexTime": "13:54:55",
+    "totalVolume": 148415804,
+    "volume": 766547
+   },
+   {
+    "indexValue": 1891.35,
+    "indexTime": "13:55:55",
+    "totalVolume": 148743816,
+    "volume": 328012
+   },
+   {
+    "indexValue": 1891.86,
+    "indexTime": "13:56:55",
+    "totalVolume": 149143199,
+    "volume": 399383
+   },
+   {
+    "indexValue": 1891.99,
+    "indexTime": "13:57:55",
+    "totalVolume": 149458362,
+    "volume": 315163
+   },
+   {
+    "indexValue": 1891.55,
+    "indexTime": "13:58:55",
+    "totalVolume": 150302147,
+    "volume": 843785
+   },
+   {
+    "indexValue": 1889.8,
+    "indexTime": "13:59:55",
+    "totalVolume": 152485215,
+    "volume": 2183068
+   },
+   {
+    "indexValue": 1889.73,
+    "indexTime": "14:00:55",
+    "totalVolume": 156121475,
+    "volume": 3636260
+   },
+   {
+    "indexValue": 1888.65,
+    "indexTime": "14:01:55",
+    "totalVolume": 157012255,
+    "volume": 890780
+   },
+   {
+    "indexValue": 1889.43,
+    "indexTime": "14:02:55",
+    "totalVolume": 157766273,
+    "volume": 754018
+   },
+   {
+    "indexValue": 1889.4,
+    "indexTime": "14:03:55",
+    "totalVolume": 158801425,
+    "volume": 1035152
+   },
+   {
+    "indexValue": 1889.33,
+    "indexTime": "14:04:55",
+    "totalVolume": 159486423,
+    "volume": 684998
+   },
+   {
+    "indexValue": 1889.34,
+    "indexTime": "14:05:55",
+    "totalVolume": 160051496,
+    "volume": 565073
+   },
+   {
+    "indexValue": 1888.98,
+    "indexTime": "14:06:55",
+    "totalVolume": 160479525,
+    "volume": 428029
+   },
+   {
+    "indexValue": 1889.56,
+    "indexTime": "14:07:55",
+    "totalVolume": 161111078,
+    "volume": 631553
+   },
+   {
+    "indexValue": 1888.49,
+    "indexTime": "14:08:55",
+    "totalVolume": 161860619,
+    "volume": 749541
+   },
+   {
+    "indexValue": 1887.95,
+    "indexTime": "14:09:55",
+    "totalVolume": 162477016,
+    "volume": 616397
+   },
+   {
+    "indexValue": 1887.78,
+    "indexTime": "14:10:55",
+    "totalVolume": 163195590,
+    "volume": 718574
+   },
+   {
+    "indexValue": 1886.99,
+    "indexTime": "14:11:55",
+    "totalVolume": 163610995,
+    "volume": 415405
+   },
+   {
+    "indexValue": 1886.51,
+    "indexTime": "14:12:55",
+    "totalVolume": 164607124,
+    "volume": 996129
+   },
+   {
+    "indexValue": 1886.74,
+    "indexTime": "14:13:55",
+    "totalVolume": 165006524,
+    "volume": 399400
+   },
+   {
+    "indexValue": 1887.39,
+    "indexTime": "14:14:55",
+    "totalVolume": 165813280,
+    "volume": 806756
+   },
+   {
+    "indexValue": 1886.49,
+    "indexTime": "14:15:55",
+    "totalVolume": 169004380,
+    "volume": 3191100
+   },
+   {
+    "indexValue": 1886.77,
+    "indexTime": "14:16:55",
+    "totalVolume": 171294004,
+    "volume": 2289624
+   },
+   {
+    "indexValue": 1885.13,
+    "indexTime": "14:17:55",
+    "totalVolume": 173000510,
+    "volume": 1706506
+   },
+   {
+    "indexValue": 1884.36,
+    "indexTime": "14:18:55",
+    "totalVolume": 174680646,
+    "volume": 1680136
+   },
+   {
+    "indexValue": 1883.52,
+    "indexTime": "14:19:55",
+    "totalVolume": 175972458,
+    "volume": 1291812
+   },
+   {
+    "indexValue": 1885.55,
+    "indexTime": "14:20:55",
+    "totalVolume": 178565105,
+    "volume": 2592647
+   },
+   {
+    "indexValue": 1885.41,
+    "indexTime": "14:21:55",
+    "totalVolume": 180994122,
+    "volume": 2429017
+   },
+   {
+    "indexValue": 1885.29,
+    "indexTime": "14:22:55",
+    "totalVolume": 185882950,
+    "volume": 4888828
+   },
+   {
+    "indexValue": 1887.68,
+    "indexTime": "14:23:55",
+    "totalVolume": 193824542,
+    "volume": 7941592
+   },
+   {
+    "indexValue": 1888.18,
+    "indexTime": "14:24:55",
+    "totalVolume": 196128678,
+    "volume": 2304136
+   },
+   {
+    "indexValue": 1889.24,
+    "indexTime": "14:25:55",
+    "totalVolume": 197834643,
+    "volume": 1705965
+   },
+   {
+    "indexValue": 1890.42,
+    "indexTime": "14:26:55",
+    "totalVolume": 199929279,
+    "volume": 2094636
+   },
+   {
+    "indexValue": 1890.9,
+    "indexTime": "14:27:55",
+    "totalVolume": 202493983,
+    "volume": 2564704
+   },
+   {
+    "indexValue": 1891.72,
+    "indexTime": "14:28:55",
+    "totalVolume": 204930213,
+    "volume": 2436230
+   },
+   {
+    "indexValue": 1892.05,
+    "indexTime": "14:29:55",
+    "totalVolume": 206305407,
+    "volume": 1375194
+   },
+   {
+    "indexValue": 1884.57,
+    "indexTime": "14:30:55",
+    "totalVolume": 206634522,
+    "volume": 329115
+   },
+   {
+    "indexValue": 1885.0,
+    "indexTime": "14:31:55",
+    "totalVolume": 206634522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.67,
+    "indexTime": "14:32:55",
+    "totalVolume": 206634522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.43,
+    "indexTime": "14:33:55",
+    "totalVolume": 206634522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1883.81,
+    "indexTime": "14:34:55",
+    "totalVolume": 206634522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.59,
+    "indexTime": "14:35:55",
+    "totalVolume": 206634522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1885.03,
+    "indexTime": "14:36:55",
+    "totalVolume": 206662522,
+    "volume": 28000
+   },
+   {
+    "indexValue": 1884.82,
+    "indexTime": "14:37:55",
+    "totalVolume": 206682522,
+    "volume": 20000
+   },
+   {
+    "indexValue": 1884.18,
+    "indexTime": "14:38:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.05,
+    "indexTime": "14:39:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.06,
+    "indexTime": "14:40:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.8,
+    "indexTime": "14:41:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1884.8,
+    "indexTime": "14:42:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.22,
+    "indexTime": "14:43:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1886.78,
+    "indexTime": "14:44:55",
+    "totalVolume": 206682522,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.4,
+    "indexTime": "14:45:05",
+    "totalVolume": 225814655,
+    "volume": 19132133
+   },
+   {
+    "indexValue": 1888.4,
+    "indexTime": "15:00:00",
+    "totalVolume": 225814655,
+    "volume": 0
+   },
+   {
+    "indexValue": 1888.4,
+    "indexTime": "15:05:05",
+    "totalVolume": 239404655,
+    "volume": 13590000
+   }
+  ]
+ }
+}
