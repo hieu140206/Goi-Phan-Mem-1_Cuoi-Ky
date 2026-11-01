@@ -110,3 +110,22 @@ def test_new_day_does_not_diff_across_days():
     out = add_absorption(pd.concat([a, b], ignore_index=True))
     first_of_day2 = out[out["ts"] == b["ts"].iloc[0]].iloc[0]
     assert np.isnan(first_of_day2["delta_vol"])
+
+
+def test_past_thresholds_ignore_future_data():
+    from analytics.lrs import lrs_thresholds_past
+    ts = pd.Series(pd.date_range("2026-10-30 09:15", periods=8, freq="min", tz="Asia/Ho_Chi_Minh").repeat(2))
+    lrs = pd.Series([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 100.0, 200.0])
+    thr = lrs_thresholds_past(lrs, ts, min_obs=4)
+    assert thr.iloc[:4].isna().all().all()                     # 2 thời điểm đầu: chưa đủ 4 điểm quá khứ
+    assert thr.loc[4, "watch"] == pytest.approx(np.quantile([1, 2, 3, 4], 0.95))
+    assert thr.loc[4, "watch"] == thr.loc[5, "watch"]           # cùng thời điểm, cùng ngưỡng (không dùng điểm của nhau)
+    # Hai điểm cực lớn ở cuối không làm thay đổi ngưỡng của các thời điểm trước đó.
+    lrs2 = lrs.copy(); lrs2.iloc[-2:] = [1e6, 1e6]
+    pd.testing.assert_frame_equal(thr.iloc[:14], lrs_thresholds_past(lrs2, ts, min_obs=4).iloc[:14])
+
+
+def test_tier_with_per_row_thresholds():
+    lrs = pd.Series([0.5, 1.5, 3.0, 1.0])
+    thr = pd.DataFrame({"watch": [1.0, 1.0, 1.0, np.nan], "high": [2.0, 2.0, 2.0, np.nan]})
+    assert lrs_tier(lrs, thr).tolist() == ["Bình thường", "Chú ý", "Cao", ""]

@@ -67,3 +67,28 @@ def test_old_database_is_migrated_without_losing_rows(tmp_path):
                          "symbol": "BID", "ceil_px": 36100.0}])
     assert save_quotes(new, db) == 1
     assert len(load_quotes(db)) == 2
+
+
+def test_limit_lock_is_reported_not_silently_dropped(tmp_path):
+    df = pd.DataFrame([
+        raw(ceil_px=107, floor_px=93),                                                   # bình thường
+        raw(symbol="HPG", bid_px1=107, ask_px1=None, ask_qty1=None, ceil_px=107, floor_px=93),  # khóa trần, bên bán trống
+        raw(symbol="SSI", bid_px1=0, ask_px1=93, ceil_px=107, floor_px=93),             # khóa sàn, bên mua = 0
+        raw(symbol="FPT", bid_px1=None, ask_px1=101, ceil_px=107, floor_px=93),         # thiếu dữ liệu, không phải khóa
+    ])
+    clean, rep = normalize_quotes(df)
+    assert clean["symbol"].tolist() == ["VCB"]
+    assert rep["dropped_limit_lock"] == 2 and rep["dropped_missing"] == 1
+    locked = rep["limit_locked"]
+    assert sorted(locked["symbol"]) == ["HPG", "SSI"]
+    assert list(locked.columns) == QUOTE_COLUMNS
+
+    from data.schema import limit_lock_side
+    sides = dict(zip(locked["symbol"], limit_lock_side(locked)))
+    assert sides == {"HPG": "trần", "SSI": "sàn"}
+
+    # Lưu được (bên trống để rỗng) và đọc lại vẫn nhận ra là khóa, không lọt vào dữ liệu phân tích.
+    db = tmp_path / "t.db"
+    save_quotes(pd.concat([clean, locked], ignore_index=True), db)
+    back, rep2 = normalize_quotes(load_quotes(db))
+    assert back["symbol"].tolist() == ["VCB"] and rep2["dropped_limit_lock"] == 2

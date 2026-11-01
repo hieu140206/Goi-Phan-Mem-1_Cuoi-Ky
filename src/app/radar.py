@@ -26,8 +26,8 @@ import streamlit as st  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
 from analytics.anomaly import detect_anomalies  # noqa: E402
-from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds, lrs_tier  # noqa: E402
-from data.schema import normalize_quotes  # noqa: E402
+from analytics.lrs import MIN_OBS_PAST, DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
+from data.schema import limit_lock_side, normalize_quotes  # noqa: E402
 from data.storage import count_rows, load_quotes  # noqa: E402
 from finance.absorption import add_absorption  # noqa: E402
 from finance.liquidity import add_liquidity_metrics, rank_symbols  # noqa: E402
@@ -62,6 +62,8 @@ def load_source(source: str, db_path: str, version: float) -> tuple[pd.DataFrame
     clean, report = normalize_quotes(raw)
     clean, dropped = filter_continuous(clean)
     report["dropped_session"] = dropped
+    locked, _ = filter_continuous(report["limit_locked"])
+    report["limit_locked"] = locked.assign(side=limit_lock_side(locked))[["ts", "symbol", "side"]]
     return add_liquidity_metrics(clean), report
 
 
@@ -72,9 +74,11 @@ def analyze(source: str, db_path: str, version: float, window: int, threshold: f
     df, _ = load_source(source, db_path, version)
     out = add_absorption(detect_anomalies(df, window=window, threshold=threshold))
     out["lrs"] = compute_lrs(out, {"spread": w_spread, "depth": w_depth, "imbalance": w_imb})
-    thr = lrs_thresholds(out["lrs"])
+    # Ngưỡng Chú ý/Cao tại mỗi thời điểm chỉ dùng điểm LRS có trước thời điểm đó (không nhìn trước).
+    thr = lrs_thresholds_past(out["lrs"], out["ts"])
+    out["lrs_watch"], out["lrs_high"] = thr["watch"], thr["high"]
     out["lrs_tier"] = lrs_tier(out["lrs"], thr)
-    return out, thr
+    return out
 
 
 def _play(n: int) -> None:
@@ -181,7 +185,7 @@ if not picked:
     st.info("Chọn ít nhất một mã ở thanh bên để xem kết quả.")
     st.stop()
 
-analyzed, lrs_thr = analyze(source, db_path_str, version, window, threshold, w_spread, w_depth, w_imb)
+analyzed = analyze(source, db_path_str, version, window, threshold, w_spread, w_depth, w_imb)
 
 # ---------- chế độ phát lại ----------
 replay_day = cut_ts = None
@@ -264,6 +268,8 @@ else:
 with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
     with st.container(width="stretch"):
         st.title("Radar thanh khoản VN30", anchor=False)
+        st.caption("Dành cho nhà đầu tư cá nhân và người quản trị rủi ro: cho biết mã VN30 nào đang khó mua bán, "
+                   "và khi nào spread hoặc độ sâu sổ lệnh lệch khỏi mức thường lệ của chính mã đó.")
         st.html(f'<p class="finding">{finding}</p>')
     with st.container(horizontal=True, width="content", vertical_alignment="center", gap="small"):
         st.html(f'<div class="stamp">{stamp}</div>', width="content")
@@ -281,6 +287,20 @@ if is_sim:
     st.html(f'<div class="notice">{notes[0]} {"; ".join(notes[1:]).capitalize()}.</div>')
 else:
     st.caption("; ".join(notes).capitalize() + ".")
+
+# Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
+locked = report["limit_locked"]
+lk_day = locked["ts"].dt.date
+if mode == MODE_REPLAY:
+    locked = locked[(lk_day == replay_day) & (locked["ts"] <= cut_ts)]
+else:
+    locked = locked[(lk_day >= d_from) & (lk_day <= d_to)]
+locked = locked[locked["symbol"].isin(picked)]
+if not locked.empty:
+    parts = [f"<b>{s}</b> khóa {side} {len(g)} lần ({g['ts'].min():%d/%m %H:%M}–{g['ts'].max():%H:%M})"
+             for (s, side), g in locked.sort_values("ts").groupby(["symbol", "side"])]
+    st.html('<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
+            "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>")
 
 alert_sub = (f'ở {n_alert_syms} mã · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
              if n_alerts else "không có mã nào vượt ngưỡng")
@@ -450,12 +470,17 @@ with st.container(border=True, key="panel_detail"):
                                  showlegend=False, hovertemplate="%{x|%H:%M}  %{y:,.0f} triệu đ<extra></extra>"), 2, 1)
         fig.add_trace(go.Scatter(x=one["x"], y=one["lrs"], mode="lines", line=dict(color=INK, width=1.5), name="LRS",
                                  showlegend=False, hovertemplate="%{x|%H:%M}  LRS %{y:.2f}<extra></extra>"), 3, 1)
-        for key, color, label, pos in (("watch", WARN, "Chú ý (phân vị 95%)", "bottom right"),
-                                       ("high", NEG, "Cao (phân vị 99%)", "top right")):
-            if np.isfinite(lrs_thr.get(key, np.nan)):
-                fig.add_hline(y=lrs_thr[key], row=3, col=1, line=dict(color=color, width=1, dash="dash"),
-                              annotation_text=label, annotation_position=pos,
-                              annotation_font=dict(size=11, color=color))
+        # Ngưỡng thay đổi theo thời gian vì mỗi lần chụp chỉ dùng dữ liệu trước nó, nên vẽ thành đường bậc thang.
+        for col, color, label, ypos in (("lrs_watch", WARN, "Chú ý (phân vị 95%)", "bottom"),
+                                        ("lrs_high", NEG, "Cao (phân vị 99%)", "top")):
+            line = one[["x", col]].dropna()
+            if line.empty:
+                continue
+            fig.add_trace(go.Scatter(x=line["x"], y=line[col], mode="lines", line=dict(color=color, width=1, dash="dash",
+                                     shape="hv"), name=label, showlegend=False,
+                                     hovertemplate=f"{label.split(' (')[0]} %{{y:.2f}}<extra></extra>"), 3, 1)
+            fig.add_annotation(x=line["x"].iloc[-1], y=line[col].iloc[-1], text=label, showarrow=False, row=3, col=1,
+                               xanchor="right", yanchor=ypos, font=dict(size=11, color=color))
         if not flagged.empty:
             for row_i, ycol, scale in ((1, "rel_spread_bps", 1), (2, "depth_value", 1e6), (3, "lrs", 1)):
                 fig.add_trace(go.Scatter(x=flagged["x"], y=flagged[ycol] / scale, mode="markers",
@@ -472,8 +497,8 @@ with st.container(border=True, key="panel_detail"):
         fig.update_layout(hovermode="x unified", margin=dict(l=48, r=8, t=28, b=4))
         st.plotly_chart(fig, config={"displayModeBar": False}, theme=None,
                         alt=f"Diễn biến spread, độ sâu và LRS của {sym} trong phiên {day:%d/%m/%Y}")
-        if not np.isfinite(lrs_thr.get("watch", np.nan)):
-            st.caption("Chưa đủ dữ liệu để tính ngưỡng LRS (cần ít nhất 50 điểm có lịch sử).")
+        if one["lrs_watch"].isna().all():
+            st.caption(f"Chưa đủ dữ liệu để tính ngưỡng LRS (cần ít nhất {MIN_OBS_PAST} điểm LRS trước thời điểm xét).")
 
 # ---------- phương pháp và giới hạn ----------
 with st.expander("Phương pháp tính và giới hạn", icon=":material/menu_book:"):
@@ -495,8 +520,9 @@ ATO, ATC và nghỉ trưa bị loại vì sổ lệnh lúc đó không phản á
 chủ yếu phụ thuộc giá cổ phiếu (mã giá thấp luôn có bps cao) chứ không cho biết mã nào khó mua bán hơn.
 
 **Điểm rủi ro LRS** = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), trong đó Z là z-score cuốn chiếu của chính mã
-đó (spread và độ sâu lấy logarit). Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" là phân vị 95% và 99% của LRS
-trên toàn bộ dữ liệu đang có. Vì là phân vị nên luôn có khoảng 1% lần chụp ở mức "Cao" dù thị trường yên;
+đó (spread và độ sâu lấy logarit). Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" tại mỗi thời điểm là phân vị
+95% và 99% của mọi điểm LRS có *trước* thời điểm đó (cần ít nhất 300 điểm), nên không dùng dữ liệu tương lai và
+ngưỡng thay đổi dần theo thời gian. Vì là phân vị nên về lâu dài khoảng 1% lần chụp ở mức "Cao" dù thị trường yên;
 mức này để theo dõi xu hướng, còn danh sách cảnh báo dựa trên điều kiện bên dưới.
 
 **Cảnh báo** khi z-score của log spread ≥ ngưỡng (hoặc của log độ sâu ≤ −ngưỡng) *và* spread ≥ 2,5 lần
@@ -504,13 +530,15 @@ mức này để theo dõi xu hướng, còn danh sách cảnh báo dựa trên 
 nên không nhìn trước tương lai. Ghi chú "Mỏng, không khớp" nghĩa là độ sâu rút mỏng trong khi gần như không có
 khối lượng khớp; đây chỉ là dấu hiệu, không chứng minh có hủy lệnh ảo hay thao túng.
 
-**Phát lại** dựng lại một phiên đã ghi từng bước. Các phép tính chỉ dùng dữ liệu đến thời điểm đang xem,
-trừ ngưỡng LRS tính trên toàn bộ dữ liệu.
+**Phát lại** dựng lại một phiên đã ghi từng bước. Mọi phép tính, kể cả ngưỡng LRS, chỉ dùng dữ liệu đến thời
+điểm đang xem.
 
 **Giới hạn**
 - Z-score kém ổn định khi spread gần như không đổi; điều kiện tỷ lệ tối thiểu được thêm để tránh báo động giả.
 - Cửa sổ lịch sử chưa loại bỏ dạng chữ U của thanh khoản trong ngày (đầu và cuối phiên sôi động hơn giữa phiên).
 - Ngưỡng và trọng số mặc định chưa được hiệu chỉnh trên dữ liệu thật.
+- Lúc mã khóa trần hoặc sàn, một bên sổ lệnh trống nên không tính được spread: các lần chụp đó không vào xếp hạng
+  và cảnh báo mà được liệt kê riêng ở đầu trang.
 - Cảnh báo là tín hiệu để xem xét thêm, không giải thích nguyên nhân và không dự báo giá.
         """
     )

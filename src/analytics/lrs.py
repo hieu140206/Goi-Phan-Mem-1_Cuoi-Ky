@@ -11,7 +11,9 @@ Trọng số mặc định (0,4 / 0,4 / 0,2) là GIẢ ĐỊNH ban đầu, cho p
 Ngưỡng cảnh báo KHÔNG đặt cố định. LRS là tổng có trọng số của nhiều z-score nên không có phân phối
 chuẩn tắc; nếu các thành phần độc lập, độ lệch chuẩn của LRS chỉ khoảng 0,6 và các mốc "1,5 / 2,5" sẽ hiếm hơn
 nhiều so với phân vị 95% / 99%. Vì vậy ngưỡng lấy từ phân vị thực nghiệm của LRS trên chính dữ liệu thu được.
-Ngưỡng tính trên toàn bộ dữ liệu có sẵn nên chỉ mô tả, không phải kiểm định ngoài mẫu.
+`lrs_thresholds` tính trên toàn bộ dữ liệu có sẵn nên chỉ để mô tả. Ứng dụng dùng `lrs_thresholds_past`:
+tại mỗi thời điểm t, ngưỡng chỉ lấy từ các điểm LRS có trước t (gộp mọi mã), nên mức "Chú ý"/"Cao" của một lần
+chụp không phụ thuộc dữ liệu đến sau nó (giống cách tính z-score cuốn chiếu).
 """
 from __future__ import annotations
 
@@ -20,6 +22,9 @@ import pandas as pd
 
 DEFAULT_WEIGHTS = {"spread": 0.4, "depth": 0.4, "imbalance": 0.2}
 MIN_OBS_FOR_THRESHOLD = 50
+# Ngưỡng theo quá khứ cần ít nhất 300 điểm: với phân vị 99% còn khoảng 3 điểm nằm trên ngưỡng, ít hơn thì ngưỡng
+# gần như chỉ là giá trị lớn nhất và rất dao động. 30 mã VN30 đủ 300 điểm sau khoảng 10 lần chụp có lịch sử.
+MIN_OBS_PAST = 300
 
 
 def compute_lrs(df: pd.DataFrame, weights: dict[str, float] | None = None, min_periods: int = 20) -> pd.Series:
@@ -44,13 +49,42 @@ def lrs_thresholds(lrs: pd.Series, q_watch: float = 0.95, q_high: float = 0.99) 
     return {"watch": float(s.quantile(q_watch)), "high": float(s.quantile(q_high))}
 
 
-def lrs_tier(lrs: pd.Series, thresholds: dict[str, float]) -> pd.Series:
-    """'Cao' / 'Chú ý' / 'Bình thường'; chuỗi rỗng khi chưa có điểm hoặc chưa có ngưỡng."""
+def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = 0.95, q_high: float = 0.99,
+                        min_obs: int = MIN_OBS_PAST) -> pd.DataFrame:
+    """Ngưỡng tại mỗi dòng = phân vị của mọi điểm LRS có thời điểm TRƯỚC thời điểm của dòng đó (không nhìn trước).
+
+    Các mã chụp cùng thời điểm không dùng điểm của nhau. Chưa đủ `min_obs` điểm quá khứ thì ngưỡng là NaN.
+    Trả DataFrame cột watch, high, cùng index với `lrs`.
+    """
+    out = pd.DataFrame({"watch": np.nan, "high": np.nan}, index=lrs.index)
+    has_ts = ts.notna()
+    key = pd.Series(np.iinfo(np.int64).min, index=ts.index, dtype="int64")
+    key[has_ts] = pd.to_datetime(ts[has_ts], utc=True).astype("int64")  # nano giây UTC, so sánh nhanh
+    valid = lrs.notna() & has_ts
+    order = np.argsort(key[valid].to_numpy(), kind="stable")
+    past_key = key[valid].to_numpy()[order]
+    past_val = lrs[valid].to_numpy(dtype=float)[order]
+    for t in np.unique(key[has_ts].to_numpy()):
+        n_past = int(np.searchsorted(past_key, t, side="left"))  # số điểm có thời điểm < t
+        if n_past < min_obs:
+            continue
+        w, h = np.quantile(past_val[:n_past], [q_watch, q_high])
+        rows = (key == t) & has_ts
+        out.loc[rows, "watch"] = w
+        out.loc[rows, "high"] = h
+    return out
+
+
+def lrs_tier(lrs: pd.Series, thresholds) -> pd.Series:
+    """'Cao' / 'Chú ý' / 'Bình thường'; chuỗi rỗng khi chưa có điểm hoặc chưa có ngưỡng.
+
+    `thresholds` có watch/high là số (một ngưỡng chung) hoặc Series cùng index (ngưỡng riêng từng dòng).
+    """
     out = pd.Series("", index=lrs.index, dtype="object")
-    if np.isnan(thresholds["watch"]):
-        return out
-    valid = lrs.notna()
+    watch = pd.Series(thresholds["watch"], index=lrs.index, dtype=float)
+    high = pd.Series(thresholds["high"], index=lrs.index, dtype=float)
+    valid = lrs.notna() & watch.notna()
     out[valid] = "Bình thường"
-    out[valid & (lrs >= thresholds["watch"])] = "Chú ý"
-    out[valid & (lrs >= thresholds["high"])] = "Cao"
+    out[valid & (lrs >= watch)] = "Chú ý"
+    out[valid & (lrs >= high)] = "Cao"
     return out

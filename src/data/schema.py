@@ -32,6 +32,17 @@ def _is_auction(s: pd.Series) -> pd.Series:
     return s.astype("string").str.strip().str.upper().isin(AUCTION_TOKENS).fillna(False).astype(bool)
 
 
+def limit_lock_side(df: pd.DataFrame) -> pd.Series:
+    """'trần' khi mua tốt nhất đúng giá trần và không có bên bán; 'sàn' khi bán tốt nhất đúng giá sàn và không có
+    bên mua; chuỗi rỗng trong các trường hợp khác. Cần cột giá đã ở dạng số và có ceil_px/floor_px."""
+    bid, ask = df["bid_px1"], df["ask_px1"]
+    no_bid = bid.isna() | (bid <= 0)
+    no_ask = ask.isna() | (ask <= 0)
+    ceil_lock = no_ask & (bid > 0) & (df["ceil_px"] > 0) & (bid == df["ceil_px"])
+    floor_lock = no_bid & (ask > 0) & (df["floor_px"] > 0) & (ask == df["floor_px"])
+    return pd.Series(np.select([ceil_lock, floor_lock], ["trần", "sàn"], default=""), index=df.index)
+
+
 def normalize_quotes(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     """Làm sạch dữ liệu thô. Trả về (dữ liệu sạch, báo cáo số dòng bị loại theo từng lý do).
 
@@ -42,6 +53,11 @@ def normalize_quotes(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
       - Loại dòng thiếu mã/thời gian/giá mua-bán tốt nhất, giá <= 0.
       - Loại sổ lệnh bị chéo (giá bán tốt nhất <= giá mua tốt nhất).
       - Loại bản ghi trùng (ts, symbol), giữ bản ghi sau cùng.
+      - Khóa trần/sàn: mua tốt nhất = giá trần mà không có bên bán (hoặc bán tốt nhất = giá sàn mà không có bên mua).
+        Spread không tính được nên dòng không vào `clean`, nhưng KHÔNG bị bỏ im lặng: được đếm ở
+        report["dropped_limit_lock"] và trả nguyên dòng ở report["limit_locked"] để bộ ghi lưu và giao diện báo.
+        Đây là lúc thanh khoản một chiều kém nhất. Chưa gặp trên dữ liệu thật 28-30/10/2026, nên cách NEO biểu diễn
+        bên trống (để trống hay số 0) chưa được xác nhận; cả hai cách đều được nhận.
     """
     report = {"rows_in": len(df)}
     out = df.copy()
@@ -59,6 +75,13 @@ def normalize_quotes(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
     out["symbol"] = out["symbol"].astype("string").str.strip().str.upper()
     for col in NUMERIC_COLUMNS:
         out[col] = pd.to_numeric(out[col], errors="coerce")
+
+    locked = limit_lock_side(out) != ""
+    locked &= out["ts"].notna() & out["symbol"].notna()
+    report["dropped_limit_lock"] = int(locked.sum())
+    report["limit_locked"] = (out[locked].sort_values(["symbol", "ts"])
+                              .drop_duplicates(["ts", "symbol"], keep="last")[QUOTE_COLUMNS].reset_index(drop=True))
+    out = out[~locked]
 
     n = len(out)
     out = out.dropna(subset=["ts", "symbol", "bid_px1", "ask_px1"])

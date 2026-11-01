@@ -15,7 +15,7 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 3. **Dữ liệu luôn phải đúng, hơn mọi thứ khác.** Thiếu thì để trống hoặc "–", không đoán, không điền, không nội suy. Đổi giao diện không được làm đổi số.
 4. Giới hạn NEO: **5 yêu cầu/giây**, IP phải đăng ký. Không tăng tần suất gọi khi chưa đo.
 5. Người dùng là **sinh viên mới học**: giải thích ngắn gọn, tiếng Việt, tránh thuật ngữ không cần thiết. Việc lớn thì **nhận xét và hỏi trước** rồi mới làm; không cắt phạm vi tự ý.
-6. Làm xong phải chạy `python -m pytest` (hiện **164 passed**) và xem lại giao diện trước khi báo xong.
+6. Làm xong phải chạy `python -m pytest` (hiện **167 passed**) và xem lại giao diện trước khi báo xong.
 
 ## Kiến trúc
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), stream WebSocket (nhị phân, phụ, mới giải mã được `stockInfo`).

@@ -189,7 +189,8 @@ trade_day = trading_date(pd.Timestamp.now(tz=TZ))
 with st.container(horizontal=True, vertical_alignment="top", gap="medium"):
     with st.container(width="stretch"):
         st.html('<div class="ov-head"><h1>🏛️ Tổng Quan Thị Trường</h1></div>'
-                '<div class="ov-sub">Toàn cảnh chứng khoán Việt Nam: chỉ số, bảng giá, độ sâu, độ rộng và thanh khoản</div>')
+                '<div class="ov-sub">Toàn cảnh chứng khoán Việt Nam: chỉ số, bảng giá, độ sâu, độ rộng và thanh khoản. '
+                'Dành cho nhà đầu tư cá nhân và chuyên viên phân tích muốn nắm nhanh trạng thái thị trường trong phiên.</div>')
         render_chips(trade_day, day, bool(st.session_state.get("live")))
     st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
               help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")

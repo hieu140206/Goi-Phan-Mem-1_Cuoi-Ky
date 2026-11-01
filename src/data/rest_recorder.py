@@ -166,10 +166,12 @@ class RestRecorder:
             return
         raw = pd.DataFrame([map_record(r) for r in records]).assign(ts=slot)
         clean, report = normalize_quotes(raw)
-        saved = save_quotes(clean, self.db_path)
+        # Mã khóa trần/sàn vẫn được lưu (bên trống để rỗng) để Radar báo; bước làm sạch khi đọc sẽ tách chúng ra.
+        locked = report["limit_locked"]
+        saved = save_quotes(pd.concat([clean, locked], ignore_index=True) if len(locked) else clean, self.db_path)
         stats.lo_snapshots += 1
         stats.rows_saved += saved
-        stats.rows_dropped += len(raw) - len(clean)
+        stats.rows_dropped += len(raw) - len(clean) - len(locked)
         log.info("%s [%s] lưu %d/%d mã", slot.strftime("%H:%M:%S"), status, saved, len(raw))
 
     # ---------- bảng giá toàn thị trường, độ sâu theo sàn, hợp đồng tương lai ----------
