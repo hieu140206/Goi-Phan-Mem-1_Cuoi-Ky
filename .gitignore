@@ -9,4 +9,4 @@ venv/
 .DS_Store
 data/raw/
 data/raw_samples/
-.taste-skill/
+data/export/

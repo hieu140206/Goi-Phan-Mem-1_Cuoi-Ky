@@ -6,3 +6,5 @@ python-dotenv>=1.0
 requests>=2.32
 websockets>=13.0
 pytest>=8.0
+fastavro>=1.9   # giải mã tin WebSocket bằng schema (scripts/probe_ws_schema.py)
+openpyxl>=3.1   # xuất file Excel (scripts/export_data.py --excel)

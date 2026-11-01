@@ -41,3 +41,29 @@ def test_storage_roundtrip_and_dedupe(tmp_path):
     assert count_rows(db) == 1
     back, _ = normalize_quotes(load_quotes(db))
     assert back.loc[0, "symbol"] == "VCB" and back.loc[0, "ts"].hour == 9
+
+
+def test_old_database_is_migrated_without_losing_rows(tmp_path):
+    """DB tạo bởi bản cũ (thiếu cột ceil_px/floor_px/last_vol): mở lại thì thêm cột, giữ nguyên dòng cũ, ghi tiếp được."""
+    import sqlite3
+
+    import pandas as pd
+
+    from data.storage import load_quotes, save_quotes
+
+    db = tmp_path / "old.db"
+    old_cols = [c for c in QUOTE_COLUMNS if c not in ("ceil_px", "floor_px", "last_vol")]
+    with sqlite3.connect(db) as conn:
+        conn.execute("CREATE TABLE quotes (" + ", ".join(f"{c} TEXT" if c in ("ts", "symbol") else f"{c} REAL"
+                                                         for c in old_cols) + ", PRIMARY KEY (ts, symbol))")
+        row = {c: 1.0 for c in old_cols}
+        row.update(ts="2026-10-28T10:00:00+07:00", symbol="ACB")
+        conn.execute(f"INSERT INTO quotes ({', '.join(old_cols)}) VALUES ({', '.join('?' for _ in old_cols)})",
+                     [row[c] for c in old_cols])
+    back = load_quotes(db)
+    assert len(back) == 1 and {"ceil_px", "floor_px", "last_vol"} <= set(back.columns)
+    assert pd.isna(back.loc[0, "ceil_px"])  # không ước lượng: ô mới để trống
+    new = pd.DataFrame([{**{c: 2.0 for c in QUOTE_COLUMNS}, "ts": pd.Timestamp("2026-10-28 10:01", tz="Asia/Ho_Chi_Minh"),
+                         "symbol": "BID", "ceil_px": 36100.0}])
+    assert save_quotes(new, db) == 1
+    assert len(load_quotes(db)) == 2

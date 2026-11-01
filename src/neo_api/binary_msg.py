@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Loại tin đã xác nhận bằng dữ liệu thật.
-KNOWN_TYPES: dict[int, str] = {13: "marketSession"}
+# Loại tin (số nguyên đầu tin, zigzag) đã thấy trong dữ liệu thật 28/10/2026.
+KNOWN_TYPES: dict[int, str] = {13: "marketSession", -2: "stockInfo", 1: "marketInfo", 5: "marketVolume"}
 
 # Tên trường theo thứ tự bảng trong tài liệu NEO 6.2 (Market Stream).
 # marketSession: ĐÃ XÁC NHẬN thứ tự bằng tin thật 27/10/2026 (khớp ví dụ HOSE, HOSE, C, K, 15:00:00 của tài liệu).
@@ -121,3 +121,73 @@ def market_session(msg: RawMessage) -> dict[str, str | None]:
     if msg.type_index != 13:
         raise DecodeError(f"Không phải marketSession (loại {msg.type_index})")
     return to_dict(msg, "marketSession")
+
+
+# ---------------- stockInfo ----------------
+# Khác với marketSession, các trường số của stockInfo được mã hóa nhiều kiểu (float 4 byte, double 8 byte, long varint,
+# chuỗi) và THỨ TỰ TRƯỜNG KHÁC bảng 6.2: nó theo thứ tự của REST 4.6/4.7 (giá mua 3 -> 1, rồi giá khớp, rồi bán 1 -> 3).
+# Cách xác định (28/10/2026): giải mã tay một tin FPT, rồi kiểm tra trên 563 tin thật của FPT, HPG, VCB: 563/563 tin
+# đọc trọn vẹn, và toàn bộ 28 trường đều khớp giá trị REST 4.7 chụp cùng lúc.
+# Mỗi phần tử: (tên trường NEO, {nhánh union: kiểu}). f=float32, d=float64, l=long, s=chuỗi. Nhánh 0 luôn là rỗng.
+STOCK_INFO_LAYOUT: list[tuple[str, dict[int, str]]] = [
+    ("ceilingPrice", {1: "d"}), ("floorPrice", {1: "f"}), ("refPrice", {1: "f", 2: "d"}),
+    ("bidPrice3", {1: "f"}), ("bidVol3", {1: "f"}), ("bidPrice2", {1: "f"}), ("bidVol2", {1: "f"}),
+    ("bidPrice1", {1: "s"}), ("bidVol1", {1: "f"}),
+    ("closePrice", {1: "f"}), ("closeVol", {1: "f"}), ("priceChange", {1: "f"}), ("percentPriceChange", {1: "f"}),
+    ("askPrice1", {1: "s"}), ("askVol1", {1: "f"}), ("askPrice2", {1: "f"}), ("askVol2", {1: "f"}),
+    ("askPrice3", {1: "f"}), ("askVol3", {1: "f"}),
+    ("totalTradingVolume", {1: "l"}), ("totalTradingValue", {1: "d"}), ("averagePrice", {1: "d"}),
+    ("openPrice", {1: "f"}), ("highPrice", {1: "f"}), ("lowPrice", {1: "f"}),
+    ("foreignBuyVolume", {1: "d"}), ("foreignSellVolume", {1: "d"}), ("foreignRemain", {1: "l"}), ("foreignRoom", {1: "l"}),
+    ("unknown_1", {}), ("unknown_2", {}),   # luôn rỗng trong dữ liệu thật; có thể là totalBidQTTY/totalAskQTTY
+    ("foreignBuyValue", {1: "d"}), ("foreignSellValue", {1: "d"}), ("foreignNetValue", {1: "d"}),
+    ("breakEvenPoint", {1: "d"}),
+]
+STOCK_INFO_TYPE = -2
+
+
+def _read_value(kind: str, buf: bytes, pos: int):
+    import struct
+    if kind == "f":
+        if pos + 4 > len(buf):
+            raise DecodeError("Thiếu byte khi đọc float")
+        v = struct.unpack("<f", buf[pos:pos + 4])[0]
+        return (round(v, 4) if abs(v) < 1e6 else v), pos + 4
+    if kind == "d":
+        if pos + 8 > len(buf):
+            raise DecodeError("Thiếu byte khi đọc double")
+        return struct.unpack("<d", buf[pos:pos + 8])[0], pos + 8
+    if kind == "l":
+        return _read_varint(buf, pos)
+    length, pos = _read_varint(buf, pos)
+    if length < 0 or pos + length > len(buf):
+        raise DecodeError("Độ dài chuỗi không hợp lệ")
+    return buf[pos:pos + length].decode("utf-8"), pos + length
+
+
+def is_stock_info(raw: str | bytes) -> bool:
+    buf = to_bytes(raw)
+    return bool(buf) and _read_varint(buf, 0)[0] == STOCK_INFO_TYPE
+
+
+def decode_stock_info(raw: str | bytes) -> dict:
+    """Tin stockInfo nhị phân -> dict với tên trường như REST/tài liệu NEO (symbol, bidPrice1, askVol1...)."""
+    buf = to_bytes(raw)
+    type_index, pos = _read_varint(buf, 0)
+    if type_index != STOCK_INFO_TYPE:
+        raise DecodeError(f"Không phải stockInfo (loại {type_index})")
+    length, pos = _read_varint(buf, pos)          # mã CK: chuỗi bắt buộc, không có nhánh union
+    out: dict = {"symbol": buf[pos:pos + length].decode("utf-8")}
+    pos += length
+    for name, kinds in STOCK_INFO_LAYOUT:
+        branch, pos = _read_varint(buf, pos)
+        if branch == 0:
+            out[name] = None
+            continue
+        kind = kinds.get(branch)
+        if kind is None:
+            raise DecodeError(f"{out['symbol']}: trường {name} có nhánh {branch} chưa gặp bao giờ")
+        out[name], pos = _read_value(kind, buf, pos)
+    if pos != len(buf):
+        raise DecodeError(f"{out['symbol']}: còn dư {len(buf) - pos} byte, có thể NEO đã đổi định dạng")
+    return out

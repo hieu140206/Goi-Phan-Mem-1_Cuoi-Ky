@@ -29,6 +29,8 @@ ENDPOINTS: dict[str, str] = {
     "index_intraday": "market/intradayMarketIndex",  # 4.2, theo tài liệu: điểm hiện tại + chuỗi index[] trong ngày
     "index_detail": "market/marketIndexDetail",      # 4.3, theo tài liệu: điểm, tăng/giảm, số mã tăng/giảm
     "market_status": "market/marketStatus",          # 4.4, theo tài liệu: PRE, ATO, LO, ATC, PLO, C
+    "stock_list": "stock/stockList",                 # 4.5, theo tài liệu: danh sách mã theo sàn (HOSE/HNX/UPCOM/FU/ALL)
+    "fu_detail": "stock/fuStockDetail",              # 4.9, theo tài liệu: chi tiết hợp đồng tương lai (FUVN30)
 }
 
 # Mã lỗi NEO (tài liệu 7.2) hay gặp khi đọc dữ liệu.
@@ -137,6 +139,17 @@ class NeoClient:
         sym = symbols if isinstance(symbols, str) else ",".join(symbols)
         params = {"marketCode": market, "symbols": sym, "stockType": stock_type}
         return self._get_all_pages(ENDPOINTS["stock_detail"], params, page_size)
+
+    def get_stock_list(self, market: str = "ALL", page_size: int = 1000) -> list[dict]:
+        """4.5: danh sách mã (symbol, stockName, exchangeCode, stockType ST/CW/EF/BO/OF/MF...). Không có giá."""
+        return self._get_all_pages(ENDPOINTS["stock_list"], {"marketCode": market}, page_size)
+
+    def get_fu_detail(self, symbols: list[str] | str | None = None, stock_type: str = "FUVN30") -> list[dict]:
+        """4.9: chi tiết hợp đồng tương lai (giá, sổ lệnh 3 mức, khối lượng mở, ngày đáo hạn...)."""
+        params: dict[str, Any] = {"stockType": stock_type}
+        if symbols:
+            params["symbols"] = symbols if isinstance(symbols, str) else ",".join(symbols)
+        return self._get_all_pages(ENDPOINTS["fu_detail"], params, 1000)
 
     def get_index_intraday(self, index_code: str = "VN30") -> dict:
         """4.2: chi tiết một chỉ số, kèm index[] = chuỗi điểm/khối lượng theo thời điểm trong ngày."""

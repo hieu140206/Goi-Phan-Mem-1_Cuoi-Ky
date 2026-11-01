@@ -206,3 +206,23 @@ def test_empty_code_returns_empty_and_errors_are_explained(get):
     get.return_value = resp(200, {"status": 0, "code": "NEOINP000403", "message": "x", "data": None})
     with pytest.raises(NeoApiError, match="IP"):
         c.get_market_status()
+
+
+def test_stock_list_and_fu_detail_params(monkeypatch):
+    """4.5 và 4.9: đúng đường dẫn và tham số theo tài liệu NEO."""
+    from neo_api.client import ENDPOINTS, NeoClient
+
+    calls = []
+
+    def fake_get(self, path, params=None, retries=3):
+        calls.append((path, dict(params or {})))
+        return {"content": [{"symbol": "X"}], "last": True}
+
+    monkeypatch.setattr(NeoClient, "get", fake_get)
+    client = NeoClient.__new__(NeoClient)
+    assert client.get_stock_list("HNX") == [{"symbol": "X"}]
+    assert client.get_fu_detail(["VN30F2611", "VN30F2612"]) == [{"symbol": "X"}]
+    assert calls[0][0] == ENDPOINTS["stock_list"] == "stock/stockList"
+    assert calls[0][1]["marketCode"] == "HNX"
+    assert calls[1][0] == "stock/fuStockDetail"
+    assert calls[1][1]["symbols"] == "VN30F2611,VN30F2612" and calls[1][1]["stockType"] == "FUVN30"

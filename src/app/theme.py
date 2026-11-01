@@ -1,0 +1,103 @@
+"""Giao diện dùng chung cho các trang: màu, CSS, dấu hiệu sản phẩm và vài hàm định dạng.
+Nội dung tách nguyên văn từ app.py cũ (chỉ đổi chỗ, không đổi giao diện)."""
+from __future__ import annotations
+
+import base64
+
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+# Màu: chữ và khung không màu; một màu xanh cho dữ liệu chính; đỏ/hổ phách chỉ cho trạng thái.
+INK, MUTED, FAINT = "#0a0a0a", "#6b6b6b", "#9a9a9a"
+BORDER, GRID = "#e3e6ea", "#eceef1"
+HUE, NEG, WARN = "#1d5fbf", "#c4242a", "#92400e"
+FONT = "Geist, Inter, system-ui, sans-serif"
+
+
+def inject_css() -> None:
+    st.html(
+        f"""
+    <style>
+    .stApp {{ font-variant-numeric: tabular-nums; }}
+    [data-testid="stMainBlockContainer"] {{ max-width: 1360px; padding-left: 40px; padding-right: 40px; }}
+
+    /* Ô nền trắng: mọi container có key bắt đầu bằng "panel" */
+    [class*="st-key-panel"] {{ background: #ffffff; }}
+
+    /* Thương hiệu ở đầu thanh bên */
+    .brand {{ display: flex; align-items: center; gap: 10px; margin: 0 0 4px 0; }}
+    .brand img {{ flex: none; display: block; }}
+    .brand b {{ font-size: 15px; font-weight: 600; letter-spacing: -0.01em; display: block; line-height: 1.2; }}
+    .brand span {{ font-size: 12px; color: {MUTED}; display: block; line-height: 1.4; }}
+    .grp {{ font-size: 12px; color: {MUTED}; margin: 18px 0 2px 0; }}
+
+    /* Đầu trang */
+    .finding {{ font-size: 15px; line-height: 1.5; color: {INK}; margin: 2px 0 0 0; max-width: 78ch; }}
+    .finding .neg {{ color: {NEG}; font-weight: 500; }}
+    .stamp {{ font-size: 12px; color: {MUTED}; text-align: right; line-height: 1.5; }}
+    .notice {{ font-size: 12.5px; color: {WARN}; background: #fffbeb; border: 1px solid #fde68a;
+              border-radius: 6px; padding: 7px 12px; line-height: 1.5; }}
+
+    /* Dải chỉ số: một khung chia bằng vạch mảnh */
+    .kpis {{ display: grid; grid-template-columns: repeat(4, 1fr); background: #ffffff;
+            border: 1px solid {BORDER}; border-radius: 8px; }}
+    .kpi {{ padding: 16px 20px 18px; border-left: 1px solid {BORDER}; min-width: 0; }}
+    .kpi:first-child {{ border-left: none; }}
+    .kpi .l {{ font-size: 13px; color: {MUTED}; line-height: 1.4; }}
+    .kpi .v {{ font-size: 24px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; margin-top: 6px;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+    .kpi.lead .v {{ font-size: 30px; font-weight: 600; }}
+    .kpi .v small {{ font-size: 14px; font-weight: 400; color: {MUTED}; margin-left: 3px; }}
+    .kpi .s {{ font-size: 12px; color: {MUTED}; margin-top: 2px; }}
+    .kpi .s .neg {{ color: {NEG}; }}
+    @media (max-width: 900px) {{
+      .kpis {{ grid-template-columns: repeat(2, 1fr); }}
+      .kpi:nth-child(3) {{ border-left: none; }}
+      .kpi:nth-child(n+3) {{ border-top: 1px solid {BORDER}; }}
+      .kpi.lead .v {{ font-size: 26px; }}
+    }}
+
+    [data-testid="stSidebar"][aria-expanded="true"] {{ min-width: 288px; max-width: 288px; }}
+    @media (max-width: 900px) {{
+      [data-testid="stMainBlockContainer"] {{ padding-left: 20px; padding-right: 20px; }}
+    }}
+    .note {{ color: {MUTED}; font-size: 12px; line-height: 1.6; max-width: 100ch; }}
+    </style>
+    """
+    )
+
+
+# Dấu hiệu sản phẩm: sổ lệnh 3 mức hai bên, khoảng trống ở giữa là spread.
+_MARK_SVG = f"""<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+  <rect width="30" height="30" rx="7" fill="{INK}"/>
+  <rect x="5"  y="8"  width="8"  height="3" rx="1" fill="#ffffff"/>
+  <rect x="7"  y="13.5" width="6" height="3" rx="1" fill="#ffffff" opacity=".75"/>
+  <rect x="9"  y="19" width="4"  height="3" rx="1" fill="#ffffff" opacity=".5"/>
+  <rect x="17" y="8"  width="8"  height="3" rx="1" fill="#ffffff"/>
+  <rect x="17" y="13.5" width="6" height="3" rx="1" fill="#ffffff" opacity=".75"/>
+  <rect x="17" y="19" width="4"  height="3" rx="1" fill="#ffffff" opacity=".5"/>
+</svg>"""
+BRAND_MARK = ('<img alt="" width="30" height="30" src="data:image/svg+xml;base64,'
+              + base64.b64encode(_MARK_SVG.encode()).decode() + '">')
+
+
+def vn(x: float, d: int = 0) -> str:
+    """Định dạng số kiểu Việt Nam: dấu chấm ngăn nghìn, dấu phẩy thập phân."""
+    if pd.isna(x):
+        return "–"
+    s = f"{x:,.{d}f}"
+    return s.replace(",", "§").replace(".", ",").replace("§", ".")
+
+
+def group(label: str) -> None:
+    st.html(f'<div class="grp">{label}</div>')
+
+
+def base_layout(fig: go.Figure, height: int) -> None:
+    fig.update_layout(
+        height=height, margin=dict(l=4, r=8, t=28, b=4),
+        plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+        font=dict(family=FONT, color=INK, size=12),
+        hoverlabel=dict(bgcolor="#ffffff", bordercolor=BORDER, font=dict(family=FONT, color=INK, size=12)),
+    )

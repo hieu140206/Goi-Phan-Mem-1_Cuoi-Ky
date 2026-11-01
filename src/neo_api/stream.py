@@ -23,11 +23,12 @@ from typing import Awaitable, Callable
 
 import websockets
 
+from .binary_msg import DecodeError, decode_stock_info, is_stock_info, looks_binary
 from .config import Settings, get_settings
 
 log = logging.getLogger(__name__)
 
-AUTH_TIMEOUT = 15.0
+AUTH_TIMEOUT = 5.0  # chờ tin xác nhận tối đa 5 giây (máy chủ thật không gửi)
 
 
 class AuthError(RuntimeError):
@@ -40,7 +41,8 @@ def _field_map() -> dict[str, str]:
          "highPrice": "high_px", "lowPrice": "low_px",
          "foreignBuyVolume": "foreign_buy_vol", "foreignSellVolume": "foreign_sell_vol",
          "foreignBuyValue": "foreign_buy_val", "foreignSellValue": "foreign_sell_val",
-         "foreignNetValue": "foreign_net_val", "foreignRemain": "foreign_remain", "foreignRoom": "foreign_room"}
+         "foreignNetValue": "foreign_net_val", "foreignRemain": "foreign_remain", "foreignRoom": "foreign_room",
+         "ceilingPrice": "ceil_px", "floorPrice": "floor_px", "closeVol": "last_vol"}
     for i in (1, 2, 3):
         m.update({f"bidPrice{i}": f"bid_px{i}", f"bidVol{i}": f"bid_qty{i}",
                   f"askPrice{i}": f"ask_px{i}", f"askVol{i}": f"ask_qty{i}"})
@@ -93,7 +95,17 @@ def map_record(rec: dict) -> dict:
 
 
 def parse_message(raw: str | bytes) -> list[dict]:
-    """Thông điệp thô -> danh sách dòng chuẩn (chưa có ts). Trả [] cho tin không phải dữ liệu hoặc không phải JSON."""
+    """Thông điệp thô -> danh sách dòng chuẩn (chưa có ts). Trả [] cho tin không phải dữ liệu.
+
+    Máy chủ thật (28/10/2026) gửi tin NHỊ PHÂN, không phải JSON như tài liệu: stockInfo được giải mã bằng
+    binary_msg.decode_stock_info (đã đối chiếu khớp với REST 4.7). Vẫn đọc JSON nếu NEO đổi về đúng tài liệu."""
+    if looks_binary(raw):
+        try:
+            if is_stock_info(raw):
+                return [map_record(decode_stock_info(raw))]
+        except DecodeError as exc:
+            log.warning("Bỏ qua tin stockInfo không giải mã được: %s", exc)
+        return []  # marketSession/marketInfo/marketVolume: bộ ghi sổ lệnh không dùng
     try:
         msg = json.loads(raw)
     except (ValueError, TypeError):
@@ -147,8 +159,14 @@ async def _authenticate(ws, token: str) -> None:
     while True:
         remaining = deadline - loop.time()
         if remaining <= 0:
-            raise TimeoutError("NEO không trả lời xác thực trong thời gian cho phép")
-        raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+            # Máy chủ thật (27-28/10/2026) KHÔNG gửi tin xác nhận như tài liệu, nhưng vẫn gửi dữ liệu sau khi đăng ký
+            # kênh. Nên hết thời gian chờ thì đi tiếp; token sai thì máy chủ sẽ không gửi dữ liệu hoặc đóng kết nối.
+            log.info("Không có tin xác nhận xác thực, tiếp tục đăng ký kênh (đúng hành vi máy chủ hiện tại)")
+            return
+        try:
+            raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+        except asyncio.TimeoutError:
+            continue
         try:
             msg = json.loads(raw)
         except (ValueError, TypeError):

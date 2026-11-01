@@ -45,6 +45,36 @@ Chạy mọi lệnh từ thư mục gốc dự án.
    chụp (ATO/LO/ATC) được lưu nén ở `data/raw/<ngày>/stocks.jsonl.gz`. Hết phiên, bộ ghi lưu chuỗi VN30/VNINDEX
    trong ngày (4.2) và độ rộng thị trường (4.3), ghi tóm tắt phiên vào `data/sessions.csv` rồi tự dừng.
    Nếu 4.4 lỗi, bộ ghi đoán phiên theo giờ; lỗi một lần chụp không làm dừng bộ ghi. Thứ 7, chủ nhật không ghi.
+   **Xem trực tiếp (một lệnh):** `python scripts/run_live.py` đăng nhập một lần, chạy bộ ghi ở nền và mở dashboard với công tắc
+   "Trực tiếp: tự cập nhật" đã bật. Dashboard chỉ đọc `market.db` và tự tải lại khi bộ ghi ghi thêm, nên dữ liệu trễ tối đa
+   khoảng 1 phút (bộ ghi chụp mỗi phút). Bộ ghi tự dừng khi hết phiên, dashboard vẫn mở để xem lại; Ctrl+C để tắt cả hai.
+   Cảnh báo trực tiếp và cảnh báo khi phát lại cùng một cách tính (chỉ dùng dữ liệu trước thời điểm đó, không nhìn trước).
+   **Hai trang của ứng dụng:** `src/app/app.py` là cổng vào (điều hướng, công tắc Trực tiếp). Trang **Tổng quan thị trường**
+   (`overview.py`) có 4 thẻ chỉ số VN-Index, VN30, HNX-Index, UPCoM-Index, bảng giá VN30, độ sâu, độ rộng và thanh khoản thị trường.
+   Trang **Radar thanh khoản** (`radar.py`) là phần phân tích sổ lệnh và cảnh báo. Giao diện dùng chung nằm ở `theme.py`.
+   Bộ ghi mỗi phút còn gọi NEO 4.3 và lưu các chỉ số vào bảng `market_index` trong `market.db` (3 yêu cầu API mỗi phút);
+   ngày ghi từ bản cũ chưa có bảng này thì trang Tổng quan dùng `data/raw/<ngày>/market.json` (4.2 và 4.3 cuối ngày).
+   **Bảng giá toàn thị trường (bản 29/10):** bộ ghi (run_live) mỗi phút còn gọi 4.6 cho HOSE, HNX, UPCoM, ETF và chứng quyền
+   (chia 300 mã mỗi lần) và 4.9 cho 4 hợp đồng VN30. Bảng `board` chỉ giữ ảnh chụp MỚI NHẤT của mỗi ngày (cuối ngày là bảng giá lúc
+   đóng cửa); bảng `depth_market` giữ tổng độ sâu theo sàn từng phút (phiên LO); bảng `futures` giữ hợp đồng từng phút để tính basis
+   (giá khớp trừ điểm VN30). Mỗi 10 lần chụp, phản hồi gốc 4.6 được lưu vào `data/raw/<ngày>/board.jsonl.gz`, và 4.9 vào `futures.jsonl.gz`.
+   Trang Tổng quan có các tab VN30, HOSE, HNX, UPCoM, ETF, Chứng quyền, Phái sinh và đổi phạm vi độ sâu (VN30, HOSE, HNX, UPCoM).
+   **Bảng giá nhảy màu:** ở chế độ Trực tiếp, khung bảng giá tự làm mới mỗi 5 giây; bộ ghi hỏi thêm 4.7 mỗi 5 giây chỉ để HIỂN THỊ
+   bảng giá VN30 (ghi đè nhóm "VN30" của bảng `board`; dữ liệu phân tích vẫn là ảnh chụp mỗi phút trong bảng `quotes`). Ô nào đổi so với
+   lần cập nhật trước được tô nền theo màu mức giá: xanh lá (trên TC), đỏ (dưới TC), vàng (bằng TC), tím (trần), xanh dương (sàn).
+   **Chốt số cuối ngày:** HOSE hết phiên khớp lệnh lúc 14:45 nhưng chỉ số còn đổi (giá đóng cửa ATC, HNX/UPCoM khớp tới 15:00, giao dịch
+   thỏa thuận). Bộ ghi bản mới vì vậy hỏi 4.3 mỗi 30 giây tới 15:02 rồi mới dừng. Phiên ghi bằng bản cũ: chạy
+   `python scripts/close_snapshot.py` từ 15:00 cùng ngày để lưu số cuối ngày (chỉ số, bảng giá VN30, các sàn, phái sinh) vào market.db (khoảng 12 yêu cầu GET).
+   **Vòng chỉ số nhanh:** giữa hai lần chụp sổ lệnh, bộ ghi hỏi 4.3 mỗi 5 giây (`--fast 5`, tắt bằng `--fast 0`; `--no-boards` tắt
+   bảng giá các sàn). Thẻ chỉ số của dashboard tự đọc lại mỗi 5 giây ở chế độ Trực tiếp. Ngày ghi từ bản cũ không có các bảng mới:
+   giao diện nói rõ "chưa có dữ liệu" chứ không điền số.
+   **Bảng giá kiểu bảng điện** (trang Tổng quan): mã, TC, trần, sàn, 3 mức mua, khớp lệnh, 3 mức bán, tổng KL. Giá trần, giá sàn
+   và KL khớp gần nhất là cột mới của bộ ghi. Dữ liệu ghi trước đó (ví dụ phiên 28/10) để trống 3 cột này; điền lại đúng nguyên
+   văn từ phản hồi gốc đã lưu bằng `python scripts/backfill_extra.py` (chạy một lần, không gọi NEO, không ước lượng).
+   Cơ sở dữ liệu cũ tự được thêm cột khi mở lại, dòng cũ giữ nguyên.
+   **Bù chuỗi chỉ số cuối ngày:** bộ ghi mới lưu chuỗi 4.2 cho VN30, VN-Index, HNX-Index, UPCoM-Index khi hết phiên. Phiên ghi bằng
+   bản cũ (như 28/10) chỉ có VN30 và VN-Index; chạy `python scripts/fetch_day_index.py` SAU 14:45 CÙNG NGÀY để bù HNX và UPCoM
+   (chỉ thêm phần thiếu, từ chối nếu chạy sớm hay sang ngày khác vì chuỗi 4.2 không có ngày).
 6. WebSocket (`record_stream.py`, `explore_channels.py`): đã kết nối được qua `wss://` (máy chủ chuyển `ws://` sang
    `wss://`, khác tài liệu). Tin trả về là nhị phân (giống Avro), không phải JSON như tài liệu; `binary_msg.py` giải mã
    được kênh `marketSession` (thứ tự trường khớp tài liệu 6.2). Các kênh còn lại cần kiểm tra thêm trong giờ giao dịch,
@@ -103,3 +133,18 @@ NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `
 - Giả định mỗi thông điệp stockInfo là trạng thái đầy đủ của mã; nếu thật ra chỉ chứa trường thay đổi thì phải sửa `Snapshotter.update` thành gộp.
 - NEO chưa công bố giới hạn tần suất, số mã tối đa hay số kết nối tối đa của WebSocket; chưa biết theo dõi 30 mã có ổn không.
 - NEO không có giá nhiều phiên: động lượng 5/10/20 phiên phải tự lưu giá đóng cửa mỗi ngày (`finance/factors.py: daily_closes`).
+
+## Bộ ghi WebSocket thử nghiệm (chạy song song với REST)
+- Cách 1 (khuyên dùng, một đăng nhập): `python scripts/run_live.py --ws`
+- Cách 2 (cửa sổ riêng): `python scripts/record_ws.py` cùng lúc với `python scripts/record_rest.py`
+- Dữ liệu vào bảng `ws_quotes` (thanh 5 giây, có `n_msgs`, `age_ms`), tin thô ở `data/raw/<ngày>/ws.jsonl.gz`, thống kê ở `ws_stats.json`.
+- Sau phiên: `python scripts/compare_ws_rest.py` để xem WebSocket khớp REST bao nhiêu phần trăm.
+- REST vẫn là nguồn chính thức; WebSocket chỉ để đối chiếu. Không dùng `record_stream.py` cùng lúc với REST (nó ghi vào bảng `quotes`).
+
+## Xuất sổ lệnh WebSocket ra Excel
+`python scripts/export_data.py --ws --excel --date 2026-10-30` (bỏ `--date` để xuất mọi ngày). File nằm ở `data/export/so_lenh_ws_<ngày>.csv` và `.xlsx`.
+
+## Thử kết nối WebSocket có schema (chỉ đọc)
+`pip install fastavro` rồi `python scripts/probe_ws_schema.py` (chạy được cả ngày nghỉ). Script gửi "sync" để lấy schema Avro của máy chủ,
+lưu vào `data/ws_schemas.json`, đăng ký thử vài mã ở các kênh stockInfo, marketData, marketInfo, marketVolume, marketSession và in kết quả.
+Cơ sở: đọc mã nguồn NeoInvestSDK 0.2.5 (chưa kiểm chứng trên máy chủ thật). Không cài SDK này vào dự án (có chức năng đặt lệnh).

@@ -59,3 +59,25 @@ def breadth_table(detail: list[dict]) -> pd.DataFrame:
         if c in df:
             df[c] = pd.to_numeric(df[c], errors="coerce").astype("Int64")
     return df.reset_index(drop=True)
+
+
+INDEX_COLUMNS = ["ts", "index_code", "index_value", "index_change", "pct_change", "sum_value", "sum_volume",
+                 "advances", "declines", "no_change", "ceilings", "floors", "status"]
+_INDEX_FIELDS = {"indexCode": "index_code", "indexValue": "index_value", "indexChange": "index_change",
+                 "indexPercentChange": "pct_change", "sumValue": "sum_value", "sumVolume": "sum_volume",
+                 "advances": "advances", "declines": "declines", "noChange": "no_change",
+                 "numberOfCe": "ceilings", "numberOfFl": "floors", "marketStatus": "status"}
+
+
+def index_detail_frame(detail: list[dict], ts: pd.Timestamp) -> pd.DataFrame:
+    """4.3 (marketIndexDetail) -> bảng một dòng mỗi chỉ số tại thời điểm chụp ts. Bỏ 'FU' (lặp lại số của VN30).
+
+    sumValue là GIÁ TRỊ GIAO DỊCH LŨY KẾ trong ngày (đồng) của cả chỉ số/sàn, nên hiệu hai lần chụp liên tiếp
+    là giá trị giao dịch của khoảng đó."""
+    rows = [{std: r.get(src) for src, std in _INDEX_FIELDS.items()} for r in detail or [] if r.get("indexCode") != "FU"]
+    df = pd.DataFrame(rows, columns=list(_INDEX_FIELDS.values()))
+    df.insert(0, "ts", ts)
+    for c in ("index_value", "index_change", "pct_change", "sum_value", "sum_volume",
+              "advances", "declines", "no_change", "ceilings", "floors"):
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    return df[INDEX_COLUMNS]

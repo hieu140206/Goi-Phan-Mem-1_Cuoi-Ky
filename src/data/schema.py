@@ -21,6 +21,7 @@ EXTRA_COLUMNS = [
     "total_value", "ref_px", "open_px", "high_px", "low_px",
     "foreign_buy_vol", "foreign_sell_vol", "foreign_buy_val", "foreign_sell_val",
     "foreign_net_val", "foreign_remain", "foreign_room",
+    "ceil_px", "floor_px", "last_vol",  # giá trần, giá sàn, khối lượng của lần khớp gần nhất (bảng giá)
 ]
 QUOTE_COLUMNS = ["ts", "symbol", *BID_PX, *BID_QTY, *ASK_PX, *ASK_QTY, "last_px", "total_vol", *EXTRA_COLUMNS]
 NUMERIC_COLUMNS = [c for c in QUOTE_COLUMNS if c not in ("ts", "symbol")]

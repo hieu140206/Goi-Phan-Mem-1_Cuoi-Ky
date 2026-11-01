@@ -54,3 +54,31 @@ def test_ranking_puts_liquid_symbol_higher():
 def test_ranking_single_symbol_does_not_crash():
     ranked = rank_symbols(add_liquidity_metrics(pd.DataFrame([make_row()])))
     assert len(ranked) == 1
+
+
+def test_tick_size_hose_bands():
+    from finance.liquidity import tick_size
+    ticks = tick_size(pd.Series([9_990, 10_000, 49_950, 50_000, 240_000, 0, np.nan]))
+    assert ticks.tolist()[:5] == [10, 50, 50, 100, 100]
+    assert ticks.iloc[5:].isna().all()
+
+
+def test_spread_ticks_uses_tick_at_bid():
+    rows = [make_row("LOW", 10_600, 10_650), make_row("EDGE", 49_950, 50_000), make_row("HIGH", 99_900, 100_100)]
+    df = add_liquidity_metrics(pd.DataFrame(rows)).set_index("symbol")
+    assert df.loc["LOW", "spread_ticks"] == 1      # 50đ / 50đ
+    assert df.loc["EDGE", "spread_ticks"] == 1     # 49.950 -> 50.000 là 1 bước giá 50đ
+    assert df.loc["HIGH", "spread_ticks"] == 2     # 200đ / 100đ
+
+
+def test_ranking_not_biased_by_share_price():
+    # Cùng độ sâu, cùng 1 bước giá: mã giá thấp có bps cao hơn nhiều nhưng không được bị chấm spread kém hơn.
+    cheap = [make_row("CHEAP", 10_600, 10_650)] * 5
+    pricey = [make_row("PRICEY", 99_900, 100_000)] * 5
+    wide = [make_row("WIDE", 99_900, 100_200)] * 5   # 3 bước giá
+    df = add_liquidity_metrics(pd.DataFrame(cheap + pricey + wide))
+    df["depth_value"] = 1e9  # loại ảnh hưởng của độ sâu
+    ranked = rank_symbols(df).set_index("symbol")
+    assert ranked.loc["CHEAP", "rel_spread_bps"] > ranked.loc["PRICEY", "rel_spread_bps"]
+    assert ranked.loc["CHEAP", "score"] == ranked.loc["PRICEY", "score"]
+    assert ranked.loc["WIDE", "score"] < ranked.loc["PRICEY", "score"]

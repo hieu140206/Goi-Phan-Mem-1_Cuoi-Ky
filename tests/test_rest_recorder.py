@@ -71,7 +71,7 @@ def test_status_by_clock():
 def test_full_session_saves_only_continuous_and_stops_after_close(tmp_path):
     rec, client = make(tmp_path, "2026-10-28 09:05:00", by_clock_with(), interval=300)
     stats = rec.run()
-    assert stats.end_reason == "đóng cửa (C)"
+    assert stats.end_reason == "hết phiên khớp lệnh (C)"
     assert stats.statuses_seen == ["ATO", "LO", "BREAK", "LO", "ATC", "C"]
     # 09:15-11:30 và 13:00-14:30, mỗi 5 phút
     assert stats.lo_snapshots == 27 + 18
@@ -114,3 +114,99 @@ def test_snapshot_failure_is_counted_not_fatal(tmp_path):
     client.get_stocks_by_index = flaky
     stats = rec.run(max_cycles=4)
     assert stats.errors == 1 and stats.lo_snapshots == 3
+
+
+def test_real_status_sequence_stops_at_put_through(tmp_path):
+    """Trình tự thật 28/10/2026: ATO -> LO -> L -> LO -> ATC -> PT. Phải dừng khi gặp PT, không chờ tới 15:00."""
+    def real(now):
+        s = status_by_clock(now)
+        return {"BREAK": "L", "C": "PT"}.get(s, s)
+    rec, _ = make(tmp_path, "2026-10-28 09:05:00", real, interval=300)
+    stats = rec.run()
+    assert stats.end_reason == "hết phiên khớp lệnh (PT)" and stats.finished == "14:45:00"
+    assert stats.statuses_seen == ["ATO", "LO", "L", "LO", "ATC", "PT"] and stats.lo_snapshots == 45
+
+
+def test_after_hours_run_writes_no_empty_summary(tmp_path):
+    """Chạy thử sau 15:00: không chụp lần nào, không lỗi -> không thêm dòng rỗng vào sessions.csv."""
+    clock = FakeClock("2026-10-28 18:49:00")  # thứ Tư
+    client = FakeClient(clock, lambda t: "C")
+    rec = RestRecorder(client, db_path=tmp_path / "m.db", data_dir=tmp_path, interval=60,
+                       now_fn=clock.now, sleep_fn=clock.sleep)
+    stats = rec.run()
+    assert stats.end_reason == "quá 15:00" and stats.raw_snapshots == 0
+    assert not (tmp_path / "sessions.csv").exists()
+
+
+MARKET = json.loads((Path(__file__).parent / "fixtures" / "neo_market_20261027.json").read_text(encoding="utf-8"))
+
+
+def test_recorder_saves_index_snapshots_for_overview(tmp_path):
+    """Mỗi lần chụp còn lưu 4.3 (VNINDEX, VN30, HNX, UPCOM...) vào bảng market_index; lỗi 4.3 không làm mất sổ lệnh."""
+    from data.storage import load_market_index
+
+    clock = FakeClock("2026-10-28 10:00:00")
+    client = FakeClient(clock, lambda t: "LO")
+    client.get_index_detail = lambda code: MARKET["4.3 marketIndexDetail"]
+    rec = RestRecorder(client, db_path=tmp_path / "m.db", data_dir=tmp_path, interval=60,
+                       now_fn=clock.now, sleep_fn=clock.sleep)
+    rec.run(max_cycles=3)
+    idx = load_market_index(tmp_path / "m.db")
+    assert {"VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX"} <= set(idx["index_code"])
+    assert "FU" not in set(idx["index_code"])
+    assert idx["ts"].nunique() == 3
+    assert str(idx["ts"].dt.tz) == "Asia/Ho_Chi_Minh"
+    vn = idx[idx["index_code"] == "VNINDEX"].iloc[0]
+    assert vn["index_value"] == 1761.87 and vn["advances"] == 123 and vn["declines"] == 197
+    assert len(load_quotes(tmp_path / "m.db")) == 90  # sổ lệnh vẫn lưu đủ 3 lần x 30 mã
+
+
+def test_index_failure_does_not_lose_order_book(tmp_path):
+    clock = FakeClock("2026-10-28 10:00:00")
+    client = FakeClient(clock, lambda t: "LO")  # FakeClient không có get_index_detail -> lỗi
+    rec = RestRecorder(client, db_path=tmp_path / "m.db", data_dir=tmp_path, interval=60,
+                       now_fn=clock.now, sleep_fn=clock.sleep)
+    stats = rec.run(max_cycles=2)
+    assert stats.lo_snapshots == 2 and len(load_quotes(tmp_path / "m.db")) == 60
+
+
+def test_recorder_stores_ceiling_floor_and_last_volume(tmp_path):
+    """Bộ ghi lưu giá trần, giá sàn, KL khớp gần nhất đúng như NEO trả về (cho bảng giá)."""
+    clock = FakeClock("2026-10-28 10:00:00")
+    client = FakeClient(clock, lambda t: "LO")
+    rec = RestRecorder(client, db_path=tmp_path / "m.db", data_dir=tmp_path, interval=60,
+                       now_fn=clock.now, sleep_fn=clock.sleep)
+    rec.run(max_cycles=1)
+    q = load_quotes(tmp_path / "m.db").set_index("symbol")
+    for r in REAL:
+        assert q.loc[r["symbol"], "ceil_px"] == r["ceilingPrice"]
+        assert q.loc[r["symbol"], "floor_px"] == r["floorPrice"]
+        assert q.loc[r["symbol"], "last_vol"] == r["closeVol"]
+
+
+def test_end_of_day_saves_series_for_all_four_indices(tmp_path):
+    clock = FakeClock("2026-10-28 14:40:00")
+    client = FakeClient(clock, lambda t: "LO" if t.time() < pd.Timestamp("2026-10-28 14:41", tz="Asia/Ho_Chi_Minh").time() else "PT")
+    asked = []
+    client.get_index_intraday = lambda code: asked.append(code) or {"indexCode": code, "index": []}
+    client.get_index_detail = lambda code: MARKET["4.3 marketIndexDetail"]
+    rec = RestRecorder(client, db_path=tmp_path / "m.db", data_dir=tmp_path, interval=60,
+                       now_fn=clock.now, sleep_fn=clock.sleep)
+    rec.run()
+    assert asked == ["VN30", "VNINDEX", "HNXINDEX", "UPCOMINDEX"]
+    saved = json.loads((tmp_path / "raw" / "2026-10-28" / "market.json").read_text(encoding="utf-8"))
+    assert {"intraday_HNXINDEX", "intraday_UPCOMINDEX", "index_detail"} <= set(saved)
+
+
+def test_finalize_close_keeps_refreshing_vn30_board_after_atc(tmp_path):
+    """30/10: bảng dừng ở 14:44 nên tổng khối lượng thiếu đúng khối lượng khớp ATC. Sau ATC phải còn làm mới bảng tới 15:02."""
+    from data.storage import load_board
+
+    clock = FakeClock("2026-10-28 14:46:00")
+    client = FakeClient(clock, lambda t: "PT")
+    rec = RestRecorder(client, db_path=tmp_path / "m.db", data_dir=tmp_path, interval=60,
+                       now_fn=clock.now, sleep_fn=clock.sleep, record_boards=True)
+    rec.finalize_close()
+    assert client.calls >= 30                       # ~33 lần hỏi 4.7 trong 16 phút, mỗi 30 giây
+    board = load_board(tmp_path / "m.db", "2026-10-28", "VN30")
+    assert len(board) == 30 and board["ts"].max().strftime("%H:%M") >= "15:00"
