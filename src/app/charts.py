@@ -54,7 +54,8 @@ def intraday_figure(one: pd.DataFrame, height: int = 600) -> go.Figure:
                       fillcolor=NEG, opacity=0.12, line_width=0, layer="below", row="all", col=1)
     fig.update_xaxes(rangebreaks=[dict(bounds=[11.5, 13], pattern="hour")], showgrid=False, tickformat="%H:%M",
                      showline=True, linecolor=BORDER, tickfont=dict(color=MUTED))
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, nticks=5, tickfont=dict(color=MUTED), automargin=True,
+    # fixedrange: lăn chuột chỉ phóng to trục thời gian, trục dọc giữ nguyên nên không giá trị nào bị khuất.
+    fig.update_yaxes(gridcolor=GRID, zeroline=False, nticks=5, tickfont=dict(color=MUTED), automargin=True, fixedrange=True,
                      ticks="", ticklabelstandoff=6)
     for a in fig.layout.annotations[:3]:
         a.update(font=dict(size=12, color=MUTED), x=0, xanchor="left")

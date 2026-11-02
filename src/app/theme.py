@@ -97,6 +97,19 @@ def group(label: str) -> None:
     st.html(f'<div class="grp">{label}</div>')
 
 
+# Cấu hình chung cho mọi biểu đồ Plotly: lăn chuột để phóng to/thu nhỏ, kéo để dịch, nhấp đúp để về như cũ.
+# Thanh công cụ chỉ hiện khi rê chuột vào biểu đồ, bỏ các nút chọn vùng không dùng tới.
+CHART_CONFIG = {
+    "scrollZoom": True,
+    "doubleClick": "reset",
+    "displaylogo": False,
+    "displayModeBar": "hover",
+    "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d", "toggleSpikelines", "hoverClosestCartesian",
+                               "hoverCompareCartesian"],
+    "toImageButtonOptions": {"format": "png", "scale": 2},
+}
+
+
 def hide_lunch(fig: go.Figure) -> None:
     """Ẩn khoảng nghỉ trưa 11:30-13:00 trên trục thời gian (chỉ đổi cách vẽ, không đổi số).
     Trục x phải là giờ Việt Nam KHÔNG kèm múi giờ (dùng naive_vn). Chỗ dữ liệu đứt vẫn để đứt, không nối thẳng."""
@@ -112,6 +125,7 @@ def base_layout(fig: go.Figure, height: int) -> None:
     fig.update_layout(
         height=height, margin=dict(l=4, r=8, t=28, b=4),
         plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+        dragmode="pan",  # kéo chuột để dịch biểu đồ (đi cùng phóng to bằng con lăn)
         font=dict(family=FONT, color=INK, size=12),
         hoverlabel=dict(bgcolor="#ffffff", bordercolor=BORDER, font=dict(family=FONT, color=INK, size=12)),
     )

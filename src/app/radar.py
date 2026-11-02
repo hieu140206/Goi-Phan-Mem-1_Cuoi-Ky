@@ -36,7 +36,7 @@ MODE_REPLAY = "Phát lại một phiên"
 SCOPE_ALL, SCOPE_PICK = "Tất cả mã", "Chọn từng mã"
 ALERT_SHORT = {"Spread mở rộng": "Spread rộng", "Độ sâu mỏng": "Sổ mỏng", "Spread rộng, độ sâu mỏng": "Spread rộng, sổ mỏng"}
 
-from theme import INK, MUTED, NEG, WARN, base_layout, group, vn  # noqa: E402
+from theme import CHART_CONFIG, INK, MUTED, NEG, WARN, base_layout, group, vn  # noqa: E402
 
 
 # ---------- tiện ích ----------
@@ -401,7 +401,7 @@ with st.container(border=True, key="panel_heatmap"):
         yaxis=dict(autorange="reversed", showgrid=False, type="category", automargin=True,
                    tickfont=dict(color=INK, size=12), ticks="", showticklabels=True),
     )
-    st.plotly_chart(fig_hm, config={"displayModeBar": False}, theme=None,
+    st.plotly_chart(fig_hm, config=CHART_CONFIG, theme=None,
                     alt="Bản đồ nhiệt spread theo mã và khung 30 phút")
 
 # ---------- chi tiết một mã ----------
@@ -430,7 +430,7 @@ with st.container(border=True, key="panel_detail"):
     else:
         st.caption(intraday_caption(sym, day, one))
         fig = intraday_figure(one)
-        st.plotly_chart(fig, config={"displayModeBar": False}, theme=None,
+        st.plotly_chart(fig, config=CHART_CONFIG, theme=None,
                         alt=f"Diễn biến spread, độ sâu và LRS của {sym} trong phiên {day:%d/%m/%Y}")
         if one["lrs_watch"].isna().all():
             st.caption(f"Chưa đủ dữ liệu để tính ngưỡng LRS (cần ít nhất {MIN_OBS_PAST} điểm LRS trước thời điểm xét).")

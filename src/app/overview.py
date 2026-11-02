@@ -30,7 +30,7 @@ from data.storage import (data_days, latest_ts, load_board, load_depth_market, l
 from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
-from theme import BORDER, FAINT, FONT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, naive_vn, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, FAINT, FONT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, naive_vn, vn  # noqa: E402
 
 def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
     """Chèn dòng trống vào chỗ dữ liệu đứt quãng (nghỉ trưa) để biểu đồ không nối thẳng qua khoảng nghỉ."""
@@ -47,7 +47,8 @@ def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
 def finish(fig: go.Figure, height: int) -> None:
     base_layout(fig, height)
     fig.update_xaxes(automargin=True)
-    fig.update_yaxes(automargin=True)  # nhãn trục không bị cắt ở lề trái
+    # Nhãn trục không bị cắt ở lề trái; trục dọc cố định để lăn chuột chỉ phóng to theo thời gian, không cắt mất giá trị.
+    fig.update_yaxes(automargin=True, fixedrange=True)
 
 
 SORTS = {  # tên hiển thị -> (cột, tăng dần?)
@@ -364,7 +365,7 @@ with c2, st.container(border=True, key="panel_breadth"):
         fig.update_xaxes(range=[0, 100], ticksuffix="%", gridcolor=GRID, zeroline=False)
         fig.update_yaxes(autorange="reversed", automargin=True)
         finish(fig, 240)
-        st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_breadth")
+        st.plotly_chart(fig, config=CHART_CONFIG, theme=None, key="ov_breadth")
         ad = b.set_index("index_code")
         parts = []
         for code in ("VNINDEX", "HNXINDEX", "UPCOMINDEX"):
@@ -401,7 +402,7 @@ with c1, st.container(border=True, key="panel_depth"):
         fig.update_yaxes(gridcolor=GRID, ticksuffix=" tỷ", rangemode="tozero")
         hide_lunch(fig)
         finish(fig, 280)
-        st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_depth")
+        st.plotly_chart(fig, config=CHART_CONFIG, theme=None, key="ov_depth")
         last = depth.dropna(subset=["bid_value"]).iloc[-1]
         spread = (f"; spread tương đối trung vị {vn(last['median_spread_bps'], 1)} bps"
                   if not pd.isna(last["median_spread_bps"]) else "")
@@ -434,7 +435,7 @@ with st.container(border=True, key="panel_liquidity"):
         finish(fig, 280)
         for a in fig.layout.annotations:
             a.update(font=dict(size=12, color=INK), x=a.x, xanchor="center")
-        st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_liq")
+        st.plotly_chart(fig, config=CHART_CONFIG, theme=None, key="ov_liq")
         st.caption(f"Tổng ba sàn đến {tv['ts'].iloc[-1]:%H:%M}: {vn(tv['total_cum'].iloc[-1])} tỷ đồng.")
     else:
         # Ngày ghi trước khi có bảng market_index: chỉ có chuỗi theo phút của 4.2 (khối lượng lũy kế).
@@ -460,7 +461,7 @@ with st.container(border=True, key="panel_liquidity"):
             fig.update_yaxes(gridcolor=GRID, ticksuffix=" tr", rangemode="tozero")
             hide_lunch(fig)
             finish(fig, 280)
-            st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_liq_vol")
+            st.plotly_chart(fig, config=CHART_CONFIG, theme=None, key="ov_liq_vol")
 
 st.html(
     '<p class="note">Dữ liệu từ NEO API (REST 4.3, 4.6, 4.7, 4.9). Chỉ số cập nhật theo vòng hỏi nhanh của bộ ghi (5 giây); '

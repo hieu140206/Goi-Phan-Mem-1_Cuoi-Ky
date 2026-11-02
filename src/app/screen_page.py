@@ -18,7 +18,7 @@ import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from shared import GATE_MIN_SCORE, SRC_SAMPLE, analyzed_data, current_source, screen_for_day  # noqa: E402
-from theme import BORDER, GRID, HUE, INK, MUTED, NEG, WARN, base_layout, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, NEG, WARN, base_layout, vn  # noqa: E402
 
 GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Loại": "#b5bac1"}
 
@@ -155,7 +155,7 @@ with right, st.container(border=True, key="panel_map"):
         fig.update_yaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
         base_layout(fig, 420)
         fig.update_layout(legend=dict(orientation="h", y=1.1, x=0), margin=dict(l=56, r=12, t=40, b=48))
-        st.plotly_chart(fig, config={"displayModeBar": False}, theme=None,
+        st.plotly_chart(fig, config=CHART_CONFIG, theme=None,
                         alt="Biểu đồ phân tán động lượng và dòng tiền nước ngoài theo mã")
 
 with st.expander("Phương pháp và giới hạn", icon=":material/menu_book:"):
