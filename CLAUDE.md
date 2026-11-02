@@ -15,7 +15,7 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 3. **Dữ liệu luôn phải đúng, hơn mọi thứ khác.** Thiếu thì để trống hoặc "–", không đoán, không điền, không nội suy. Đổi giao diện không được làm đổi số.
 4. Giới hạn NEO: **5 yêu cầu/giây**, IP phải đăng ký. Không tăng tần suất gọi khi chưa đo.
 5. Người dùng là **sinh viên mới học**: giải thích ngắn gọn, tiếng Việt, tránh thuật ngữ không cần thiết. Việc lớn thì **nhận xét và hỏi trước** rồi mới làm; không cắt phạm vi tự ý.
-6. Làm xong phải chạy `python -m pytest` (hiện **167 passed**) và xem lại giao diện trước khi báo xong.
+6. Làm xong phải chạy `python -m pytest` (hiện **174 passed**) và xem lại giao diện trước khi báo xong.
 
 ## Kiến trúc
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), stream WebSocket (nhị phân, phụ, mới giải mã được `stockInfo`).
@@ -40,7 +40,7 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 ## Việc còn lại (theo thứ tự ưu tiên)
 1. Ghi thêm các phiên (cần >= 5) để làm kiểm chứng: event study cho cảnh báo, liquidity commonality (Chordia-Roll-Subrahmanyam), dạng chữ U trong ngày.
 2. Kiểm chứng bảng giá các sàn bằng dữ liệu NEO thật (phiên 30/10), sau đó cân nhắc nâng HOSE/HNX lên 15 giây (cần đo, tránh lỗi 429).
-3. Spread theo bước giá: ĐÃ LÀM 1/11 (`tick_size`, `spread_ticks` trong liquidity.py; điểm thanh khoản dùng spread trung bình theo bước giá, bps chỉ để hiển thị; cảnh báo vẫn dùng bps vì mỗi mã so với chính nó). Còn lại: hiệu chỉnh ngưỡng cảnh báo; cảnh báo dồn đầu phiên (49% cảnh báo lúc 9:15-10:00 do độ sâu tăng dần trong ngày) -> so theo cùng khung giờ các phiên trước, cần >= 5 phiên.
+3. Spread theo bước giá: ĐÃ LÀM 1/11 (`tick_size`, `spread_ticks` trong liquidity.py; điểm thanh khoản dùng spread trung bình theo bước giá, bps chỉ để hiển thị; cảnh báo vẫn dùng bps vì mỗi mã so với chính nó). Baseline theo khung giờ: ĐÃ LÀM 2/11 (`analytics/baseline.py`, Radar dùng thay cửa sổ trượt của anomaly.py): so cùng mã, cùng khung 30 phút, tối đa 10 phiên trước (>= 2 phiên, >= 20 lần chụp); độ sâu và |lệch| dùng z bền vững trung vị/MAD; spread dùng số bước giá + tỷ lệ đuôi <= 5% (MAD spread = 0 ở 92% nhóm); cảnh báo phải kéo dài >= 2 lần chụp, đếm theo đợt. Phiên 30/10: 67 đợt ở 20 mã, hết dồn đầu phiên. Còn lại: hiệu chỉnh ngưỡng khi có >= 5 phiên; chi phí tác động lệnh cỡ Q; kiểm chứng H1/H4.
 4. WebSocket: đã có bộ ghi thử nghiệm song song (`run_live.py --ws` hoặc `scripts/record_ws.py`, bảng `ws_quotes` thanh 5 giây, `scripts/compare_ws_rest.py` đối chiếu với REST). REST vẫn là nguồn chính thức; chưa dùng WS cho phân tích cho đến khi đối chiếu khớp.
 5. Báo cáo, video demo, README, cập nhật file Excel theo dõi; nộp trước 1/12/2026.
 

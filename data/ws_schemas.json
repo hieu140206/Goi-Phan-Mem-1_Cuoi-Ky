@@ -1,0 +1,3141 @@
+{
+ "1": {
+  "name": "marketData",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "sequenceMsg",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "matchedPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "tradingVolume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "timestamp",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "lastColor",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "2": {
+  "name": "marketInfo",
+  "type": "record",
+  "fields": [
+   {
+    "name": "dateString",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "indexValue",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "indexTime",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "indexChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "indexPercentChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalValue",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "marketStatus",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "advances",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "declines",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "noChange",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "indexCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "marketCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "numberOfCe",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "numberOfFl",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "oddLotTotalVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "oddLotTotalValue",
+    "type": [
+     "null",
+     "long"
+    ]
+   }
+  ]
+ },
+ "3": {
+  "name": "stockInfo",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": "string"
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "bidPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closePrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closeVol",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "priceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "percentPriceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalTradingVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalTradingValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "averagePrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "openPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "highPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "lowPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "foreignBuyVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignRemain",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "foreignRoom",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalAskQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "totalBidQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignBuyValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "breakEvenPoint",
+    "type": [
+     "null",
+     "double"
+    ]
+   }
+  ]
+ },
+ "4": {
+  "name": "oddlotTopNprice",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "top",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "buyPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "buyQty",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "cumulativeBuyVolume",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "sellPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "sellQty",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "cumulativeSellVolume",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "action",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "5": {
+  "name": "oddlotTransLog",
+  "type": "record",
+  "fields": [
+   {
+    "name": "sequenceMsg",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "tradingDate",
+    "type": [
+     "string",
+     {
+      "type": "array",
+      "items": "int"
+     }
+    ]
+   },
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "formattedTime",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "lastColor",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "formattedMatchPrice",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "changeColor",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "formattedChangeValue",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "formattedVol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "formattedAccVol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "formattedAccVal",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "6": {
+  "name": "oddlotStockInfo",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "stockId",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "tradingDate",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice3",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol3",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice2",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol2",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "closePrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "closeVol",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "priceChange",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "percentPriceChange",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice2",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol2",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice3",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol3",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "totalTradingVolume",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "totalTradingValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "tradingSession",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "coveredWarrantType",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "exerciseRatio",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "issuerName",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "maturityDate",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   }
+  ]
+ },
+ "7": {
+  "name": "putthroughInfo",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "vol",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "matchVol",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "price",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "side",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "time",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "isActive",
+    "type": [
+     "null",
+     "string",
+     "boolean"
+    ]
+   },
+   {
+    "name": "marketCode",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "orderId",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "tradingDate",
+    "type": [
+     "string",
+     {
+      "type": "array",
+      "items": "int"
+     }
+    ]
+   },
+   {
+    "name": "lastSeq",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   }
+  ]
+ },
+ "8": {
+  "name": "putthroughMatch",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "confirmNo",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "matchVol",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "price",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "time",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "isActive",
+    "type": [
+     "null",
+     "boolean",
+     "string"
+    ]
+   },
+   {
+    "name": "marketCode",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "tradingDate",
+    "type": [
+     "string",
+     {
+      "type": "array",
+      "items": "int"
+     }
+    ]
+   },
+   {
+    "name": "lastSeq",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   }
+  ]
+ },
+ "9": {
+  "name": "marketEvent",
+  "type": "record",
+  "fields": [
+   {
+    "name": "session",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "event",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "tradingDate",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "timeStamp",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   }
+  ]
+ },
+ "10": {
+  "name": "marketVolume",
+  "type": "record",
+  "fields": [
+   {
+    "name": "indexCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "indexValue",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "indexTime",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "totalVolume",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "volume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   }
+  ]
+ },
+ "11": {
+  "name": "marketStockInfo",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": "string"
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "bidPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closePrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closeVol",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "priceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "percentPriceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalTradingVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalTradingValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "averagePrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "openPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "highPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "lowPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "foreignBuyVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignRemain",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "foreignRoom",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalAskQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "totalBidQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignBuyValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "breakEvenPoint",
+    "type": [
+     "null",
+     "double"
+    ]
+   }
+  ]
+ },
+ "15": {
+  "name": "corpBondInfo",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "bondPeriod",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "periodRemain",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "averagePrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "totalPTBidVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptBestBidVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptBestBidPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptMatchPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptMatchVol",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "ptMaxPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptMaxVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptMinPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptMinVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptBestAskPrice",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "ptBestAskVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "totalPTAskVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "totalPTTradingVol",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "totalPTTradingValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   }
+  ]
+ },
+ "17": {
+  "name": "foreignTrading",
+  "type": "record",
+  "fields": [
+   {
+    "name": "code",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "foreignBuyValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetBuyValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetSellValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "timestamp",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   }
+  ]
+ },
+ "18": {
+  "name": "industryCashFlowRatio",
+  "type": "record",
+  "fields": [
+   {
+    "name": "code",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "tradingDate",
+    "type": [
+     "string",
+     {
+      "type": "array",
+      "items": "int"
+     }
+    ]
+   },
+   {
+    "name": "advancesValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "declinesValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "noChangeValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "rateAdvancesValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "rateDeclinesValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "rateNoChangeValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   }
+  ]
+ },
+ "19": {
+  "name": "stockImpact",
+  "type": "record",
+  "fields": [
+   {
+    "name": "indexCode",
+    "type": "string"
+   },
+   {
+    "name": "listStockUp",
+    "type": {
+     "type": "array",
+     "items": {
+      "name": "stockUp",
+      "type": "record",
+      "fields": [
+       {
+        "name": "symbol",
+        "type": "string"
+       },
+       {
+        "name": "outstandingShare",
+        "type": "double"
+       },
+       {
+        "name": "marketCap",
+        "type": "long"
+       },
+       {
+        "name": "influenceIndex",
+        "type": "double"
+       },
+       {
+        "name": "closePrice",
+        "type": "int"
+       },
+       {
+        "name": "totalTradingVolume",
+        "type": "int"
+       },
+       {
+        "name": "totalTradingValue",
+        "type": "long"
+       },
+       {
+        "name": "priceChange",
+        "type": "int"
+       },
+       {
+        "name": "percentPriceChange",
+        "type": "float"
+       },
+       {
+        "name": "ceilingPrice",
+        "type": "int"
+       },
+       {
+        "name": "floorPrice",
+        "type": "int"
+       },
+       {
+        "name": "refPrice",
+        "type": "int"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "name": "listStockDown",
+    "type": {
+     "type": "array",
+     "items": {
+      "name": "stockDown",
+      "type": "record",
+      "fields": [
+       {
+        "name": "symbol",
+        "type": "string"
+       },
+       {
+        "name": "outstandingShare",
+        "type": "double"
+       },
+       {
+        "name": "marketCap",
+        "type": "long"
+       },
+       {
+        "name": "influenceIndex",
+        "type": "double"
+       },
+       {
+        "name": "closePrice",
+        "type": "int"
+       },
+       {
+        "name": "totalTradingVolume",
+        "type": "int"
+       },
+       {
+        "name": "totalTradingValue",
+        "type": "long"
+       },
+       {
+        "name": "priceChange",
+        "type": "int"
+       },
+       {
+        "name": "percentPriceChange",
+        "type": "float"
+       },
+       {
+        "name": "ceilingPrice",
+        "type": "int"
+       },
+       {
+        "name": "floorPrice",
+        "type": "int"
+       },
+       {
+        "name": "refPrice",
+        "type": "int"
+       }
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "20": {
+  "name": "transactionStatistic",
+  "type": "record",
+  "fields": [
+   {
+    "name": "key",
+    "type": "string"
+   },
+   {
+    "name": "indexCode",
+    "type": "string"
+   },
+   {
+    "name": "timeFrame",
+    "type": "string"
+   },
+   {
+    "name": "sum",
+    "type": {
+     "name": "sum",
+     "type": "record",
+     "fields": [
+      {
+       "name": "sumBuyUpValue",
+       "type": "double"
+      },
+      {
+       "name": "sumSellDownValue",
+       "type": "double"
+      },
+      {
+       "name": "sumMarketValue",
+       "type": "double"
+      },
+      {
+       "name": "netSumValue",
+       "type": "double"
+      }
+     ]
+    }
+   },
+   {
+    "name": "s",
+    "type": {
+     "name": "s",
+     "type": "record",
+     "fields": [
+      {
+       "name": "totalBuyUpValueS",
+       "type": "double"
+      },
+      {
+       "name": "rateBuyUpValueS",
+       "type": "double"
+      },
+      {
+       "name": "totalSellDownValueS",
+       "type": "double"
+      },
+      {
+       "name": "rateSellDownValueS",
+       "type": "double"
+      },
+      {
+       "name": "netValueS",
+       "type": "double"
+      }
+     ]
+    }
+   },
+   {
+    "name": "m",
+    "type": {
+     "name": "m",
+     "type": "record",
+     "fields": [
+      {
+       "name": "totalBuyUpValueM",
+       "type": "double"
+      },
+      {
+       "name": "rateBuyUpValueM",
+       "type": "double"
+      },
+      {
+       "name": "totalSellDownValueM",
+       "type": "double"
+      },
+      {
+       "name": "rateSellDownValueM",
+       "type": "double"
+      },
+      {
+       "name": "netValueM",
+       "type": "double"
+      }
+     ]
+    }
+   },
+   {
+    "name": "l",
+    "type": {
+     "name": "l",
+     "type": "record",
+     "fields": [
+      {
+       "name": "totalBuyUpValueL",
+       "type": "double"
+      },
+      {
+       "name": "rateBuyUpValueL",
+       "type": "double"
+      },
+      {
+       "name": "totalSellDownValueL",
+       "type": "double"
+      },
+      {
+       "name": "rateSellDownValueL",
+       "type": "double"
+      },
+      {
+       "name": "netValueL",
+       "type": "double"
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "21": {
+  "name": "intradaySupplyDemandChart",
+  "type": "record",
+  "fields": [
+   {
+    "name": "indexCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "timeStamp",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "sumBuyUpValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "sumSellDownValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "sumMarketValue",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "rateSumBuyUpValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "rateSumSellDownValue",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "buyUpOnSellDown",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   }
+  ]
+ },
+ "22": {
+  "name": "buyUpSellDownMarket",
+  "type": "record",
+  "fields": [
+   {
+    "name": "indexCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "timeStampS",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "buyUpValueS",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "sellDownValueS",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "timeStampM",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "buyUpValueM",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "sellDownValueM",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "timeStampL",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "buyUpValueL",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "sellDownValueL",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   }
+  ]
+ },
+ "23": {
+  "name": "fuTopNPrice",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "top",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "buyPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "buyVolume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "cumulativeBuyVolume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "sellPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "sellVolume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "cumulativeSellVolume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "action",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "24": {
+  "name": "stockInfoMultipleBoard",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": "string"
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "bidPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closePrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closeVol",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "priceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "percentPriceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalTradingVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalTradingValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "averagePrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "openPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "highPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "lowPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "foreignBuyVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignRemain",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "foreignRoom",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalAskQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "totalBidQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignBuyValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "breakEvenPoint",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "boardId",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "25": {
+  "name": "marketDataMultipleBoard",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "sequenceMsg",
+    "type": [
+     "null",
+     "string",
+     "int"
+    ]
+   },
+   {
+    "name": "matchedPrice",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "tradingVolume",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "timestamp",
+    "type": [
+     "null",
+     "string",
+     "long"
+    ]
+   },
+   {
+    "name": "lastColor",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "boardId",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "26": {
+  "name": "marketSession",
+  "type": "record",
+  "fields": [
+   {
+    "name": "marketCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "rawMarketCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "marketStatus",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "rawMarketStatus",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "time",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "27": {
+  "name": "flexBatchSignal",
+  "type": "record",
+  "fields": [
+   {
+    "name": "eventType",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "eventStatus",
+    "type": [
+     "null",
+     "string"
+    ]
+   }
+  ]
+ },
+ "52": {
+  "name": "marketInfoMobile",
+  "type": "record",
+  "fields": [
+   {
+    "name": "indexValue",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "indexChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "indexPercentChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalValue",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "marketStatus",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "advances",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "declines",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "noChange",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "indexCode",
+    "type": [
+     "null",
+     "string"
+    ]
+   },
+   {
+    "name": "numberOfCe",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "numberOfFl",
+    "type": [
+     "null",
+     "int"
+    ]
+   },
+   {
+    "name": "oddLotTotalVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "oddLotTotalValue",
+    "type": [
+     "null",
+     "long"
+    ]
+   }
+  ]
+ },
+ "53": {
+  "name": "stockInfoMobile",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": "string"
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "bidPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closePrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closeVol",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "priceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "percentPriceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalTradingVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalTradingValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "averagePrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "openPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "highPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "lowPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "foreignBuyVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignRemain",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "foreignRoom",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalAskQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "totalBidQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignBuyValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "breakEvenPoint",
+    "type": [
+     "null",
+     "double"
+    ]
+   }
+  ]
+ },
+ "54": {
+  "name": "stockInfoOnlyChange",
+  "type": "record",
+  "fields": [
+   {
+    "name": "symbol",
+    "type": "string"
+   },
+   {
+    "name": "ceilingPrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "floorPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "refPrice",
+    "type": [
+     "null",
+     "string",
+     "double"
+    ]
+   },
+   {
+    "name": "bidPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "bidPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "bidVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closePrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "closeVol",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "priceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "percentPriceChange",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice1",
+    "type": [
+     "null",
+     "string",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol1",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol2",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askPrice3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "askVol3",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "totalTradingVolume",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalTradingValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "averagePrice",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "openPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "highPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "lowPrice",
+    "type": [
+     "null",
+     "float"
+    ]
+   },
+   {
+    "name": "foreignBuyVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellVolume",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignRemain",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "foreignRoom",
+    "type": [
+     "null",
+     "long"
+    ]
+   },
+   {
+    "name": "totalAskQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "totalBidQTTY",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignBuyValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignSellValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "foreignNetValue",
+    "type": [
+     "null",
+     "double"
+    ]
+   },
+   {
+    "name": "breakEvenPoint",
+    "type": [
+     "null",
+     "double"
+    ]
+   }
+  ]
+ }
+}

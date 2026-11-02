@@ -25,7 +25,7 @@ import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
-from analytics.anomaly import detect_anomalies  # noqa: E402
+from analytics.baseline import detect_anomalies_tod  # noqa: E402
 from analytics.lrs import MIN_OBS_PAST, DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
 from data.schema import limit_lock_side, normalize_quotes  # noqa: E402
 from data.storage import count_rows, load_quotes  # noqa: E402
@@ -68,11 +68,12 @@ def load_source(source: str, db_path: str, version: float) -> tuple[pd.DataFrame
 
 
 @st.cache_data(show_spinner=False)
-def analyze(source: str, db_path: str, version: float, window: int, threshold: float,
-            w_spread: float, w_depth: float, w_imb: float) -> tuple[pd.DataFrame, dict]:
+def analyze(source: str, db_path: str, version: float, max_sessions: int, threshold: float,
+            w_spread: float, w_depth: float, w_imb: float) -> pd.DataFrame:
     """Cảnh báo bất thường, tỷ lệ hấp thụ và điểm LRS. Tính trên toàn bộ lịch sử để đủ dữ liệu khởi động."""
     df, _ = load_source(source, db_path, version)
-    out = add_absorption(detect_anomalies(df, window=window, threshold=threshold))
+    # Cảnh báo so với cùng khung giờ ở các phiên trước (analytics/baseline.py), không dùng cửa sổ trượt.
+    out = add_absorption(detect_anomalies_tod(df, threshold=threshold, max_sessions=max_sessions))
     out["lrs"] = compute_lrs(out, {"spread": w_spread, "depth": w_depth, "imbalance": w_imb})
     # Ngưỡng Chú ý/Cao tại mỗi thời điểm chỉ dùng điểm LRS có trước thời điểm đó (không nhìn trước).
     thr = lrs_thresholds_past(out["lrs"], out["ts"])
@@ -165,11 +166,12 @@ with st.sidebar:
     picked = symbols_all if scope == SCOPE_ALL else st.multiselect("Mã cổ phiếu", symbols_all,
                                                                      default=symbols_all[:5])
     group("Cảnh báo")
-    threshold = st.slider("Ngưỡng z-score", 2.0, 5.0, 3.0, 0.5,
-                          help="Mức lệch so với lịch sử của chính mã đó (tính bằng độ lệch chuẩn).")
-    window = st.slider("Cửa sổ lịch sử (số lần chụp)", 20, 300, 60, 10,
-                       help="Số lần chụp gần nhất dùng làm mức thường lệ của mỗi mã. "
-                            "Bộ ghi mặc định chụp 1 phút một lần, nên 60 lần tương đương khoảng 1 giờ.")
+    threshold = st.slider("Ngưỡng z-score độ sâu", 2.0, 5.0, 3.0, 0.5,
+                          help="Độ sâu lệch bao nhiêu so với mức thường lệ của chính mã đó ở cùng khung giờ "
+                               "(z bền vững tính bằng trung vị và MAD). Leys và cộng sự (2013) gợi ý 2,5; 3 thận trọng hơn.")
+    max_sessions = st.slider("Số phiên trước làm mốc (tối đa)", 2, 20, 10, 1,
+                             help="Mức thường lệ của một mã ở khung 30 phút = các lần chụp cùng khung giờ trong tối đa "
+                                  "chừng này phiên gần nhất TRƯỚC phiên đang xét. Cần ít nhất 2 phiên trước mới đánh giá.")
     with st.expander("Trọng số điểm rủi ro LRS"):
         raw_w = [
             st.slider("Spread", 0.0, 1.0, DEFAULT_WEIGHTS["spread"], 0.05),
@@ -185,7 +187,7 @@ if not picked:
     st.info("Chọn ít nhất một mã ở thanh bên để xem kết quả.")
     st.stop()
 
-analyzed = analyze(source, db_path_str, version, window, threshold, w_spread, w_depth, w_imb)
+analyzed = analyze(source, db_path_str, version, max_sessions, threshold, w_spread, w_depth, w_imb)
 
 # ---------- chế độ phát lại ----------
 replay_day = cut_ts = None
@@ -229,7 +231,8 @@ if view.empty:
 
 ranking = rank_symbols(view)
 alerts = view[view["is_alert"]].sort_values("ts", ascending=False)
-alert_counts = alerts.groupby("symbol").size()
+# Một đợt = chuỗi lần chụp liên tiếp cùng thỏa điều kiện; đếm theo đợt để một sự kiện kéo dài không thành hàng chục cảnh báo.
+alert_counts = alerts[alerts["alert_start"]].groupby("symbol").size()
 ranking["alerts"] = ranking["symbol"].map(alert_counts).fillna(0).astype(int)
 last_per_sym = view.sort_values("ts").groupby("symbol").tail(1).set_index("symbol")
 ranking["lrs"] = ranking["symbol"].map(last_per_sym["lrs"])
@@ -237,19 +240,20 @@ ranking["lrs_tier"] = ranking["symbol"].map(last_per_sym["lrs_tier"]).fillna("")
 
 # Các con số dùng ở nhiều chỗ được tính một lần ở đây.
 n_alerts = len(alerts)
+n_events = int(alerts["alert_start"].sum())
 n_alert_syms = alerts["symbol"].nunique()
 weakest = ranking.iloc[0]
-top_alert_sym = alert_counts.idxmax() if n_alerts else None
-top_alert_n = int(alert_counts.max()) if n_alerts else 0
+top_alert_sym = alert_counts.idxmax() if len(alert_counts) else None
+top_alert_n = int(alert_counts.max()) if len(alert_counts) else 0
 top_alert_ratio = alerts.loc[alerts["symbol"] == top_alert_sym, "spread_ratio"].max() if n_alerts else np.nan
 
 # ---------- đầu trang ----------
 is_sim = source == SRC_SAMPLE
 last_ts = cut_ts if cut_ts is not None else all_df["ts"].max()
 
-if n_alerts:
-    finding = (f'<span class="neg">{n_alerts} cảnh báo ở {n_alert_syms} mã.</span> '
-               f"{top_alert_sym} bị cảnh báo nhiều nhất ({top_alert_n} lần)")
+if n_events:
+    finding = (f'<span class="neg">{n_events} đợt cảnh báo ở {n_alert_syms} mã.</span> '
+               f"{top_alert_sym} bị cảnh báo nhiều nhất ({top_alert_n} đợt)")
     finding += (f", spread có lúc gấp {vn(top_alert_ratio, 1)} lần mức thường lệ của mã." if np.isfinite(top_alert_ratio)
                 else ".")
 else:
@@ -288,6 +292,13 @@ if is_sim:
 else:
     st.caption("; ".join(notes).capitalize() + ".")
 
+# Phiên chưa có baseline (chưa đủ 2 phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
+no_base_days = sorted(d for d, g in view.groupby(view["ts"].dt.date) if g["n_hist"].isna().all())
+if no_base_days:
+    st.html('<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
+            + " chưa đủ lịch sử để so cùng khung giờ (cần ít nhất 2 phiên trước và 20 lần chụp cùng khung 30 phút) nên chưa có cảnh báo và điểm LRS. "
+            "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>")
+
 # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
 locked = report["limit_locked"]
 lk_day = locked["ts"].dt.date
@@ -302,11 +313,11 @@ if not locked.empty:
     st.html('<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
             "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>")
 
-alert_sub = (f'ở {n_alert_syms} mã · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
-             if n_alerts else "không có mã nào vượt ngưỡng")
+alert_sub = (f'{vn(n_alerts)} lần chụp · {n_alert_syms} mã · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
+             if n_events else "không có mã nào vượt ngưỡng")
 st.html(
     '<div class="kpis">'
-    f'<div class="kpi lead"><div class="l">Cảnh báo trong kỳ</div><div class="v">{n_alerts}</div>'
+    f'<div class="kpi lead"><div class="l">Đợt cảnh báo trong kỳ</div><div class="v">{n_events}</div>'
     f'<div class="s">{alert_sub}</div></div>'
     f'<div class="kpi"><div class="l">Spread tương đối trung vị</div>'
     f'<div class="v">{vn(view["rel_spread_bps"].median(), 1)}<small>bps</small></div>'
@@ -359,7 +370,7 @@ with left, st.container(border=True, key="panel_rank"):
             "lrs": st.column_config.NumberColumn("LRS", width=60,
                                                  help="Điểm rủi ro thanh khoản ở lần chụp mới nhất. Cao hơn là rủi ro hơn."),
             "lrs_tier": st.column_config.TextColumn("Mức", width=88),
-            "alerts": st.column_config.NumberColumn("Cảnh báo", format="%d"),
+            "alerts": st.column_config.NumberColumn("Cảnh báo", format="%d", help="Số đợt cảnh báo trong kỳ"),
         },
     )
 with right, st.container(border=True, key="panel_alerts"):
@@ -369,7 +380,7 @@ with right, st.container(border=True, key="panel_alerts"):
     if alerts.empty:
         st.caption("Không có cảnh báo trong khoảng đã chọn. Thử hạ ngưỡng z-score ở thanh bên.")
     else:
-        st.caption(f"{n_alerts} cảnh báo trong kỳ, hiện {shown_n} gần nhất.")
+        st.caption(f"{n_events} đợt cảnh báo ({vn(n_alerts)} lần chụp) trong kỳ, hiện {shown_n} lần chụp gần nhất.")
     if not alerts.empty:
         shown = alerts.head(40).assign(
             when=lambda d: d["ts"].dt.strftime("%d/%m %H:%M"),
@@ -387,7 +398,7 @@ with right, st.container(border=True, key="panel_alerts"):
                 "symbol": st.column_config.TextColumn("Mã", width=52),
                 "severity": st.column_config.TextColumn("Mức", width=60),
                 "spread_ratio": st.column_config.NumberColumn("Spread (lần)", width=80,
-                                                              help="Spread hiện tại so với trung vị lịch sử của mã"),
+                                                              help="Spread (theo bước giá) so với trung vị của mã ở cùng khung giờ các phiên trước"),
                 "alert_type": st.column_config.TextColumn(
                     "Loại", help="Spread rộng: chênh lệch mua-bán giãn ra. Sổ mỏng: độ sâu 3 mức rút đi. "
                                  "'không khớp': độ sâu rút mỏng mà gần như không có giao dịch khớp."),
@@ -457,7 +468,8 @@ with st.container(border=True, key="panel_detail"):
         st.caption(
             f"{sym}, phiên {day:%d/%m/%Y}: spread trung vị {vn(one['rel_spread_bps'].median(), 1)} bps, "
             f"độ sâu trung vị {vn(one['depth_value'].median() / 1e6, 0)} triệu đ, "
-            + (f"{n_flag} lần bị cảnh báo." if n_flag else "không bị cảnh báo lần nào.")
+            + (f"{int(flagged['alert_start'].sum())} đợt cảnh báo ({n_flag} lần chụp)." if n_flag
+               else "không bị cảnh báo lần nào.")
         )
         fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.36, 0.32, 0.32],
                             subplot_titles=("Spread tương đối (bps)", "Độ sâu 3 mức giá (triệu đồng)",
@@ -519,23 +531,33 @@ ATO, ATC và nghỉ trưa bị loại vì sổ lệnh lúc đó không phản á
 Điểm dùng spread theo bước giá chứ không dùng bps: phần lớn thời gian spread VN30 chỉ đúng 1 bước giá, nên bps
 chủ yếu phụ thuộc giá cổ phiếu (mã giá thấp luôn có bps cao) chứ không cho biết mã nào khó mua bán hơn.
 
-**Điểm rủi ro LRS** = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), trong đó Z là z-score cuốn chiếu của chính mã
-đó (spread và độ sâu lấy logarit). Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" tại mỗi thời điểm là phân vị
+**Mức thường lệ (baseline)** của một mã ở một khung 30 phút (9:15, 9:45, ... 13:00, 13:30, ...) là mọi lần chụp của
+chính mã đó trong cùng khung giờ ở tối đa 10 phiên *trước* phiên đang xét (cần ít nhất 2 phiên). Sáng chỉ so với
+sáng, vì thanh khoản có nhịp lặp lại trong ngày: trên dữ liệu VN30 thật, độ sâu đầu phiên chỉ bằng khoảng 1/3 cuối
+phiên. Phiên hiện tại và tương lai không được dùng.
+
+**Điểm rủi ro LRS** = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), so với baseline cùng khung giờ. Z của độ sâu
+(logarit) và của |lệch mua/bán| là z bền vững = (x − trung vị) / (1,4826 × MAD) (Leys và cộng sự, 2013). Z của spread
+lấy từ thứ hạng phần trăm của spread (theo bước giá) trong baseline, vì spread gần như luôn đúng 1 bước giá nên MAD
+bằng 0. Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" tại mỗi thời điểm là phân vị
 95% và 99% của mọi điểm LRS có *trước* thời điểm đó (cần ít nhất 300 điểm), nên không dùng dữ liệu tương lai và
 ngưỡng thay đổi dần theo thời gian. Vì là phân vị nên về lâu dài khoảng 1% lần chụp ở mức "Cao" dù thị trường yên;
 mức này để theo dõi xu hướng, còn danh sách cảnh báo dựa trên điều kiện bên dưới.
 
-**Cảnh báo** khi z-score của log spread ≥ ngưỡng (hoặc của log độ sâu ≤ −ngưỡng) *và* spread ≥ 2,5 lần
-(độ sâu ≤ 0,4 lần) trung vị lịch sử của mã. Mean và độ lệch chuẩn chỉ dùng các lần chụp *trước* thời điểm xét,
-nên không nhìn trước tương lai. Ghi chú "Mỏng, không khớp" nghĩa là độ sâu rút mỏng trong khi gần như không có
+**Cảnh báo** khi (a) *spread mở rộng*: spread ≥ 2 bước giá, ≥ 2 lần trung vị baseline và chỉ ≤ 5% lần chụp cùng
+khung giờ trước đây rộng bằng hoặc hơn; hoặc (b) *độ sâu mỏng*: z độ sâu ≤ −ngưỡng và độ sâu ≤ 0,4 lần trung vị
+baseline. Điều kiện phải đúng ở ít nhất **2 lần chụp liên tiếp** trong cùng buổi mới thành một *đợt cảnh báo*;
+cảnh báo được gắn từ lần chụp thứ hai nên vẫn không nhìn trước tương lai. Mức "Cao": z độ sâu ≤ −(ngưỡng + 1,5)
+hoặc spread ≥ 3 lần mức thường lệ. Ghi chú "Mỏng, không khớp" nghĩa là độ sâu rút mỏng trong khi gần như không có
 khối lượng khớp; đây chỉ là dấu hiệu, không chứng minh có hủy lệnh ảo hay thao túng.
 
 **Phát lại** dựng lại một phiên đã ghi từng bước. Mọi phép tính, kể cả ngưỡng LRS, chỉ dùng dữ liệu đến thời
 điểm đang xem.
 
 **Giới hạn**
-- Z-score kém ổn định khi spread gần như không đổi; điều kiện tỷ lệ tối thiểu được thêm để tránh báo động giả.
-- Cửa sổ lịch sử chưa loại bỏ dạng chữ U của thanh khoản trong ngày (đầu và cuối phiên sôi động hơn giữa phiên).
+- Hai phiên đầu tiên chưa có baseline nên không có cảnh báo và điểm LRS. Khi mới có vài phiên, MAD chủ yếu phản ánh
+  dao động *trong* phiên, chưa phản ánh dao động *giữa các* phiên, nên cảnh báo có thể nhiều hơn; sẽ ổn định dần khi
+  ghi thêm phiên.
 - Ngưỡng và trọng số mặc định chưa được hiệu chỉnh trên dữ liệu thật.
 - Lúc mã khóa trần hoặc sàn, một bên sổ lệnh trống nên không tính được spread: các lần chụp đó không vào xếp hạng
   và cảnh báo mà được liệt kê riêng ở đầu trang.
