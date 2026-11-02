@@ -138,7 +138,8 @@ NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `
 - Cách 1 (khuyên dùng, một đăng nhập): `python scripts/run_live.py --ws`
 - Cách 2 (cửa sổ riêng): `python scripts/record_ws.py` cùng lúc với `python scripts/record_rest.py`
 - Dữ liệu vào bảng `ws_quotes` (thanh 5 giây, có `n_msgs`, `age_ms`), tin thô ở `data/raw/<ngày>/ws.jsonl.gz`, thống kê ở `ws_stats.json`.
-- Sau phiên: `python scripts/compare_ws_rest.py` để xem WebSocket khớp REST bao nhiêu phần trăm.
+- Từ 2/11/2026 bộ ghi gửi "sync" để lấy schema Avro của máy chủ mỗi lần kết nối và giải mã mọi kênh bằng schema (không có schema thì quay về cách giải mã cũ cho sổ lệnh). Bộ ghi đăng ký thêm kênh `marketData`: từng lần khớp (giá, khối lượng, số thứ tự, giờ sàn tới giây, `lastColor` B/S) vào bảng `ws_trades`, bỏ qua lần khớp trùng.
+- Sau phiên: `python scripts/compare_ws_rest.py` để xem WebSocket khớp REST bao nhiêu phần trăm, và tổng khối lượng các lần khớp WebSocket có bằng phần tăng khối lượng của REST không (kiểm tra mất tin). Phiên 30/10 (cách giải mã cũ): giá mức 1 khớp 98,8%, khối lượng mức 1 khớp 88-92%.
 - REST vẫn là nguồn chính thức; WebSocket chỉ để đối chiếu. Không dùng `record_stream.py` cùng lúc với REST (nó ghi vào bảng `quotes`).
 
 ## Xuất sổ lệnh WebSocket ra Excel

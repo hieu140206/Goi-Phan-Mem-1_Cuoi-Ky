@@ -102,7 +102,9 @@ def test_stream_forever_with_fake_socket(tmp_path, monkeypatch):
         await asyncio.wait_for(task, 3)
     asyncio.run(go())
     assert rec.stats["messages"] == len(_msgs())
-    assert sent[0] == "auth" and len(sent) == 5
+    assert sent[0] == "auth" and sent[1] == '{"type": "sync", "data": ""}'
+    channels = [json.loads(m)["channel"] for m in sent[2:]]
+    assert channels == ["stockInfo", "marketData", "marketInfo", "marketVolume", "marketSession"]
 
 
 def test_inspect_lunch_script(tmp_path):

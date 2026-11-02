@@ -8,9 +8,16 @@ Ghi ba thứ, tất cả ở nơi riêng nên không đụng dữ liệu REST:
   3. data/raw/<ngày>/ws_stats.json: thống kê chất lượng (số tin, số trường có giá trị mỗi tin, khoảng im lặng dài nhất,
      số lần kết nối lại) để biết mỗi tin là trạng thái ĐẦY ĐỦ hay chỉ phần thay đổi.
 
-Giả định đã có bằng chứng: tin stockInfo là trạng thái đầy đủ của mã (40/40 tin mẫu ngày 28/10 đều đủ 34/36 trường).
-Bộ ghi vẫn đo lại điều này mỗi phiên. Thời điểm là GIỜ NHẬN của máy bạn (tin không kèm giờ), nên có thể lệch vài trăm
-mili giây so với giờ thật của sàn. Chỉ ĐỌC dữ liệu, không gửi lệnh.
+  4. bảng `ws_trades`: TỪNG LẦN KHỚP của kênh marketData (giá, khối lượng, số thứ tự, giờ sàn, lastColor B/S).
+
+Giải mã (từ 2/11/2026): mỗi lần kết nối, bộ ghi gửi "sync" và máy chủ trả schema Avro của mọi kênh (đã chạy thật
+2/11 bằng scripts/probe_ws_schema.py: 26 schema, giải mã đúng stockInfo, marketData, marketInfo, marketSession).
+Có schema thì mọi tin được giải mã bằng schema (neo_api/avro_sync.py); chưa có (máy chủ không trả, hoặc thiếu
+fastavro) thì quay về cách giải mã thủ công cũ cho stockInfo, nên không mất dữ liệu sổ lệnh.
+
+Giả định đã có bằng chứng: tin stockInfo là trạng thái đầy đủ của mã (40/40 tin mẫu ngày 28/10 đều đủ 34/36 trường;
+máy chủ còn có kênh riêng stockInfoOnlyChange cho phần thay đổi). Thời điểm của thanh sổ lệnh là GIỜ NHẬN của máy bạn
+(stockInfo không kèm giờ); lần khớp marketData có giờ sàn chính xác tới giây. Chỉ ĐỌC dữ liệu, không gửi lệnh.
 """
 from __future__ import annotations
 
@@ -27,13 +34,14 @@ from typing import Callable
 
 import pandas as pd
 
+from neo_api.avro_sync import build_sync_message, is_sync_frame, parse_schema_payload, schema_hash
 from neo_api.binary_msg import is_stock_info, looks_binary, to_bytes
 from neo_api.config import TZ
-from neo_api.stream import AuthError, _authenticate, build_subscribe_message, connect_ws, parse_message
+from neo_api.stream import AuthError, _authenticate, build_subscribe_message, connect_ws, map_record, parse_message
 
 from .schema import QUOTE_COLUMNS, normalize_quotes
 from .snapshot import in_trading_hours
-from .storage import save_ws_quotes
+from .storage import WS_TRADE_COLUMNS, save_ws_quotes, save_ws_trades
 
 log = logging.getLogger(__name__)
 
@@ -56,9 +64,49 @@ class WsBarRecorder:
         self.last_msg_time: pd.Timestamp | None = None
         self.longest_gap = 0.0
         self.reconnects = 0
+        self.decoder = None                                      # AvroDecoder khi đã nhận schema từ máy chủ
+        self.names: dict[int, str | None] = {}
+        self.trades: list[dict] = []                             # lần khớp chờ ghi vào ws_trades
         self.stats: dict = {"messages": 0, "stock_info": 0, "other_by_type": Counter(), "decode_errors": 0,
                             "per_symbol": Counter(), "fields_filled_sum": 0, "fields_filled_min": None,
-                            "fields_total": 0}
+                            "fields_total": 0, "decode_mode": "thủ công", "schemas": 0,
+                            "trades": 0, "trades_saved": 0, "trades_skipped": 0, "trades_per_symbol": Counter()}
+
+    # ---------- schema ----------
+    def on_sync(self, frame: bytes) -> str | None:
+        """Xử lý tin sync (byte đầu 101). Trả tin xác nhận cần gửi lại máy chủ, hoặc None.
+
+        Có schema thì chuyển sang giải mã bằng schema và lưu mô tả định dạng vào data/ws_schemas.json.
+        Lỗi (thiếu fastavro, schema hỏng) chỉ ghi log: bộ ghi giữ cách giải mã thủ công."""
+        payload = bytes(frame[1:])
+        try:
+            schemas = parse_schema_payload(payload)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("WebSocket: không đọc được schema (%s), giữ cách giải mã thủ công", type(exc).__name__)
+            return None
+        if not schemas:
+            return None  # máy chủ báo schema đang giữ đã mới nhất
+        if not self.set_schemas(schemas):
+            return None
+        try:
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+            (self.data_dir / "ws_schemas.json").write_text(
+                json.dumps({str(k): v for k, v in schemas.items()}, ensure_ascii=False, indent=1), encoding="utf-8")
+        except OSError:
+            pass
+        return build_sync_message(schema_hash(payload))
+
+    def set_schemas(self, schemas: dict[int, dict]) -> bool:
+        try:
+            from neo_api.avro_sync import AvroDecoder  # noqa: PLC0415 - cần fastavro
+            self.decoder = AvroDecoder(schemas)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("WebSocket: không dùng được schema (%s). Cài: pip install fastavro", type(exc).__name__)
+            return False
+        self.names = {sid: (sch.get("name") if isinstance(sch, dict) else None) for sid, sch in schemas.items()}
+        self.stats["decode_mode"], self.stats["schemas"] = "schema", len(schemas)
+        log.info("WebSocket: đã nhận %d schema, giải mã mọi kênh bằng schema", len(schemas))
+        return True
 
     # ---------- nhận tin ----------
     def on_raw(self, raw: str | bytes, now: pd.Timestamp | None = None) -> None:
@@ -69,6 +117,9 @@ class WsBarRecorder:
         if self.last_msg_time is not None:
             self.longest_gap = max(self.longest_gap, (now - self.last_msg_time).total_seconds())
         self.last_msg_time = now
+        if self.decoder is not None and b and b[0] in self.decoder.parsed:
+            self._on_decoded(b, now)
+            return
         if not (looks_binary(raw) and is_stock_info(raw)):
             from neo_api.binary_msg import decode
             try:
@@ -82,18 +133,62 @@ class WsBarRecorder:
             self.stats["decode_errors"] += 1
             return
         for row in rows:
-            sym = str(row.get("symbol") or "").strip().upper()
-            if not sym:
-                continue
-            filled = sum(1 for v in row.values() if v is not None)
-            s = self.stats
-            s["stock_info"] += 1
-            s["per_symbol"][sym] += 1
-            s["fields_filled_sum"] += filled
-            s["fields_total"] = len(row)
-            s["fields_filled_min"] = filled if s["fields_filled_min"] is None else min(s["fields_filled_min"], filled)
-            self.state[sym] = (now, dict(row))   # trạng thái đầy đủ: thay thế hoàn toàn
-            self.n_msgs[sym] += 1
+            self._update_state(row, now)
+
+    def _update_state(self, row: dict, now: pd.Timestamp) -> None:
+        sym = str(row.get("symbol") or "").strip().upper()
+        if not sym:
+            return
+        filled = sum(1 for v in row.values() if v is not None)
+        s = self.stats
+        s["stock_info"] += 1
+        s["per_symbol"][sym] += 1
+        s["fields_filled_sum"] += filled
+        s["fields_total"] = len(row)
+        s["fields_filled_min"] = filled if s["fields_filled_min"] is None else min(s["fields_filled_min"], filled)
+        self.state[sym] = (now, dict(row))   # trạng thái đầy đủ: thay thế hoàn toàn
+        self.n_msgs[sym] += 1
+
+    def _on_decoded(self, b: bytes, now: pd.Timestamp) -> None:
+        try:
+            sid, _, rec = self.decoder.decode(bytes(b))
+        except Exception:  # noqa: BLE001 - tin hỏng: đếm, không làm dừng bộ ghi
+            self.stats["decode_errors"] += 1
+            return
+        name = self.names.get(sid) or f"id{sid}"
+        if name == "stockInfo":
+            self._update_state(map_record(rec), now)
+        elif name == "marketData":
+            self._add_trade(rec, now)
+        else:
+            self.stats["other_by_type"][name] += 1
+
+    def _add_trade(self, rec: dict, now: pd.Timestamp) -> None:
+        sym = str(rec.get("symbol") or "").strip().upper()
+        try:
+            seq = int(rec.get("sequenceMsg"))
+            # Giây UTC: 2/11/2026 tin 1793603108 = 14:05:08 giờ VN, khớp indexTime 14:05:10 của marketInfo.
+            ts = pd.Timestamp(int(rec.get("timestamp")), unit="s", tz="UTC").tz_convert(TZ)
+        except (TypeError, ValueError):
+            self.stats["trades_skipped"] += 1   # thiếu số thứ tự hoặc giờ: không ghi, không đoán
+            return
+        if not sym:
+            self.stats["trades_skipped"] += 1
+            return
+        self.trades.append({"ts": ts, "recv_ts": now.isoformat(), "symbol": sym, "seq": seq,
+                            "price": pd.to_numeric(rec.get("matchedPrice"), errors="coerce"),
+                            "volume": pd.to_numeric(rec.get("tradingVolume"), errors="coerce"),
+                            "side": rec.get("lastColor")})
+        self.stats["trades"] += 1
+        self.stats["trades_per_symbol"][sym] += 1
+
+    def flush_trades(self) -> int:
+        if not self.trades:
+            return 0
+        n = save_ws_trades(pd.DataFrame(self.trades, columns=WS_TRADE_COLUMNS), self.db_path)
+        self.stats["trades_saved"] += n
+        self.trades.clear()
+        return n
 
     # ---------- chụp theo mốc ----------
     def slot(self, now: pd.Timestamp) -> pd.Timestamp:
@@ -107,6 +202,7 @@ class WsBarRecorder:
             return 0
         self.last_slot = slot
         self.flush_raw(now)
+        self.flush_trades()  # lần khớp ghi cả ngoài phiên liên tục (ATO/ATC cũng là khớp thật); lọc khi phân tích
         if not in_trading_hours(now) or LUNCH_START <= slot.time() < LUNCH_END:
             self.n_msgs.clear()
             return 0
@@ -149,12 +245,16 @@ class WsBarRecorder:
                "symbols_seen": len(s["per_symbol"]), "per_symbol": dict(s["per_symbol"]),
                "fields_per_message_avg": round(s["fields_filled_sum"] / n, 2), "fields_per_message_min": s["fields_filled_min"],
                "fields_per_message_total": s["fields_total"], "longest_gap_seconds": round(self.longest_gap, 1),
-               "reconnects": self.reconnects, "interval_seconds": self.interval}
+               "reconnects": self.reconnects, "interval_seconds": self.interval,
+               "decode_mode": s["decode_mode"], "schemas": s["schemas"], "trades": s["trades"],
+               "trades_saved": s["trades_saved"], "trades_skipped": s["trades_skipped"],
+               "trades_per_symbol": dict(s["trades_per_symbol"])}
         (self.day_dir(now) / "ws_stats.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
 
     def close(self) -> None:
         now = self.last_slot or self.last_msg_time or self.now()
         self.flush_raw(now)
+        self.flush_trades()
         self.write_stats(now)
 
 
@@ -166,13 +266,21 @@ async def stream_forever(symbols: list[str], rec: WsBarRecorder, settings, token
         try:
             async with connect_ws(settings.ws_url) as ws:
                 await _authenticate(ws, token_provider())
+                await ws.send(build_sync_message(""))   # xin schema; trả lời được xử lý trong vòng nhận tin
                 await ws.send(build_subscribe_message(symbols, "stockInfo"))
+                await ws.send(build_subscribe_message(symbols, "marketData"))
                 await ws.send(build_subscribe_message(INDEX_CODES, "marketInfo"))
                 await ws.send(build_subscribe_message(INDEX_CODES, "marketVolume"))
                 await ws.send(build_subscribe_message(MARKETS, "marketSession"))
-                log.info("WebSocket: đã đăng ký %d mã VN30 và các kênh chỉ số, phiên", len(symbols))
+                log.info("WebSocket: đã đăng ký %d mã VN30 (sổ lệnh, từng lần khớp) và các kênh chỉ số, phiên",
+                         len(symbols))
                 backoff = 1.0
                 async for raw in ws:
+                    if is_sync_frame(raw):
+                        ack = rec.on_sync(raw)
+                        if ack:
+                            await ws.send(ack)
+                        continue
                     rec.on_raw(raw)
                     if stop and stop.is_set():
                         return
@@ -198,8 +306,9 @@ async def ws_main(symbols: list[str], rec: WsBarRecorder, settings, token_provid
             try:
                 n = rec.tick()
                 if n and rec.last_slot is not None and rec.last_slot.second == 0:
-                    log.info("WebSocket %s: %d mã, %d tin stockInfo", rec.last_slot.strftime("%H:%M:%S"), n,
-                             rec.stats["stock_info"])
+                    log.info("WebSocket %s: %d mã, %d tin stockInfo, %d lần khớp (giải mã %s)",
+                             rec.last_slot.strftime("%H:%M:%S"), n, rec.stats["stock_info"], rec.stats["trades"],
+                             rec.stats["decode_mode"])
             except Exception as exc:  # noqa: BLE001
                 log.warning("WebSocket: lỗi khi ghi thanh (%s): %s", type(exc).__name__, str(exc)[:100])
 

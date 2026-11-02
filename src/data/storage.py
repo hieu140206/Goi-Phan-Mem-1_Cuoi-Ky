@@ -13,6 +13,9 @@ from .market_board import BOARD_COLUMNS, DEPTH_COLUMNS, FUTURES_COLUMNS
 from .schema import QUOTE_COLUMNS
 
 WS_COLUMNS = [*QUOTE_COLUMNS, "n_msgs", "age_ms"]  # sổ lệnh từ WebSocket theo thanh 5 giây (thử nghiệm)
+# Từng lần khớp từ kênh WebSocket marketData. ts = giờ sàn (timestamp của tin, chính xác tới giây), recv_ts = giờ máy nhận.
+# side = lastColor nguyên văn ("B"/"S"; giả thuyết B = mua chủ động, khớp ở giá bán, CHƯA kiểm chứng đủ).
+WS_TRADE_COLUMNS = ["ts", "recv_ts", "symbol", "seq", "price", "volume", "side"]
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -34,6 +37,7 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     _create(conn, "depth_market", DEPTH_COLUMNS, ("ts", "grp"), "ts, grp")
     _create(conn, "futures", FUTURES_COLUMNS, ("ts", "symbol", "name", "maturity"), "ts, symbol")
     _create(conn, "ws_quotes", WS_COLUMNS, ("ts", "symbol"), "ts, symbol")
+    _create(conn, "ws_trades", WS_TRADE_COLUMNS, ("ts", "recv_ts", "symbol", "side"), "symbol, seq")
     return conn
 
 
@@ -73,6 +77,18 @@ def save_ws_quotes(df: pd.DataFrame, db_path: Path) -> int:
 
 def load_ws_quotes(db_path: Path) -> pd.DataFrame:
     return _read(db_path, "SELECT * FROM ws_quotes ORDER BY symbol, ts", (), WS_COLUMNS)
+
+
+def save_ws_trades(df: pd.DataFrame, db_path: Path) -> int:
+    """Lần khớp trùng (cùng mã, cùng số thứ tự, ví dụ nhận lại sau khi kết nối lại) bị bỏ qua."""
+    return _write(df, WS_TRADE_COLUMNS, "ws_trades", db_path, replace=False)
+
+
+def load_ws_trades(db_path: Path, day: str | None = None) -> pd.DataFrame:
+    sql, params = "SELECT * FROM ws_trades", ()
+    if day:
+        sql, params = sql + " WHERE substr(ts, 1, 10) = ?", (day,)
+    return _read(db_path, sql + " ORDER BY symbol, seq", params, WS_TRADE_COLUMNS)
 
 
 def save_futures(df: pd.DataFrame, db_path: Path) -> int:
