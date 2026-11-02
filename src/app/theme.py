@@ -36,8 +36,10 @@ def inject_css() -> None:
     .finding {{ font-size: 15px; line-height: 1.5; color: {INK}; margin: 2px 0 0 0; max-width: 78ch; }}
     .finding .neg {{ color: {NEG}; font-weight: 500; }}
     .stamp {{ font-size: 12px; color: {MUTED}; text-align: right; line-height: 1.5; }}
-    .notice {{ font-size: 12.5px; color: {WARN}; background: #fffbeb; border: 1px solid #fde68a;
-              border-radius: 6px; padding: 7px 12px; line-height: 1.5; }}
+    /* Thông báo trạng thái dữ liệu: nền trắng trung tính, vạch xanh bên trái (không dùng nền vàng/be). */
+    .notice {{ font-size: 12.5px; color: #334155; background: #ffffff; border: 1px solid {BORDER};
+              border-left: 3px solid {HUE}; border-radius: 6px; padding: 8px 12px; line-height: 1.5; }}
+    .notice b {{ color: {INK}; }}
 
     /* Dải chỉ số: một khung chia bằng vạch mảnh */
     .kpis {{ display: grid; grid-template-columns: repeat(4, 1fr); background: #ffffff;
@@ -58,7 +60,8 @@ def inject_css() -> None:
       .kpi.lead .v {{ font-size: 26px; }}
     }}
 
-    [data-testid="stSidebar"][aria-expanded="true"] {{ min-width: 288px; max-width: 288px; }}
+    /* Thanh bên đủ rộng để ô khoảng ngày không bị cắt chữ (Streamlit đặt width trực tiếp nên cần !important). */
+    [data-testid="stSidebar"][data-collapsed="false"] {{ width: 316px !important; min-width: 316px !important; }}
     @media (max-width: 900px) {{
       [data-testid="stMainBlockContainer"] {{ padding-left: 20px; padding-right: 20px; }}
     }}
@@ -92,6 +95,17 @@ def vn(x: float, d: int = 0) -> str:
 
 def group(label: str) -> None:
     st.html(f'<div class="grp">{label}</div>')
+
+
+def hide_lunch(fig: go.Figure) -> None:
+    """Ẩn khoảng nghỉ trưa 11:30-13:00 trên trục thời gian (chỉ đổi cách vẽ, không đổi số).
+    Trục x phải là giờ Việt Nam KHÔNG kèm múi giờ (dùng naive_vn). Chỗ dữ liệu đứt vẫn để đứt, không nối thẳng."""
+    fig.update_xaxes(rangebreaks=[dict(bounds=[11.5, 13], pattern="hour")])
+
+
+def naive_vn(ts: pd.Series) -> pd.Series:
+    """Giờ Việt Nam bỏ phần múi giờ, để Plotly vẽ đúng giờ địa phương và ẩn được giờ nghỉ trưa."""
+    return ts.dt.tz_convert("Asia/Ho_Chi_Minh").dt.tz_localize(None) if ts.dt.tz is not None else ts
 
 
 def base_layout(fig: go.Figure, height: int) -> None:

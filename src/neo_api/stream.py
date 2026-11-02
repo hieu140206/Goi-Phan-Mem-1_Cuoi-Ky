@@ -8,9 +8,9 @@ Quy trình theo tài liệu NEO:
   3. Gửi {"type": "sub", "channel": "stockInfo", "listId": [mã...]}.
   4. Nhận thông điệp stockInfo (giá, sổ lệnh 3 mức, OHLC, khối lượng, dữ liệu nước ngoài).
 
-Chưa xác nhận bằng dữ liệu thật (cần kiểm tra bằng `scripts/record_stream.py --dump`):
-  - thông điệp stockInfo có nằm trong lớp bọc {"data": ...} hay không (hàm extract_records xử lý cả hai);
-  - mỗi thông điệp là trạng thái đầy đủ của mã hay chỉ trường thay đổi (đang giả định là đầy đủ).
+Đã xác nhận bằng dữ liệu thật: máy chủ gửi tin NHỊ PHÂN (Avro), không phải JSON; mỗi tin stockInfo là trạng thái
+đầy đủ của mã (máy chủ có kênh riêng stockInfoOnlyChange cho phần thay đổi). Bộ ghi WebSocket hiện dùng schema máy chủ
+gửi (neo_api/avro_sync.py); phần đọc JSON ở đây giữ lại phòng khi NEO đổi về đúng tài liệu.
 Thông điệp NEO không có dấu thời gian, nên thời điểm do bộ ghi dữ liệu gán (xem data/snapshot.py).
 Tài liệu chưa công bố giới hạn tần suất của WebSocket; không áp 5 RPS của REST cho kênh này.
 """

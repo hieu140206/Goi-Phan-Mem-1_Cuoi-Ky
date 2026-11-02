@@ -8,11 +8,11 @@ Công cụ giúp nhà đầu tư cá nhân và chuyên viên phân tích thấy 
 > không gửi, sửa hay hủy lệnh thật.
 
 ## Trạng thái hiện tại
-- Chạy được với **dữ liệu mô phỏng** (`data_sample/`). Mọi số liệu trên giao diện khi dùng nguồn này chỉ để minh họa.
-- Phần WebSocket NEO (`src/neo_api/stream.py`) đã viết theo tài liệu (xác thực bằng tin nhắn, đăng ký kênh `stockInfo`,
-  tự kết nối lại và đăng ký lại), đã thử với máy chủ giả nhưng **chưa thử với NEO thật** vì chưa có token.
-  Việc đầu tiên khi có token: `python scripts/record_stream.py --dump 5 VCB` để xem định dạng thật.
-- Phần REST (`client.py`) đã xác nhận đăng nhập và `market/indexList` theo ví dụ chạy thật của NEO; các endpoint khác (chi tiết cổ phiếu, danh sách mã theo chỉ số) còn `TODO`.
+- Chạy trên **dữ liệu NEO thật** do bộ ghi lưu vào `data/market.db` (các phiên từ 28/10/2026). Dữ liệu mô phỏng
+  (`data_sample/`) vẫn có để chạy thử khi chưa có dữ liệu thật; giao diện ghi rõ khi đang dùng nguồn mô phỏng.
+- REST đã xác nhận bằng dữ liệu thật: 4.3, 4.4, 4.5, 4.6, 4.7 (30 mã VN30 một lần gọi), 4.9. REST là nguồn chính thức.
+- WebSocket đã kết nối thật qua `wss://`, nhận schema Avro bằng bước "sync" và giải mã được mọi kênh (2/11/2026).
+  Bộ ghi WebSocket chạy song song để đối chiếu với REST (xem mục cuối).
 - Ứng dụng chỉ đọc dữ liệu thị trường. Token của tài khoản chứng khoán có thể đặt lệnh thật, nên đừng bao giờ chia sẻ token hay mật khẩu.
 
 ## Cài đặt (Windows)
@@ -38,7 +38,8 @@ Chạy mọi lệnh từ thư mục gốc dự án.
    Tài liệu NEO ghi địa chỉ WebSocket `ws://` (không mã hóa) và token gửi trong tin nhắn xác thực; thử `wss://` nếu NEO hỗ trợ và tránh wifi công cộng.
 2. Đăng ký IP máy chạy với NEO (NEO kiểm soát địa chỉ IP).
 3. Kiểm tra đăng nhập và REST: `python scripts/check_neo.py` (không in token).
-4. Kiểm tra định dạng WebSocket thật: `python scripts/record_stream.py --dump 5 VCB` (chỉ in 5 thông điệp, không ghi gì). Che token và thông tin cá nhân nếu chụp lại.
+4. Kiểm tra WebSocket thật: `python scripts/probe_ws_schema.py` (lấy schema, nghe 20 giây, in mẫu từng kênh, không ghi dữ liệu).
+   Che dòng tài khoản và thông tin cá nhân nếu chụp lại.
 5. **Ghi dữ liệu mỗi phiên giao dịch (cách chính):** khoảng 9:05 mỗi ngày giao dịch, chạy `python scripts/record_rest.py`.
    Bộ ghi gọi REST 4.4 (trạng thái phiên) và 4.7 (sổ lệnh cả rổ VN30) mỗi 60 giây, tức 2 yêu cầu/phút.
    Chỉ lần chụp trong phiên khớp lệnh liên tục (`LO`) được đưa vào `data/market.db` cho Radar; phản hồi gốc mọi lần
@@ -75,10 +76,9 @@ Chạy mọi lệnh từ thư mục gốc dự án.
    **Bù chuỗi chỉ số cuối ngày:** bộ ghi mới lưu chuỗi 4.2 cho VN30, VN-Index, HNX-Index, UPCoM-Index khi hết phiên. Phiên ghi bằng
    bản cũ (như 28/10) chỉ có VN30 và VN-Index; chạy `python scripts/fetch_day_index.py` SAU 14:45 CÙNG NGÀY để bù HNX và UPCoM
    (chỉ thêm phần thiếu, từ chối nếu chạy sớm hay sang ngày khác vì chuỗi 4.2 không có ngày).
-6. WebSocket (`record_stream.py`, `explore_channels.py`): đã kết nối được qua `wss://` (máy chủ chuyển `ws://` sang
-   `wss://`, khác tài liệu). Tin trả về là nhị phân (giống Avro), không phải JSON như tài liệu; `binary_msg.py` giải mã
-   được kênh `marketSession` (thứ tự trường khớp tài liệu 6.2). Các kênh còn lại cần kiểm tra thêm trong giờ giao dịch,
-   nên WebSocket đang là nguồn phụ.
+6. WebSocket: máy chủ chuyển `ws://` sang `wss://` (khác tài liệu) và gửi tin nhị phân Avro, không phải JSON như tài liệu.
+   Từ 2/11/2026 giải mã bằng schema máy chủ gửi qua bước "sync" (`avro_sync.py`); `binary_msg.py` là cách giải mã thủ công
+   cũ, dùng dự phòng. WebSocket đang là nguồn phụ để đối chiếu.
 
 ## Hướng mở rộng (gợi ý 2 của đề: bộ lọc cổ phiếu thông minh)
 Sau khi bản thanh khoản chạy ổn trên dữ liệu thật, bổ sung xếp hạng đa yếu tố: giữ thanh khoản và mất cân bằng làm lõi,
@@ -107,7 +107,8 @@ NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `
 - **Tổng hợp theo kỳ:** xem các phiên đã chọn, lọc theo mã.
 - **Phát lại một phiên:** tua từng bước (nút Phát, Dừng, Về đầu) để tái hiện một phiên đã ghi, dùng được khi sàn đã đóng cửa.
   Dashboard đọc từ tệp mẫu hoặc SQLite nên không giữ WebSocket bên trong Streamlit; script ghi dữ liệu chạy riêng.
-- Chưa có tự làm mới theo thời gian thực: dùng nút "Tải lại dữ liệu".
+- **Trực tiếp:** bật công tắc "Trực tiếp: tự cập nhật" (hoặc chạy `python scripts/run_live.py`) để dashboard tự đọc lại khi
+  bộ ghi ghi thêm dữ liệu; nút "Tải lại" đọc lại ngay.
 
 ## Phương pháp tóm tắt
 - Chỉ dùng các lần chụp trong phiên khớp lệnh liên tục (09:15-11:30, 13:00-14:30); loại ATO, ATC, nghỉ trưa.
@@ -140,7 +141,7 @@ NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `
 - Dữ liệu vào bảng `ws_quotes` (thanh 5 giây, có `n_msgs`, `age_ms`), tin thô ở `data/raw/<ngày>/ws.jsonl.gz`, thống kê ở `ws_stats.json`.
 - Từ 2/11/2026 bộ ghi gửi "sync" để lấy schema Avro của máy chủ mỗi lần kết nối và giải mã mọi kênh bằng schema (không có schema thì quay về cách giải mã cũ cho sổ lệnh). Bộ ghi đăng ký thêm kênh `marketData`: từng lần khớp (giá, khối lượng, số thứ tự, giờ sàn tới giây, `lastColor` B/S) vào bảng `ws_trades`, bỏ qua lần khớp trùng.
 - Sau phiên: `python scripts/compare_ws_rest.py` để xem WebSocket khớp REST bao nhiêu phần trăm, và tổng khối lượng các lần khớp WebSocket có bằng phần tăng khối lượng của REST không (kiểm tra mất tin). Phiên 30/10 (cách giải mã cũ): giá mức 1 khớp 98,8%, khối lượng mức 1 khớp 88-92%.
-- REST vẫn là nguồn chính thức; WebSocket chỉ để đối chiếu. Không dùng `record_stream.py` cùng lúc với REST (nó ghi vào bảng `quotes`).
+- REST vẫn là nguồn chính thức; WebSocket chỉ để đối chiếu (ghi vào bảng riêng `ws_quotes`, `ws_trades`).
 
 ## Xuất sổ lệnh WebSocket ra Excel
 `python scripts/export_data.py --ws --excel --date 2026-10-30` (bỏ `--date` để xuất mọi ngày). File nằm ở `data/export/so_lenh_ws_<ngày>.csv` và `.xlsx`.

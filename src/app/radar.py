@@ -25,7 +25,7 @@ import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 from plotly.subplots import make_subplots  # noqa: E402
 
-from analytics.baseline import detect_anomalies_tod  # noqa: E402
+from analytics.baseline import bucket_label, detect_anomalies_tod, tod_bucket  # noqa: E402
 from analytics.lrs import MIN_OBS_PAST, DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
 from data.schema import limit_lock_side, normalize_quotes  # noqa: E402
 from data.storage import count_rows, load_quotes  # noqa: E402
@@ -313,7 +313,7 @@ if not locked.empty:
     st.html('<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
             "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>")
 
-alert_sub = (f'{vn(n_alerts)} lần chụp · {n_alert_syms} mã · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
+alert_sub = (f'{vn(n_alerts)} lần chụp · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
              if n_events else "không có mã nào vượt ngưỡng")
 st.html(
     '<div class="kpis">'
@@ -356,21 +356,22 @@ with left, st.container(border=True, key="panel_rank"):
         selection_mode="single-row",
         alt="Bảng xếp hạng thanh khoản các mã VN30",
         column_config={
-            "symbol": st.column_config.TextColumn("Mã", width=56, pinned=True),
+            "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
             "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f",
-                                                     color="#8a8a8a", width=76),
+                                                     color="#8a8a8a", width=64),
             "spread_ticks": st.column_config.NumberColumn(
-                "Spread (bước)", width=96,
+                "Bước giá", width=70,
                 help="Spread trung bình tính bằng số bước giá; 1,00 là hẹp nhất có thể. Dùng để chấm điểm."),
             "rel_spread_bps": st.column_config.NumberColumn(
-                "Spread (bps)", width=96,
+                "Spread bps", width=76,
                 help="Spread tương đối trung vị: chi phí mua rồi bán ngay. Mã giá thấp có bps cao vì bước giá "
                      "chiếm tỷ lệ lớn, nên cột này không dùng để so sánh thanh khoản giữa các mã."),
-            "depth_m": st.column_config.NumberColumn("Độ sâu (tr đ)", width=96),
-            "lrs": st.column_config.NumberColumn("LRS", width=60,
+            "depth_m": st.column_config.NumberColumn("Độ sâu (tr)", width=80,
+                                                     help="Độ sâu 3 mức giá trung vị, triệu đồng"),
+            "lrs": st.column_config.NumberColumn("LRS", width=54,
                                                  help="Điểm rủi ro thanh khoản ở lần chụp mới nhất. Cao hơn là rủi ro hơn."),
-            "lrs_tier": st.column_config.TextColumn("Mức", width=88),
-            "alerts": st.column_config.NumberColumn("Cảnh báo", format="%d", help="Số đợt cảnh báo trong kỳ"),
+            "lrs_tier": st.column_config.TextColumn("Mức", width=84),
+            "alerts": st.column_config.NumberColumn("Đợt CB", format="%d", width=60, help="Số đợt cảnh báo trong kỳ"),
         },
     )
 with right, st.container(border=True, key="panel_alerts"):
@@ -408,13 +409,15 @@ with right, st.container(border=True, key="panel_alerts"):
 # ---------- bản đồ nhiệt ----------
 hm = view.copy()
 hm["ratio"] = hm["rel_spread_bps"] / hm.groupby("symbol")["rel_spread_bps"].transform("median")
-hm["bucket"] = hm["ts"].dt.floor("30min").dt.strftime("%H:%M")
+# Khung 30 phút tính từ đầu mỗi buổi khớp lệnh liên tục (9:15, 9:45, ... 13:00, ...), trùng khung của baseline cảnh báo.
+hm["bucket"] = tod_bucket(hm["ts"])
 pivot = hm.pivot_table(index="symbol", columns="bucket", values="ratio", aggfunc="mean")
 pivot = pivot.reindex(index=ranking["symbol"].tolist(), columns=sorted(pivot.columns))
+pivot.columns = [bucket_label(b) for b in pivot.columns]
 
 with st.container(border=True, key="panel_heatmap"):
     st.subheader("Chi phí giao dịch theo giờ", anchor=False)
-    st.caption("Spread trung bình mỗi khung 30 phút, tính bằng số lần so với mức trung vị của chính mã. "
+    st.caption("Spread trung bình mỗi khung 30 phút (ghi giờ bắt đầu khung), tính bằng số lần so với mức trung vị của chính mã. "
                "Ô xám là bình thường; ô càng đỏ, mua bán càng đắt hơn thường lệ.")
     fig_hm = go.Figure(
         go.Heatmap(
@@ -447,7 +450,7 @@ if st.session_state.get("sym") not in sym_list:  # mở sẵn mã nhiều cảnh
 with st.container(border=True, key="panel_detail"):
     with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
         st.subheader("Diễn biến trong phiên", anchor=False,
-                     help="Spread, độ sâu và điểm rủi ro LRS của một mã; chấm đỏ là các thời điểm bị cảnh báo.")
+                     help="Spread, độ sâu và điểm rủi ro LRS của một mã; dải tô đỏ nhạt là các đợt cảnh báo.")
         sym = st.selectbox("Mã", sym_list, key="sym", width=140)
         if mode == MODE_REPLAY:
             day = replay_day
@@ -493,12 +496,11 @@ with st.container(border=True, key="panel_detail"):
                                      hovertemplate=f"{label.split(' (')[0]} %{{y:.2f}}<extra></extra>"), 3, 1)
             fig.add_annotation(x=line["x"].iloc[-1], y=line[col].iloc[-1], text=label, showarrow=False, row=3, col=1,
                                xanchor="right", yanchor=ypos, font=dict(size=11, color=color))
-        if not flagged.empty:
-            for row_i, ycol, scale in ((1, "rel_spread_bps", 1), (2, "depth_value", 1e6), (3, "lrs", 1)):
-                fig.add_trace(go.Scatter(x=flagged["x"], y=flagged[ycol] / scale, mode="markers",
-                                         name="Cảnh báo", showlegend=False,
-                                         marker=dict(color=NEG, size=8, line=dict(color="#ffffff", width=1.5)),
-                                         hovertemplate="%{x|%H:%M}  cảnh báo<extra></extra>"), row_i, 1)
+        # Mỗi đợt cảnh báo là một dải tô đỏ nhạt (thay cho chấm đỏ từng phút, vốn dày đặc khi đợt kéo dài).
+        runs = (one["is_alert"] != one["is_alert"].shift()).cumsum()
+        for _, g in one[one["is_alert"]].groupby(runs[one["is_alert"]]):
+            fig.add_vrect(x0=g["x"].iloc[0] - pd.Timedelta(seconds=30), x1=g["x"].iloc[-1] + pd.Timedelta(seconds=30),
+                          fillcolor=NEG, opacity=0.12, line_width=0, layer="below", row="all", col=1)
         fig.update_xaxes(rangebreaks=[dict(bounds=[11.5, 13], pattern="hour")], showgrid=False, tickformat="%H:%M",
                          showline=True, linecolor=BORDER, tickfont=dict(color=MUTED))
         fig.update_yaxes(gridcolor=GRID, zeroline=False, nticks=5, tickfont=dict(color=MUTED), automargin=True,

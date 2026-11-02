@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
+from plotly.subplots import make_subplots  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from board import board_css, board_html  # noqa: E402
@@ -29,7 +30,7 @@ from data.storage import (data_days, latest_ts, load_board, load_depth_market, l
 from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
-from theme import BORDER, FAINT, FONT, GRID, HUE, INK, MUTED, NEG, base_layout, group, vn  # noqa: E402
+from theme import BORDER, FAINT, FONT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, naive_vn, vn  # noqa: E402
 
 def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
     """Chèn dòng trống vào chỗ dữ liệu đứt quãng (nghỉ trưa) để biểu đồ không nối thẳng qua khoảng nghỉ."""
@@ -385,14 +386,16 @@ with c1, st.container(border=True, key="panel_depth"):
         st.caption(f"Tổng giá trị đang chờ khớp ở 3 mức giá tốt nhất của {n} mã, bên mua và bên bán (tỷ đồng). "
                    "Đường mua và bán càng cao thì thị trường càng sâu, một lệnh lớn càng ít làm giá chạy.")
         depth = with_gaps(depth)
+        x = naive_vn(depth["ts"])
         fig = go.Figure()
-        fig.add_scatter(x=depth["ts"], y=depth["bid_value"], name="Bên mua", mode="lines", line=dict(color=HUE, width=1.8),
+        fig.add_scatter(x=x, y=depth["bid_value"], name="Bên mua", mode="lines", line=dict(color=HUE, width=1.8),
                         hovertemplate="%{x|%H:%M} · %{y:.1f} tỷ<extra>Bên mua</extra>")
-        fig.add_scatter(x=depth["ts"], y=depth["ask_value"], name="Bên bán", mode="lines", line=dict(color=INK, width=1.4, dash="dot"),
+        fig.add_scatter(x=x, y=depth["ask_value"], name="Bên bán", mode="lines", line=dict(color=INK, width=1.4, dash="dot"),
                         hovertemplate="%{x|%H:%M} · %{y:.1f} tỷ<extra>Bên bán</extra>")
         fig.update_layout(legend=dict(orientation="h", y=1.12, x=0))
         fig.update_xaxes(gridcolor=GRID, tickformat="%H:%M")
         fig.update_yaxes(gridcolor=GRID, ticksuffix=" tỷ", rangemode="tozero")
+        hide_lunch(fig)
         finish(fig, 280)
         st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_depth")
         last = depth.dropna(subset=["bid_value"]).iloc[-1]
@@ -406,17 +409,27 @@ with st.container(border=True, key="panel_liquidity"):
     st.subheader("Thanh khoản thị trường", anchor=False)
     tv = traded_value(idx, day)
     if not tv.empty:
-        st.caption("Giá trị giao dịch lũy kế trong ngày của ba sàn (tỷ đồng, NEO 4.3).")
+        st.caption("Giá trị giao dịch lũy kế trong ngày của từng sàn (tỷ đồng, NEO 4.3). Mỗi sàn một ô với thang đo riêng, "
+                   "vì HOSE lớn gấp nhiều lần HNX và UPCoM nên vẽ chung thì hai sàn nhỏ nằm sát đáy.")
         tv_plot = with_gaps(tv)
-        fig = go.Figure()
-        for col, label, color in (("HOSE_cum", "HOSE", HUE), ("HNX_cum", "HNX", INK), ("UPCoM_cum", "UPCoM", "#8a8a8a")):
-            if col in tv:
-                fig.add_scatter(x=tv_plot["ts"], y=tv_plot[col], name=label, mode="lines", line=dict(color=color, width=1.6),
-                                hovertemplate="%{x|%H:%M} · %{y:,.0f} tỷ<extra>" + label + "</extra>")
-        fig.update_layout(legend=dict(orientation="h", y=1.12, x=0))
-        fig.update_xaxes(gridcolor=GRID, tickformat="%H:%M")
-        fig.update_yaxes(gridcolor=GRID, ticksuffix=" tỷ", rangemode="tozero")
-        finish(fig, 300)
+        x = naive_vn(tv_plot["ts"])
+        series = [(c, lb) for c, lb in (("HOSE_cum", "HOSE"), ("HNX_cum", "HNX"), ("UPCoM_cum", "UPCoM")) if c in tv]
+
+        def _last(col):
+            v = tv[col].dropna()
+            return f" · {vn(v.iloc[-1])} tỷ" if len(v) else ""
+        fig = make_subplots(rows=1, cols=max(len(series), 1), horizontal_spacing=0.07,
+                            subplot_titles=[f"{lb}{_last(c)}" for c, lb in series])
+        for i, (col, label) in enumerate(series, start=1):
+            fig.add_scatter(x=x, y=tv_plot[col], name=label, mode="lines", line=dict(color=HUE, width=1.8),
+                            fill="tozeroy", fillcolor="rgba(29,95,191,0.07)", showlegend=False,
+                            hovertemplate="%{x|%H:%M} · %{y:,.0f} tỷ<extra>" + label + "</extra>", row=1, col=i)
+        fig.update_xaxes(gridcolor=GRID, tickformat="%H:%M", nticks=4)
+        fig.update_yaxes(gridcolor=GRID, ticksuffix=" tỷ", rangemode="tozero", nticks=5)
+        hide_lunch(fig)
+        finish(fig, 280)
+        for a in fig.layout.annotations:
+            a.update(font=dict(size=12, color=INK), x=a.x, xanchor="center")
         st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_liq")
         st.caption(f"Tổng ba sàn đến {tv['ts'].iloc[-1]:%H:%M}: {vn(tv['total_cum'].iloc[-1])} tỷ đồng.")
     else:
@@ -435,12 +448,13 @@ with st.container(border=True, key="panel_liquidity"):
                        "từ chuỗi theo phút của NEO 4.2.")
             fig = go.Figure()
             for code, color, f in vol:
-                fig.add_scatter(x=f["ts"], y=f["total_volume"] / 1e6, name=INDEX_NAMES.get(code, code), mode="lines",
+                fig.add_scatter(x=naive_vn(f["ts"]), y=f["total_volume"] / 1e6, name=INDEX_NAMES.get(code, code), mode="lines",
                                 line=dict(color=color, width=1.6),
                                 hovertemplate="%{x|%H:%M} · %{y:,.0f} triệu cp<extra>" + code + "</extra>")
             fig.update_layout(legend=dict(orientation="h", y=1.12, x=0))
             fig.update_xaxes(gridcolor=GRID, tickformat="%H:%M")
             fig.update_yaxes(gridcolor=GRID, ticksuffix=" tr", rangemode="tozero")
+            hide_lunch(fig)
             finish(fig, 280)
             st.plotly_chart(fig, config={"displayModeBar": False}, theme=None, key="ov_liq_vol")
 
