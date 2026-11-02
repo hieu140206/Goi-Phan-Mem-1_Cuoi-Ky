@@ -20,7 +20,9 @@ import streamlit as st  # noqa: E402
 
 from data.storage import live_stamp  # noqa: E402
 from neo_api.config import get_settings  # noqa: E402
+from shared import WATCHLIST_PATH, analyzed_data, current_source, screen_for_day  # noqa: E402
 from theme import BRAND_MARK, group, inject_css  # noqa: E402
+from watchlist import load_watchlist  # noqa: E402
 
 LIVE_EVERY_SECONDS = 15  # cứ 15 giây xem bộ ghi có ghi thêm gì chưa; bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa ~1 phút
 
@@ -42,6 +44,39 @@ def _live_watch(db_path: Path, seen: float | None) -> None:
         st.rerun()
 
 
+PAGE_OVERVIEW = st.Page("overview.py", title="Tổng quan thị trường", icon=":material/dashboard:", url_path="tong-quan",
+                        default=True)
+PAGE_SCREEN = st.Page("screen_page.py", title="Bộ lọc cổ phiếu", icon=":material/filter_alt:", url_path="bo-loc")
+PAGE_RADAR = st.Page("radar.py", title="Radar thanh khoản", icon=":material/radar:", url_path="radar")
+PAGE_STOCK = st.Page("stock.py", title="Chi tiết mã", icon=":material/candlestick_chart:", url_path="ma")
+
+
+def _watchlist_sidebar() -> None:
+    """Danh sách theo dõi: mỗi mã là một liên kết sang Chi tiết mã; ở phiên gần nhất, mã bị cổng thanh khoản Loại hoặc
+    có đợt cảnh báo được đánh dấu."""
+    group("Theo dõi")
+    watch = load_watchlist(WATCHLIST_PATH)
+    if not watch:
+        st.caption("Chưa theo dõi mã nào. Mở một mã ở Chi tiết mã rồi bấm \"Theo dõi mã này\".")
+        return
+    info = {}
+    source = current_source()
+    if source is not None:
+        try:
+            last_day = analyzed_data(source)["ts"].dt.date.max()
+            res = screen_for_day(source, last_day)
+            if res is not None:
+                info = res["result"].set_index("symbol")[["gate", "alerts"]].to_dict("index")
+        except Exception:  # noqa: BLE001 - thanh bên không được làm hỏng trang
+            info = {}
+    for sym in watch:
+        i = info.get(sym, {})
+        n, gate = int(i.get("alerts", 0) or 0), i.get("gate", "")
+        note = " · Loại" if gate == "Loại" else (f" · {n} đợt cảnh báo" if n else "")
+        st.page_link(PAGE_STOCK, label=sym + note, query_params={"ma": sym},
+                     icon=":material/warning:" if note else ":material/star:")
+
+
 with st.sidebar:
     st.html(f'<div class="brand">{BRAND_MARK}<div><b>Thị trường VN</b>'
             '<span>Dữ liệu NEO API · VPBankS</span></div></div>')
@@ -53,11 +88,7 @@ with st.sidebar:
     if live:
         _live_watch(settings.db_path, _db_stamp(settings.db_path))
 
-pages = st.navigation(
-    [
-        st.Page("overview.py", title="Tổng quan thị trường", icon=":material/dashboard:", url_path="tong-quan", default=True),
-        st.Page("radar.py", title="Radar thanh khoản", icon=":material/radar:", url_path="radar"),
-    ],
-    position="top",
-)
+pages = st.navigation([PAGE_OVERVIEW, PAGE_SCREEN, PAGE_RADAR, PAGE_STOCK], position="top")
+with st.sidebar:
+    _watchlist_sidebar()
 pages.run()

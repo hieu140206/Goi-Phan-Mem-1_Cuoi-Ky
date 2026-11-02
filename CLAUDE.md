@@ -6,7 +6,9 @@ Sản phẩm: ứng dụng Python + Streamlit dùng **NEO API của VPBankS** l�
 Chuỗi giá trị: NEO API -> thu thập -> chuẩn hóa/lưu (SQLite) -> logic tài chính -> phân tích -> dashboard -> người dùng.
 Chấm 100 điểm; **trần 60 điểm nếu không chạy được, 50 nếu NEO không phải nguồn lõi**.
 
-Lõi đề tài: **Radar thanh khoản VN30** (spread tương đối bps, độ sâu, mất cân bằng mua/bán, z-score trượt, cảnh báo bất thường, điểm LRS).
+Định vị (2/11): **Bộ lọc cổ phiếu VN30** (gợi ý 2) xây trên **Radar thanh khoản** (gợi ý 3, 6): Radar làm cổng thanh khoản,
+xếp hạng theo dòng tiền nước ngoài và động lượng so VN30; 4 trang Tổng quan, Bộ lọc, Radar, Chi tiết mã nối qua `?ma=<mã>`.
+Lõi phân tích: **Radar thanh khoản VN30** (spread tương đối bps, độ sâu, mất cân bằng mua/bán, z-score trượt, cảnh báo bất thường, điểm LRS).
 Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nhóm, độ sâu, độ rộng, thanh khoản) là phần mở rộng.
 
 ## Quy tắc bất di bất dịch
@@ -15,13 +17,14 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 3. **Dữ liệu luôn phải đúng, hơn mọi thứ khác.** Thiếu thì để trống hoặc "–", không đoán, không điền, không nội suy. Đổi giao diện không được làm đổi số.
 4. Giới hạn NEO: **5 yêu cầu/giây**, IP phải đăng ký. Không tăng tần suất gọi khi chưa đo.
 5. Người dùng là **sinh viên mới học**: giải thích ngắn gọn, tiếng Việt, tránh thuật ngữ không cần thiết. Việc lớn thì **nhận xét và hỏi trước** rồi mới làm; không cắt phạm vi tự ý.
-6. Làm xong phải chạy `python -m pytest` (hiện **182 passed**) và xem lại giao diện trước khi báo xong.
+6. Làm xong phải chạy `python -m pytest` (hiện **201 passed**) và xem lại giao diện trước khi báo xong.
 
 ## Kiến trúc
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), stream WebSocket (nhị phân, phụ, mới giải mã được `stockInfo`).
 - `src/data/`: schema + làm sạch, storage (SQLite `data/market.db`), rest_recorder (bộ ghi), market_board (bảng giá nhiều sàn, phái sinh), overview (hàm dữ liệu trang Tổng quan), backfill, market_day.
 - `src/finance/`: liquidity, anomaly, factors, sessions (lọc phiên khớp lệnh liên tục).
-- `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp), `overview.py` (Tổng quan), `radar.py`, `board.py` (bảng giá HTML), `theme.py`.
+- `src/analytics/`: baseline (cảnh báo theo khung giờ), lrs, screener (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường).
+- `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py` (Tổng quan), `screen_page.py` (Bộ lọc), `radar.py`, `stock.py` (Chi tiết mã), `shared.py` (tải và phân tích dùng chung, cùng số trên mọi trang), `charts.py`, `watchlist.py` (`data/watchlist.json`, không commit), `board.py` (bảng giá HTML), `theme.py`.
 - `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`, `backfill_extra.py`, `fetch_day_index.py`.
 - Dashboard **chỉ đọc** market.db, không giữ mật khẩu. Bộ ghi và dashboard là hai phần riêng.
 

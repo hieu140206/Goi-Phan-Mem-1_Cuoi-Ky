@@ -10,3 +10,4 @@ venv/
 data/raw/
 data/raw_samples/
 data/export/
+data/watchlist.json

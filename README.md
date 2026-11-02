@@ -1,8 +1,21 @@
-# Radar thanh khoản VN30
+# Bộ lọc cổ phiếu VN30 với Radar thanh khoản
 
 Đồ án cá nhân cuối kỳ, học phần Gói phần mềm ứng dụng cho tài chính 1 (Khoa Tài chính Ngân hàng, UEL).
-Công cụ giúp nhà đầu tư cá nhân và chuyên viên phân tích thấy mã nào đang khó mua bán, và khi nào spread hoặc
-độ dày sổ lệnh lệch khỏi mức thường lệ của chính mã đó. Nguồn dữ liệu chính: NEO API của VPBankS (WebSocket sổ lệnh 3 mức giá).
+Bộ lọc cổ phiếu VN30 cho nhà đầu tư cá nhân (gợi ý 2 của đề), xây trên Radar thanh khoản (gợi ý 3 và 6): Radar cho biết
+mã nào đang khó mua bán và khi nào spread hoặc độ dày sổ lệnh lệch khỏi mức thường lệ của chính mã đó; bộ lọc dùng kết quả
+này làm cổng, rồi xếp hạng các mã qua cổng theo dòng tiền nước ngoài và động lượng giá so với VN30.
+Nguồn dữ liệu chính: NEO API của VPBankS (REST, WebSocket để đối chiếu).
+
+## Bốn trang, nối với nhau qua "một mã"
+| Trang | Nội dung |
+| --- | --- |
+| Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá VN30 để mở hồ sơ mã |
+| Bộ lọc cổ phiếu (`screen_page.py`) | Bối cảnh thị trường; cổng thanh khoản (Đạt / Chú ý / Loại); xếp hạng theo dòng tiền ngoại và động lượng; chọn dòng để mở hồ sơ mã |
+| Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên |
+| Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi |
+
+Danh sách theo dõi ở thanh bên (mọi trang) lưu trong `data/watchlist.json` (không commit); mã bị Loại hoặc có đợt cảnh báo
+được đánh dấu. Số liệu dùng chung ở `src/app/shared.py`, nên cùng một mã luôn ra cùng một con số trên mọi trang.
 
 > Đây là công cụ phân tích học thuật, không phải khuyến nghị đầu tư. Ứng dụng chỉ đọc dữ liệu thị trường,
 > không gửi, sửa hay hủy lệnh thật.
@@ -50,7 +63,7 @@ Chạy mọi lệnh từ thư mục gốc dự án.
    "Trực tiếp: tự cập nhật" đã bật. Dashboard chỉ đọc `market.db` và tự tải lại khi bộ ghi ghi thêm, nên dữ liệu trễ tối đa
    khoảng 1 phút (bộ ghi chụp mỗi phút). Bộ ghi tự dừng khi hết phiên, dashboard vẫn mở để xem lại; Ctrl+C để tắt cả hai.
    Cảnh báo trực tiếp và cảnh báo khi phát lại cùng một cách tính (chỉ dùng dữ liệu trước thời điểm đó, không nhìn trước).
-   **Hai trang của ứng dụng:** `src/app/app.py` là cổng vào (điều hướng, công tắc Trực tiếp). Trang **Tổng quan thị trường**
+   **Các trang của ứng dụng** (xem bảng ở đầu README): `src/app/app.py` là cổng vào (điều hướng, công tắc Trực tiếp). Trang **Tổng quan thị trường**
    (`overview.py`) có 4 thẻ chỉ số VN-Index, VN30, HNX-Index, UPCoM-Index, bảng giá VN30, độ sâu, độ rộng và thanh khoản thị trường.
    Trang **Radar thanh khoản** (`radar.py`) là phần phân tích sổ lệnh và cảnh báo. Giao diện dùng chung nằm ở `theme.py`.
    Bộ ghi mỗi phút còn gọi NEO 4.3 và lưu các chỉ số vào bảng `market_index` trong `market.db` (3 yêu cầu API mỗi phút);
@@ -80,10 +93,14 @@ Chạy mọi lệnh từ thư mục gốc dự án.
    Từ 2/11/2026 giải mã bằng schema máy chủ gửi qua bước "sync" (`avro_sync.py`); `binary_msg.py` là cách giải mã thủ công
    cũ, dùng dự phòng. WebSocket đang là nguồn phụ để đối chiếu.
 
-## Hướng mở rộng (gợi ý 2 của đề: bộ lọc cổ phiếu thông minh)
-Sau khi bản thanh khoản chạy ổn trên dữ liệu thật, bổ sung xếp hạng đa yếu tố: giữ thanh khoản và mất cân bằng làm lõi,
-thêm tối đa 2 yếu tố là dòng tiền nước ngoài và động lượng giá. Đây là công cụ sàng lọc và so sánh, không dự báo giá;
-trọng số phải có lý do và kết quả phải kiểm chứng không nhìn trước tương lai. Chưa cài đặt, chỉ có trong kế hoạch.
+## Bộ lọc cổ phiếu (gợi ý 2 của đề), logic ở `src/analytics/screener.py`
+1. **Cổng thanh khoản** (cùng số với Radar): Loại nếu điểm thanh khoản trong phiên ≤ 33,3 (mốc "Yếu", chỉnh được);
+   Chú ý nếu có ít nhất một đợt cảnh báo; còn lại Đạt. Điểm thanh khoản là xếp hạng tương đối nên khoảng 1/3 mã luôn bị Loại.
+2. **Yếu tố** (chỉ cho mã qua cổng): dòng tiền nước ngoài = mua ròng / giá trị giao dịch; động lượng = giá khớp / tham chiếu − 1
+   trừ % thay đổi VN30 cùng thời điểm. Động lượng 5 phiên chỉ dùng giá đóng cửa hợp lệ (bảng giá chụp từ 14:45, đã có ATC).
+3. **Điểm** = trung bình thứ hạng phần trăm hai yếu tố, trọng số bằng nhau.
+4. **Bối cảnh thị trường**: số mã tăng/giảm VN-Index, % VN30, basis hợp đồng gần nhất, khối ngoại ròng VN30; chỉ nêu sự kiện.
+Đây là công cụ sàng lọc và so sánh, không dự báo giá. Chưa kiểm chứng điểm cao có đi kèm lợi suất ngày sau tốt hơn: cần thêm phiên.
 
 ## Cấu trúc
 ```

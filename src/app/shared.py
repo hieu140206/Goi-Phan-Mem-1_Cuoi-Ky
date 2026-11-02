@@ -1,0 +1,221 @@
+"""Số liệu dùng chung cho mọi trang (Radar, Bộ lọc, Chi tiết mã).
+
+Mọi trang gọi CÙNG các hàm có cache ở đây với CÙNG tham số, nên cùng một mã luôn ra cùng một con số trên mọi trang
+(điểm thanh khoản, số đợt cảnh báo, LRS). Tham số phân tích người dùng chỉnh ở Radar được lưu vào st.session_state["params"]
+(khóa thường, không gắn widget, nên không bị Streamlit xóa khi chuyển trang).
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
+
+import pandas as pd  # noqa: E402
+import streamlit as st  # noqa: E402
+
+from analytics.baseline import detect_anomalies_tod  # noqa: E402
+from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
+from data.schema import limit_lock_side, normalize_quotes  # noqa: E402
+from analytics.screener import (ATC_DONE, daily_closes_from_board, intraday_factors, liquidity_gate,  # noqa: E402
+                                market_context, momentum, screen)
+from data.overview import (breadth_frame, futures_view, index_cards, load_market_json)  # noqa: E402
+from data.storage import (board_days, count_rows, load_board, load_futures, load_market_index,  # noqa: E402
+                          load_quotes)
+from finance.absorption import add_absorption  # noqa: E402
+from finance.liquidity import add_liquidity_metrics, rank_symbols  # noqa: E402
+from finance.sessions import filter_continuous  # noqa: E402
+from neo_api.config import get_settings  # noqa: E402
+
+SAMPLE_CSV = ROOT / "data_sample" / "sample_quotes.csv"
+SRC_SAMPLE = "Dữ liệu mô phỏng (tệp mẫu)"
+SRC_DB = "Dữ liệu NEO đã ghi (SQLite)"
+
+# Tham số mặc định của phần phân tích (giống thanh trượt ở Radar).
+DEFAULT_PARAMS = {"threshold": 3.0, "max_sessions": 10, "w_spread": DEFAULT_WEIGHTS["spread"],
+                  "w_depth": DEFAULT_WEIGHTS["depth"], "w_imb": DEFAULT_WEIGHTS["imbalance"]}
+
+
+def available_sources() -> list[str]:
+    """Nguồn dữ liệu có thể dùng, nguồn NEO đứng đầu khi có."""
+    sources = []
+    if SAMPLE_CSV.exists():
+        sources.append(SRC_SAMPLE)
+    if count_rows(get_settings().db_path) > 0:
+        sources.insert(0, SRC_DB)
+    return sources
+
+
+def current_source() -> str | None:
+    """Nguồn đang chọn (ở Radar); chưa chọn thì nguồn đầu tiên có dữ liệu."""
+    sources = available_sources()
+    chosen = st.session_state.get("source")
+    return chosen if chosen in sources else (sources[0] if sources else None)
+
+
+def params() -> dict:
+    return {**DEFAULT_PARAMS, **st.session_state.get("params", {})}
+
+
+def source_version(source: str) -> float:
+    """Dấu phiên bản để cache đọc lại khi dữ liệu đổi (thời điểm sửa file)."""
+    path = SAMPLE_CSV if source == SRC_SAMPLE else get_settings().db_path
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+@st.cache_data(show_spinner=False)
+def load_source(source: str, db_path: str, version: float) -> tuple[pd.DataFrame, dict]:
+    """Đọc, làm sạch, chỉ giữ phiên khớp lệnh liên tục (loại ATO/ATC/nghỉ trưa), tính chỉ số sổ lệnh."""
+    raw = pd.read_csv(SAMPLE_CSV) if source == SRC_SAMPLE else load_quotes(Path(db_path))
+    clean, report = normalize_quotes(raw)
+    clean, dropped = filter_continuous(clean)
+    report["dropped_session"] = dropped
+    locked, _ = filter_continuous(report["limit_locked"])
+    report["limit_locked"] = locked.assign(side=limit_lock_side(locked))[["ts", "symbol", "side"]]
+    return add_liquidity_metrics(clean), report
+
+
+@st.cache_data(show_spinner=False)
+def analyze(source: str, db_path: str, version: float, max_sessions: int, threshold: float,
+            w_spread: float, w_depth: float, w_imb: float) -> pd.DataFrame:
+    """Cảnh báo bất thường, tỷ lệ hấp thụ và điểm LRS. Tính trên toàn bộ lịch sử để đủ dữ liệu khởi động."""
+    df, _ = load_source(source, db_path, version)
+    # Cảnh báo so với cùng khung giờ ở các phiên trước (analytics/baseline.py), không dùng cửa sổ trượt.
+    out = add_absorption(detect_anomalies_tod(df, threshold=threshold, max_sessions=max_sessions))
+    out["lrs"] = compute_lrs(out, {"spread": w_spread, "depth": w_depth, "imbalance": w_imb})
+    # Ngưỡng Chú ý/Cao tại mỗi thời điểm chỉ dùng điểm LRS có trước thời điểm đó (không nhìn trước).
+    thr = lrs_thresholds_past(out["lrs"], out["ts"])
+    out["lrs_watch"], out["lrs_high"] = thr["watch"], thr["high"]
+    out["lrs_tier"] = lrs_tier(out["lrs"], thr)
+    return out
+
+
+def analyzed_data(source: str) -> pd.DataFrame:
+    """Kết quả phân tích với tham số hiện hành (cùng cache với Radar)."""
+    p = params()
+    return analyze(source, str(get_settings().db_path), source_version(source), int(p["max_sessions"]),
+                   float(p["threshold"]), p["w_spread"], p["w_depth"], p["w_imb"])
+
+
+WATCHLIST_PATH = ROOT / "data" / "watchlist.json"
+GATE_MIN_SCORE = 33.3   # trùng mốc "Yếu" của điểm thanh khoản ở Radar
+
+
+def db_version() -> float:
+    try:
+        return get_settings().db_path.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
+@st.cache_data(show_spinner=False)
+def _board_days(db_path: str, version: float) -> list[str]:
+    return board_days(Path(db_path))
+
+
+@st.cache_data(show_spinner=False)
+def _board(db_path: str, version: float, day: str, grp: str) -> pd.DataFrame:
+    return load_board(Path(db_path), day, grp)
+
+
+def board_dates() -> list[str]:
+    """Các ngày có bảng giá (ảnh chụp mới nhất mỗi ngày, cuối ngày là lúc đóng cửa), dạng YYYY-MM-DD."""
+    return _board_days(str(get_settings().db_path), db_version())
+
+
+def board_of(day: str, grp: str = "VN30") -> pd.DataFrame:
+    """Bảng giá gốc (cột NEO đã đổi tên chuẩn) của một nhóm trong một ngày; rỗng nếu không có."""
+    return _board(str(get_settings().db_path), db_version(), day, grp)
+
+
+@st.cache_data(show_spinner=False)
+def _index_day(db_path: str, version: float, day: str) -> pd.DataFrame:
+    return load_market_index(Path(db_path), day)
+
+
+@st.cache_data(show_spinner=False)
+def _futures(db_path: str, version: float) -> pd.DataFrame:
+    return load_futures(Path(db_path))
+
+
+def index_of(day: str) -> pd.DataFrame:
+    """Các lần chụp chỉ số (NEO 4.3) trong một ngày."""
+    return _index_day(str(get_settings().db_path), db_version(), day)
+
+
+def screen_for_day(source: str, day, min_score: float = GATE_MIN_SCORE, horizon: str = "intraday") -> dict | None:
+    """Kết quả bộ lọc cho một phiên: cổng thanh khoản (cùng số với Radar), yếu tố, điểm và bối cảnh thị trường.
+
+    Ảnh chụp giá: bảng giá cuối ngày (đã có ATC nếu chụp từ 14:45) khi có, không thì lần chụp cuối trong phiên liên tục.
+    % VN30 dùng để đo động lượng tương đối lấy ở lần chụp chỉ số gần nhất KHÔNG SAU ảnh chụp giá (không nhìn trước).
+    horizon: "intraday" (giá khớp so với tham chiếu) hoặc "5d" (5 phiên, chỉ khi đủ giá đóng cửa hợp lệ).
+    Trả None khi phiên không có sổ lệnh theo phút."""
+    data = analyzed_data(source)
+    view = data[data["ts"].dt.date == day]
+    if view.empty:
+        return None
+    ranking, _, counts = liquidity_ranking(view)
+    gate = liquidity_gate(ranking, counts, min_score)
+    day_str = pd.Timestamp(day).strftime("%Y-%m-%d")
+    use_db = source == SRC_DB
+    board = board_of(day_str, "VN30") if use_db else pd.DataFrame()
+    if not board.empty:
+        snap, snap_kind = board, "board"
+    else:
+        snap, snap_kind = view.sort_values("ts").groupby("symbol").tail(1), "quotes"
+    snap_ts = snap["ts"].max()
+    idx = index_of(day_str) if use_db else pd.DataFrame()
+    vn30 = idx[(idx["index_code"] == "VN30") & (idx["ts"] <= snap_ts)] if not idx.empty else idx
+    vn30_pct = float(vn30.sort_values("ts")["pct_change"].iloc[-1]) if vn30 is not None and not vn30.empty else None
+    factors = intraday_factors(snap, vn30_pct)
+
+    # Động lượng 5 phiên từ giá đóng cửa hợp lệ (bảng giá chụp từ 14:45) của mọi ngày đã ghi.
+    mom5_ok = False
+    if use_db:
+        closes = daily_closes_from_board(pd.concat([board_of(d, "VN30") for d in board_dates()], ignore_index=True)
+                                         if board_dates() else pd.DataFrame())
+        ix_rows = []
+        for d in sorted({c for c in closes["day"]}) if not closes.empty else []:
+            ix = index_of(pd.Timestamp(d).strftime("%Y-%m-%d"))
+            ix = ix[ix["index_code"] == "VN30"] if not ix.empty else ix
+            if not ix.empty:
+                last = ix.sort_values("ts").iloc[-1]
+                ix_rows.append({"day": d, "close": last["index_value"] if last["ts"].time() >= ATC_DONE else None})
+        if not closes.empty:
+            mom = momentum(closes, 5, pd.DataFrame(ix_rows) if ix_rows else None)
+            today = mom[mom["day"] == day]
+            if "rel_mom_5" in today and today["rel_mom_5"].notna().any():
+                factors = factors.merge(today[["symbol", "mom_5", "rel_mom_5"]], on="symbol", how="left")
+                mom5_ok = True
+    cols = ["foreign_ratio", "rel_mom_5"] if (horizon == "5d" and mom5_ok) else None
+    result = screen(factors, gate, cols)
+
+    cards = index_cards(idx, day, load_market_json(ROOT / "data", day)) if use_db else pd.DataFrame()
+    fut = _futures(str(get_settings().db_path), db_version()) if use_db else pd.DataFrame()
+    fut_day = fut[fut["ts"].dt.date == day] if not fut.empty else fut
+    vn30_card = cards[cards["index_code"] == "VN30"] if not cards.empty else cards
+    fut_v = futures_view(fut_day, float(vn30_card["index_value"].iloc[0]) if not vn30_card.empty else None)
+    ctx = market_context(cards, breadth_frame(cards) if not cards.empty else None, fut_v, snap)
+    return {"result": result, "factors_used": result.attrs.get("factors", []), "snap_ts": snap_ts,
+            "snap_kind": snap_kind, "vn30_pct": vn30_pct, "mom5_ok": mom5_ok, "context": ctx}
+
+
+def liquidity_ranking(view: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
+    """Xếp hạng thanh khoản trong khoảng dữ liệu `view`, kèm số đợt cảnh báo và LRS ở lần chụp mới nhất.
+
+    Trả (ranking, alerts, alert_counts): ranking theo điểm tăng dần (mã yếu nhất đầu tiên); alerts là các lần chụp đang
+    cảnh báo, mới nhất trước; alert_counts là số ĐỢT cảnh báo theo mã."""
+    ranking = rank_symbols(view)
+    alerts = view[view["is_alert"]].sort_values("ts", ascending=False)
+    # Một đợt = chuỗi lần chụp liên tiếp cùng thỏa điều kiện; đếm theo đợt để một sự kiện kéo dài không thành hàng chục cảnh báo.
+    alert_counts = alerts[alerts["alert_start"]].groupby("symbol").size()
+    ranking["alerts"] = ranking["symbol"].map(alert_counts).fillna(0).astype(int)
+    last_per_sym = view.sort_values("ts").groupby("symbol").tail(1).set_index("symbol")
+    ranking["lrs"] = ranking["symbol"].map(last_per_sym["lrs"])
+    ranking["lrs_tier"] = ranking["symbol"].map(last_per_sym["lrs_tier"]).fillna("")
+    return ranking, alerts, alert_counts

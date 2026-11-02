@@ -109,3 +109,11 @@ def test_flash_ignores_nan_to_nan_and_text_prices():
     assert changed_cells(a, a.copy()) == set()
     b = pd.DataFrame([_row("AAA", bid_px1=9900.0, ask_qty3=np.nan)])
     assert changed_cells(b, a) == {("AAA", "bid_px1")}  # ATO -> số là đổi
+
+
+def test_symbol_links_to_detail_page_only_when_asked():
+    import board as bd2
+    html_plain = bd2.board_html(_board())
+    assert "<a " not in html_plain
+    html_link = bd2.board_html(_board(), link="ma")
+    assert 'href="ma?ma=' in html_link and 'target="_self"' in html_link

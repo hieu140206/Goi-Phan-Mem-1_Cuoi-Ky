@@ -195,6 +195,7 @@ with st.container(horizontal=True, vertical_alignment="top", gap="medium"):
         render_chips(trade_day, day, bool(st.session_state.get("live")))
     st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
               help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
+    st.page_link("screen_page.py", label="Lọc cổ phiếu VN30", icon=":material/filter_alt:")
 if day != trade_day:
     msg = (f"Chưa có dữ liệu phiên {trade_day:%d/%m/%Y}. Đang hiển thị phiên {day:%d/%m/%Y} đã ghi." if trade_day not in days
            else f"Đang xem phiên {day:%d/%m/%Y} đã ghi, không phải phiên hiện tại.")
@@ -336,7 +337,10 @@ def _board_panel(day, live: bool) -> None:
         else:
             if total > MAX_BOARD_ROWS:
                 st.caption(f"Hiển thị {MAX_BOARD_ROWS}/{total} mã theo thứ tự sắp xếp; gõ mã vào ô tìm kiếm để xem mã khác.")
-            st.html(board_html(shown_board.head(MAX_BOARD_ROWS), kind, state["prev"]))
+            # Chỉ mã VN30 có hồ sơ (sổ lệnh theo phút); các sàn khác chưa có nên không gắn liên kết.
+            st.html(board_html(shown_board.head(MAX_BOARD_ROWS), kind, state["prev"], link="ma" if grp == "VN30" else None))
+            if grp == "VN30":
+                st.caption("Bấm vào mã để mở hồ sơ chi tiết của mã đó.")
 
 
 st.fragment(run_every=CARD_REFRESH_SECONDS if _live else None)(_board_panel)(day, _live)

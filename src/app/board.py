@@ -7,6 +7,7 @@ mọi con số khác lấy nguyên từ bảng price_board.
 from __future__ import annotations
 
 import html
+from urllib.parse import quote
 
 import pandas as pd
 
@@ -67,10 +68,12 @@ def changed_cells(board: pd.DataFrame, prev: pd.DataFrame | None) -> set[tuple[s
     return out
 
 
-def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | None = None) -> str:
+def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | None = None,
+               link: str | None = None) -> str:
     """kind="stock": cổ phiếu/ETF/CW (giá nghìn đồng). kind="future": hợp đồng tương lai (giá điểm, thêm KL mở và basis).
     prev: bảng ở lần cập nhật trước; ô nào đổi giá trị được tô nền theo màu mức giá của ô (trên TC xanh, dưới TC đỏ,
-    bằng TC vàng, trần tím, sàn xanh dương), như bảng điện: "vừa đổi so với lần cập nhật trước", không phải từng giao dịch."""
+    bằng TC vàng, trần tím, sàn xanh dương), như bảng điện: "vừa đổi so với lần cập nhật trước", không phải từng giao dịch.
+    link: đường dẫn trang Chi tiết mã (ví dụ "ma"); có thì ô mã thành liên kết `ma?ma=<mã>` mở hồ sơ của mã đó."""
     changed = changed_cells(board, prev)
     fut = kind == "future"
     px_fmt = fmt_pt if fut else fmt_px
@@ -95,8 +98,11 @@ def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | No
         sign = "up" if r.change > 0 else "dn" if r.change < 0 else "rf" if not pd.isna(r.change) else ""
         net = r.foreign_net / 1e9 if not fut and not pd.isna(r.foreign_net) else float("nan")
         net_cls = "up" if net > 0 else "dn" if net < 0 else ""
+        sym_txt = html.escape(str(r.symbol))
+        if link and not fut:
+            sym_txt = f'<a href="{link}?ma={quote(str(r.symbol))}" target="_self" title="Mở hồ sơ {sym_txt}">{sym_txt}</a>'
         cells = [
-            f'<td class="sym {match}">{html.escape(str(r.symbol))}'
+            f'<td class="sym {match}">{sym_txt}'
             + (f' <span class="mat">{html.escape(str(r.maturity))}</span>' if fut else "") + "</td>",
             _cell(px_fmt(r.ref), "g rf"), _cell(px_fmt(r.ceil), "ce"), _cell(px_fmt(r.floor), "fl"),
         ]
@@ -137,6 +143,8 @@ def board_css(border: str, grid: str, muted: str, ink: str, up: str, dn: str) ->
 .board th.sym, .board td.sym {{ text-align: left; position: sticky; left: 0; z-index: 4; font-weight: 700;
                                 background: #ffffff; border-right: 1px solid {border}; border-left: none; }}
 .board th.sym {{ background: #f7f8fa; z-index: 5; }}
+.board td.sym a {{ color: inherit; text-decoration: none; }}
+.board td.sym a:hover {{ text-decoration: underline; }}
 .board tbody tr:hover td {{ background: #f7f9fc; }}
 .board tbody tr:hover td.sym {{ background: #f7f9fc; }}
 .board .ce {{ color: #7c3aed; }} .board .fl {{ color: #1d5fbf; }} .board .rf {{ color: #b7791f; }}
