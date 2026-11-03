@@ -61,6 +61,9 @@ class WsBarRecorder:
         self.n_msgs: Counter = Counter()                        # số tin trong mốc hiện tại, theo mã
         self.raw_buffer: list[str] = []
         self.last_slot: pd.Timestamp | None = None
+        # Trạng thái đúng tại mốc: tin đầu tiên sau mốc mới (khi tick chưa kịp chạy) chụp lại state trước khi cập nhật,
+        # để thanh mốc đó không lẫn tin đến sau mốc vài trăm mili giây (phát hiện khi đối chiếu REST phiên 3/11/2026).
+        self.frozen: tuple[pd.Timestamp, dict, Counter] | None = None
         self.last_msg_time: pd.Timestamp | None = None
         self.longest_gap = 0.0
         self.reconnects = 0
@@ -111,6 +114,7 @@ class WsBarRecorder:
     # ---------- nhận tin ----------
     def on_raw(self, raw: str | bytes, now: pd.Timestamp | None = None) -> None:
         now = now or self.now()
+        self._freeze_at_slot(now)
         b = to_bytes(raw)
         self.raw_buffer.append(json.dumps({"t": now.isoformat(), "b": base64.b64encode(b).decode()}))
         self.stats["messages"] += 1
@@ -194,26 +198,40 @@ class WsBarRecorder:
     def slot(self, now: pd.Timestamp) -> pd.Timestamp:
         return now.floor(f"{self.interval}s")
 
+    def _freeze_at_slot(self, now: pd.Timestamp) -> None:
+        """Tin này thuộc mốc mới mà tick chưa ghi mốc đó: giữ bản sao trạng thái NGAY TRƯỚC mốc (một lần mỗi mốc)."""
+        s = self.slot(now)
+        if (self.last_slot is None or s > self.last_slot) and (self.frozen is None or self.frozen[0] != s):
+            self.frozen = (s, dict(self.state), Counter(self.n_msgs))
+
     def tick(self, now: pd.Timestamp | None = None) -> int:
-        """Gọi thường xuyên (mỗi giây). Sang mốc mới thì ghi một thanh cho mỗi mã đã có trạng thái. Trả về số dòng ghi."""
+        """Gọi thường xuyên (mỗi giây). Sang mốc mới thì ghi một thanh cho mỗi mã đã có trạng thái. Trả về số dòng ghi.
+
+        Thanh mang nhãn mốc `slot` chỉ chứa tin nhận TRƯỚC mốc: tick thường chạy trễ mốc tới ~1 giây, tin đến trong
+        khoảng trễ đó thuộc thanh sau (dùng bản sao `frozen`)."""
         now = now or self.now()
         slot = self.slot(now)
         if self.last_slot is not None and slot <= self.last_slot:
             return 0
         self.last_slot = slot
+        if self.frozen is not None and self.frozen[0] == slot:
+            _, state, counts = self.frozen
+            self.n_msgs = self.n_msgs - counts     # tin sau mốc được đếm cho thanh kế tiếp
+        else:
+            state, counts = self.state, self.n_msgs
+            self.n_msgs = Counter()
+        self.frozen = None
         self.flush_raw(now)
         self.flush_trades()  # lần khớp ghi cả ngoài phiên liên tục (ATO/ATC cũng là khớp thật); lọc khi phân tích
         if not in_trading_hours(now) or LUNCH_START <= slot.time() < LUNCH_END:
-            self.n_msgs.clear()
             return 0
         rows = []
-        for sym, (seen, row) in self.state.items():
-            age = (now - seen).total_seconds()
+        for sym, (seen, row) in state.items():
+            age = (slot - seen).total_seconds()
             if age > STALE_SECONDS:
                 continue
-            rows.append({**row, "symbol": sym, "ts": slot, "n_msgs": self.n_msgs.get(sym, 0),
-                         "age_ms": max((slot - seen).total_seconds(), 0) * 1000})
-        self.n_msgs.clear()
+            rows.append({**row, "symbol": sym, "ts": slot, "n_msgs": counts.get(sym, 0),
+                         "age_ms": max(age, 0) * 1000})
         if not rows:
             return 0
         clean, _ = normalize_quotes(pd.DataFrame(rows))

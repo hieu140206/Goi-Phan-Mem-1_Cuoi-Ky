@@ -48,6 +48,28 @@ def test_records_bars_and_raw(tmp_path):
     assert stats["messages"] == len(_msgs()) and stats["reconnects"] == 0
 
 
+def test_bar_excludes_messages_after_its_slot(tmp_path):
+    # Như phiên 3/11: tin đến 10:00:05,3 nhưng tick 10:00:05,8 mới chạy -> thanh 10:00:05 chỉ chứa tin trước mốc.
+    rec = WsBarRecorder(tmp_path / "m.db", tmp_path, interval=5)
+    msgs = _msgs()
+    for raw in msgs:
+        rec.on_raw(raw, T(10, 0, 3))
+    per_sym = dict(rec.n_msgs)
+    for raw in msgs:
+        rec.on_raw(raw, T(10, 0, 5, 300))   # sau mốc 10:00:05
+    n = rec.tick(T(10, 0, 5, 800))
+    df = load_ws_quotes(tmp_path / "m.db")
+    bar = df[df["ts"] == T(10, 0, 5)].set_index("symbol")
+    assert len(bar) == n > 0
+    assert (bar["age_ms"] == 2000).all()                     # tin cuối lúc 10:00:03, không phải 0
+    assert all(bar.loc[s, "n_msgs"] == c for s, c in per_sym.items() if s in bar.index)
+    # tin sau mốc thuộc thanh kế tiếp
+    rec.tick(T(10, 0, 10, 100))
+    nxt = load_ws_quotes(tmp_path / "m.db").query("ts == @T(10, 0, 10)").set_index("symbol")
+    assert (nxt["age_ms"] == 4700).all()
+    assert all(nxt.loc[s, "n_msgs"] == c for s, c in per_sym.items() if s in nxt.index)
+
+
 def test_same_slot_and_off_hours_write_nothing(tmp_path):
     rec = WsBarRecorder(tmp_path / "m.db", tmp_path, interval=5)
     for raw in _msgs():
