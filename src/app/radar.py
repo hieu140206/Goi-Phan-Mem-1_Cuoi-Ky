@@ -298,18 +298,18 @@ TABLE_H = 438
 left, right = st.columns([7, 5], gap="small")
 with left, st.container(border=True, key="panel_rank"):
     st.subheader("Xếp hạng thanh khoản", anchor=False,
-                 help="Điểm 0-100 so sánh giữa các mã đang chọn: spread hẹp tính theo bước giá (40%), "
+                 help="Điểm 0-100 so sánh giữa các mã đang chọn: spread trung bình thấp tính bằng bps (40%), "
                       "độ sâu lớn (40%), ít lệch mua/bán (20%). LRS là điểm rủi ro ở lần chụp mới nhất của từng mã.")
     st.caption("Mã yếu nhất ở trên cùng. Chọn ô đầu dòng để xem diễn biến của mã đó bên dưới.")
     table = ranking.assign(depth_m=ranking["depth_value"] / 1e6)[
-        ["symbol", "score", "spread_ticks", "rel_spread_bps", "depth_m", "lrs", "lrs_tier", "alerts"]
+        ["symbol", "score", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts"]
     ].reset_index(drop=True)
     rank_syms = table["symbol"].tolist()
     # Khóa bảng đổi theo thứ tự xếp hạng, để dấu chọn không nằm nhầm dòng khi thứ hạng thay đổi.
     rank_key = "rank_tbl_" + format(zlib.crc32("|".join(rank_syms).encode()), "x")
     st.dataframe(
         table.style.map(tier_style, subset=["lrs_tier"]).format(
-            {"spread_ticks": "{:.2f}", "rel_spread_bps": "{:.1f}", "depth_m": "{:,.0f}", "lrs": "{:+.2f}"},
+            {"spread_ticks": "{:.2f}", "spread_bps_mean": "{:.1f}", "depth_m": "{:,.0f}", "lrs": "{:+.2f}"},
             decimal=",", thousands=".", na_rep="–"),
         hide_index=True,
         height=TABLE_H,
@@ -321,13 +321,13 @@ with left, st.container(border=True, key="panel_rank"):
             "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
             "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f",
                                                      color="#8a8a8a", width=64),
+            "spread_bps_mean": st.column_config.NumberColumn(
+                "Spread bps", width=76,
+                help="Spread tương đối trung bình: chi phí mua rồi bán ngay (1 bps = 0,01%). Dùng để chấm điểm. "
+                     "Mã giá thấp thường có bps cao vì bước giá chiếm tỷ lệ lớn trong giá."),
             "spread_ticks": st.column_config.NumberColumn(
                 "Bước giá", width=70,
-                help="Spread trung bình tính bằng số bước giá; 1,00 là hẹp nhất có thể. Dùng để chấm điểm."),
-            "rel_spread_bps": st.column_config.NumberColumn(
-                "Spread bps", width=76,
-                help="Spread tương đối trung vị: chi phí mua rồi bán ngay. Mã giá thấp có bps cao vì bước giá "
-                     "chiếm tỷ lệ lớn, nên cột này không dùng để so sánh thanh khoản giữa các mã."),
+                help="Spread trung bình tính bằng số bước giá; 1,00 là hẹp nhất có thể. Chỉ để tham khảo."),
             "depth_m": st.column_config.NumberColumn("Độ sâu (tr)", width=80,
                                                      help="Độ sâu 3 mức giá trung vị, triệu đồng"),
             "lrs": st.column_config.NumberColumn("LRS", width=54,
@@ -449,10 +449,13 @@ ATO, ATC và nghỉ trưa bị loại vì sổ lệnh lúc đó không phản á
 - Độ sâu = tổng (giá × khối lượng) của 3 mức mua và 3 mức bán.
 - Lệch mua/bán = (khối lượng mua − khối lượng bán) / tổng, từ −1 đến +1.
 
-**Điểm thanh khoản (0-100)** là xếp hạng tương đối giữa các mã đang chọn: spread trung bình theo bước giá thấp (40%),
+**Điểm thanh khoản (0-100)** là xếp hạng tương đối giữa các mã đang chọn: spread trung bình tính bằng bps thấp (40%),
 độ sâu lớn (40%), ít lệch mua/bán (20%). Trọng số là giả định ban đầu, chưa được hiệu chỉnh.
-Điểm dùng spread theo bước giá chứ không dùng bps: phần lớn thời gian spread VN30 chỉ đúng 1 bước giá, nên bps
-chủ yếu phụ thuộc giá cổ phiếu (mã giá thấp luôn có bps cao) chứ không cho biết mã nào khó mua bán hơn.
+Điểm dùng spread bps vì đó là chi phí thật khi mua rồi bán. Chấm theo số bước giá cho kết quả gần như ngược với chi phí:
+mã giá cao (VIC ~240.000đ) có bước giá nhỏ so với giá nên spread hay rộng 2-3 bước giá mà chỉ tốn ~4 bps, còn mã giá
+thấp (SHB ~10.000đ) luôn đúng 1 bước giá nhưng tốn ~47 bps. Giới hạn: mã giá thấp luôn có bps cao do bước giá, nên điểm
+cho biết mua bán *tốn kém* đến đâu, không cho biết sổ lệnh có "căng" hay không. Cảnh báo bên dưới vẫn dùng số bước giá
+vì mỗi mã chỉ so với chính nó.
 
 **Mức thường lệ (baseline)** của một mã ở một khung 30 phút (9:15, 9:45, ... 13:00, 13:30, ...) là mọi lần chụp của
 chính mã đó trong cùng khung giờ ở tối đa 10 phiên *trước* phiên đang xét (cần ít nhất 2 phiên). Sáng chỉ so với

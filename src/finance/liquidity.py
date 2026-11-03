@@ -9,10 +9,12 @@ Công thức (mỗi lần chụp sổ lệnh):
                            > 0: bên mua dày hơn; < 0: bên bán dày hơn
   spread theo bước giá   = (ask1 - bid1) / bước giá tại bid1; 1 = hẹp nhất có thể
 
-Vì sao cần spread theo bước giá: trên dữ liệu thật 28-30/10/2026, 85% lần chụp VN30 có spread đúng 1 bước giá.
-Khi đó spread bps chỉ phản ánh bước giá / giá cổ phiếu (SHB giá ~10.650đ luôn ~47 bps, VIC giá ~240.000đ ~4 bps),
-không phản ánh mã nào khó mua bán hơn (cổ phiếu "bị kẹp bởi bước giá", Harris 1994). Vì vậy điểm so sánh GIỮA các
-mã dùng spread theo bước giá; spread bps vẫn giữ để hiển thị vì đó là chi phí thật nhà đầu tư phải trả.
+Điểm so sánh GIỮA các mã (rank_symbols) dùng spread bps trung bình, vì đó là chi phí thật nhà đầu tư trả khi mua rồi
+bán. Quyết định 3/11/2026, sau khi rà soát dữ liệu thật: chấm theo số bước giá làm điểm gần như ngược với chi phí
+(VIC spread 4 bps, rẻ nhất rổ, bị xếp "Yếu"; SHB 47 bps, đắt nhất rổ, đứng đầu), vì mã giá cao có bước giá nhỏ so với
+giá nên spread hay rộng 2-3 bước giá mà chi phí vẫn thấp. Mặt trái cần ghi trong báo cáo: mã giá thấp luôn có bps cao
+do bước giá chiếm tỷ lệ lớn (bị "kẹp bởi bước giá", Harris 1994), nên điểm phản ánh CHI PHÍ chứ không phải độ "căng"
+của sổ lệnh. Spread theo bước giá vẫn dùng cho cảnh báo (analytics/baseline.py), vì ở đó mỗi mã so với chính nó.
 """
 from __future__ import annotations
 
@@ -66,12 +68,12 @@ def _scaled_rank(s: pd.Series, ascending: bool = True) -> pd.Series:
 def rank_symbols(df: pd.DataFrame, weights: dict[str, float] | None = None) -> pd.DataFrame:
     """Gộp theo mã trong khoảng dữ liệu đã chọn, tính điểm thanh khoản 0-100 (cao = thanh khoản tốt).
 
-    Điểm = 100 * (w_spread * hạng(-spread theo bước giá) + w_depth * hạng(độ sâu) + w_imb * hạng(-|mất cân bằng|)),
+    Điểm = 100 * (w_spread * hạng(-spread bps trung bình) + w_depth * hạng(độ sâu) + w_imb * hạng(-|mất cân bằng|)),
     trong đó hạng là xếp hạng phần trăm giữa các mã đang được so sánh. Đây là điểm TƯƠNG ĐỐI trong nhóm.
 
-    Spread theo bước giá lấy TRUNG BÌNH (không lấy trung vị): trung vị của hầu hết mã VN30 đều bằng 1 bước giá
-    nên không phân biệt được; trung bình cho biết mã đó hay bị giãn ra 2, 3 bước giá đến mức nào.
-    rel_spread_bps (trung vị) vẫn được trả về để hiển thị chi phí giao dịch, nhưng không dùng để chấm điểm.
+    Spread bps lấy TRUNG BÌNH (spread_bps_mean): là chi phí trung bình nếu mua bán vào một lần chụp bất kỳ, nên tính
+    cả những lúc spread giãn ra. rel_spread_bps (trung vị) và spread_ticks (trung bình số bước giá) trả về để hiển thị,
+    không dùng để chấm điểm.
     """
     w = weights or DEFAULT_WEIGHTS
     agg = (
@@ -79,6 +81,7 @@ def rank_symbols(df: pd.DataFrame, weights: dict[str, float] | None = None) -> p
         .groupby("symbol")
         .agg(
             rel_spread_bps=("rel_spread_bps", "median"),
+            spread_bps_mean=("rel_spread_bps", "mean"),
             spread_ticks=("spread_ticks", "mean"),
             depth_value=("depth_value", "median"),
             abs_imbalance=("abs_imb", "median"),
@@ -86,7 +89,7 @@ def rank_symbols(df: pd.DataFrame, weights: dict[str, float] | None = None) -> p
         )
     )
     score = 100 * (
-        w["spread"] * _scaled_rank(agg["spread_ticks"], ascending=False)
+        w["spread"] * _scaled_rank(agg["spread_bps_mean"], ascending=False)
         + w["depth"] * _scaled_rank(agg["depth_value"], ascending=True)
         + w["imbalance"] * _scaled_rank(agg["abs_imbalance"], ascending=False)
     )

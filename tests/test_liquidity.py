@@ -71,14 +71,30 @@ def test_spread_ticks_uses_tick_at_bid():
     assert df.loc["HIGH", "spread_ticks"] == 2     # 200đ / 100đ
 
 
-def test_ranking_not_biased_by_share_price():
-    # Cùng độ sâu, cùng 1 bước giá: mã giá thấp có bps cao hơn nhiều nhưng không được bị chấm spread kém hơn.
-    cheap = [make_row("CHEAP", 10_600, 10_650)] * 5
-    pricey = [make_row("PRICEY", 99_900, 100_000)] * 5
-    wide = [make_row("WIDE", 99_900, 100_200)] * 5   # 3 bước giá
+def test_ranking_scores_spread_by_cost_in_bps():
+    # Như VIC và SHB thật: mã giá cao rộng 3 bước giá vẫn rẻ hơn (bps thấp hơn) mã giá thấp đúng 1 bước giá.
+    cheap = [make_row("CHEAP", 10_600, 10_650)] * 5     # 1 bước giá = 47,1 bps
+    pricey = [make_row("PRICEY", 99_900, 100_000)] * 5  # 1 bước giá = 10,0 bps
+    wide = [make_row("WIDE", 99_900, 100_200)] * 5      # 3 bước giá = 30,0 bps
     df = add_liquidity_metrics(pd.DataFrame(cheap + pricey + wide))
     df["depth_value"] = 1e9  # loại ảnh hưởng của độ sâu
+    df["imbalance"] = 0.0    # loại ảnh hưởng của lệch mua/bán
     ranked = rank_symbols(df).set_index("symbol")
-    assert ranked.loc["CHEAP", "rel_spread_bps"] > ranked.loc["PRICEY", "rel_spread_bps"]
-    assert ranked.loc["CHEAP", "score"] == ranked.loc["PRICEY", "score"]
-    assert ranked.loc["WIDE", "score"] < ranked.loc["PRICEY", "score"]
+    assert ranked.loc["CHEAP", "spread_bps_mean"] == pytest.approx(50 / 10_625 * 1e4)
+    assert ranked.loc["WIDE", "spread_ticks"] == 3 and ranked.loc["CHEAP", "spread_ticks"] == 1
+    # spread chiếm 40%; độ sâu và lệch bằng nhau nên mỗi mã cùng 0,5 ở hai phần đó: điểm = 100*(0,4*h + 0,3)
+    assert ranked.loc["PRICEY", "score"] == 70.0    # rẻ nhất: hạng 1
+    assert ranked.loc["WIDE", "score"] == 50.0      # giữa: hạng 0,5
+    assert ranked.loc["CHEAP", "score"] == 30.0     # đắt nhất dù chỉ 1 bước giá
+
+
+def test_ranking_uses_mean_spread_not_median():
+    # Hai mã cùng trung vị 10 bps, nhưng B có 2/5 lần chụp giãn ra 3 bước giá -> B tốn hơn trung bình, điểm thấp hơn.
+    a = [make_row("A", 99_900, 100_000)] * 5
+    b = [make_row("B", 99_900, 100_000)] * 3 + [make_row("B", 99_900, 100_200)] * 2
+    df = add_liquidity_metrics(pd.DataFrame(a + b))
+    df["depth_value"], df["imbalance"] = 1e9, 0.0
+    ranked = rank_symbols(df).set_index("symbol")
+    assert ranked.loc["A", "rel_spread_bps"] == ranked.loc["B", "rel_spread_bps"]
+    assert ranked.loc["B", "spread_bps_mean"] > ranked.loc["A", "spread_bps_mean"]
+    assert ranked.loc["A", "score"] > ranked.loc["B", "score"]

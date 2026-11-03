@@ -169,8 +169,8 @@ with c2, st.container(border=True, key="panel_liq"):
         st.html(
             '<div class="facts">'
             f'<span>Điểm thanh khoản</span><b>{vn(r["score"], 0)}/100 · hạng {pos}/{len(ranking)} · {html.escape(r["tier"])}</b>'
-            f'<span>Spread trung bình (bước giá)</span><b>{vn(r["spread_ticks"], 2)}</b>'
-            f'<span>Spread trung vị</span><b>{vn(r["rel_spread_bps"], 1)} bps</b>'
+            f'<span>Spread trung bình (dùng chấm điểm)</span><b>{vn(r["spread_bps_mean"], 1)} bps</b>'
+            f'<span>Spread trung bình theo bước giá</span><b>{vn(r["spread_ticks"], 2)}</b>'
             f'<span>Độ sâu 3 mức trung vị</span><b>{vn(r["depth_value"] / 1e6, 0)} triệu đ</b>'
             f'<span>Điểm rủi ro LRS (lần chụp cuối)</span><b class="{tier_note}">{vn(r["lrs"], 2) if pd.notna(r["lrs"]) else "–"}'
             f'{" · " + html.escape(r["lrs_tier"]) if r["lrs_tier"] else ""}</b>'
