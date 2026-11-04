@@ -70,6 +70,34 @@ def test_bar_excludes_messages_after_its_slot(tmp_path):
     assert all(nxt.loc[s, "n_msgs"] == c for s, c in per_sym.items() if s in nxt.index)
 
 
+def _book(sym, bid, ask, ceil=28_350.0, floor=24_650.0):
+    row = {"symbol": sym, "last_px": bid, "total_vol": 1000, "ref_px": 26_500.0, "ceil_px": ceil, "floor_px": floor}
+    for i in (1, 2, 3):
+        row[f"bid_px{i}"], row[f"bid_qty{i}"] = bid - (i - 1) * 50, 1000.0
+        row[f"ask_px{i}"], row[f"ask_qty{i}"] = (ask + (i - 1) * 50, 1000.0) if ask else (None, None)
+    return row
+
+
+def test_limit_locked_symbol_is_kept_like_rest(tmp_path, monkeypatch):
+    # Như TCX chiều 4/11: tăng trần, bên bán trống. REST lưu dòng này (bên bán rỗng); WS trước đây bỏ mất.
+    import sys
+    sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+    import export_data as ed
+
+    rec = WsBarRecorder(tmp_path / "m.db", tmp_path, interval=5)
+    rec._update_state(_book("TCX", 28_350.0, None), T(13, 5, 2))
+    rec._update_state(_book("AAA", 28_300.0, 28_350.0), T(13, 5, 2))
+    assert rec.tick(T(13, 5, 5)) == 2
+    df = load_ws_quotes(tmp_path / "m.db").set_index("symbol")
+    assert df.loc["TCX", "bid_px1"] == 28_350.0 and pd.isna(df.loc["TCX", "ask_px1"])
+    assert df.loc["TCX", "n_msgs"] == 1 and df.loc["TCX", "age_ms"] == 3000
+    # khi xuất/phân tích, dòng khóa trần bị tách ra giống REST (spread không tính được)
+    class S: db_path = tmp_path / "m.db"
+    monkeypatch.setattr(ed, "get_settings", lambda: S())
+    out = ed.load_ws_table()
+    assert out["symbol"].tolist() == ["AAA"] and out["n_msgs"].tolist() == [1]
+
+
 def test_same_slot_and_off_hours_write_nothing(tmp_path):
     rec = WsBarRecorder(tmp_path / "m.db", tmp_path, interval=5)
     for raw in _msgs():

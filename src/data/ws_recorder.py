@@ -234,7 +234,11 @@ class WsBarRecorder:
                          "age_ms": max(age, 0) * 1000})
         if not rows:
             return 0
-        clean, _ = normalize_quotes(pd.DataFrame(rows))
+        clean, report = normalize_quotes(pd.DataFrame(rows))
+        # Như bộ ghi REST: mã khóa trần/sàn vẫn được lưu (bên trống để rỗng); bước làm sạch khi đọc tách chúng ra.
+        locked = report["limit_locked"]
+        if len(locked):
+            clean = pd.concat([clean, locked], ignore_index=True)
         # normalize_quotes chỉ giữ QUOTE_COLUMNS: ghép lại n_msgs, age_ms theo (ts, symbol)
         extra = pd.DataFrame(rows)[["symbol", "n_msgs", "age_ms"]].assign(symbol=lambda d: d["symbol"].str.upper())
         clean = clean.merge(extra, on="symbol", how="left")

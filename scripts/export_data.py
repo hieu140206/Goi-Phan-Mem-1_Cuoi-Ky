@@ -53,11 +53,15 @@ def load_table() -> pd.DataFrame:
 
 
 def load_ws_table() -> pd.DataFrame:
-    """Sổ lệnh WebSocket đã ghi (ws_quotes). Dữ liệu đã được làm sạch lúc ghi; thêm spread, độ sâu, lệch mua/bán như REST."""
+    """Sổ lệnh WebSocket đã ghi (ws_quotes), làm sạch lại như REST (bỏ dòng khóa trần/sàn); thêm spread, độ sâu, lệch."""
     raw = load_ws_quotes(get_settings().db_path)
     if raw.empty:
         return raw
-    df = add_liquidity_metrics(raw)
+    clean, _ = normalize_quotes(raw)
+    # normalize_quotes chỉ giữ cột sổ lệnh: ghép lại n_msgs, age_ms
+    extra = [c for c in ("n_msgs", "age_ms") if c in raw.columns]
+    clean = clean.merge(raw[["ts", "symbol", *extra]], on=["ts", "symbol"], how="left")
+    df = add_liquidity_metrics(clean)
     df = df[[c for c in NAMES if c in df.columns]].copy()
     df["ts"] = df["ts"].dt.tz_localize(None)
     return df
