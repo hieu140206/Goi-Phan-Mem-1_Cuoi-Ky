@@ -1,6 +1,8 @@
 """Thử kết nối SSI (chỉ ĐỌC, không đặt lệnh): đăng nhập, rồi nhận sổ lệnh một mã vài giây.
 
-Chạy (kích hoạt .venv trước):  python scripts/probe_ssi.py [MÃ] [GIÂY]      ví dụ: python scripts/probe_ssi.py VCB 20
+Chạy (kích hoạt .venv trước):
+  python scripts/probe_ssi.py rest VCB          # lịch sử theo ngày từ SSI, đối chiếu NEO (chạy được cả ngoài giờ)
+  python scripts/probe_ssi.py stream VCB 20    # nghe sổ lệnh trực tiếp (trong giờ giao dịch); hoặc chủ đề: quote.VN30@*
 Cần SSI_API_KEY và SSI_API_SECRET trong .env. KHÔNG dùng Private Key. Script không in khóa hay token.
 Mục đích: trả lời các điều tài liệu SSI v3 chưa nói rõ (token sống bao lâu, luồng trực tiếp xác thực thế nào,
 HOSE có mấy mức giá, tin gửi đủ hay chỉ gửi phần đổi). Kết quả chỉ để đọc, không ghi vào market.db.
@@ -17,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+import pandas as pd  # noqa: E402
 import requests  # noqa: E402
 import websockets  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
@@ -77,7 +80,7 @@ async def stream(token: str, symbol: str, seconds: float) -> bool:
 
 
 async def run_session(ws, symbol: str, seconds: float) -> None:
-    topic = f"quote.{symbol}"          # mỗi mã một chủ đề; không gộp "VNM,FPT"
+    topic = symbol if "." in symbol else f"quote.{symbol}"   # mỗi mã một chủ đề; hoặc truyền sẵn chủ đề, ví dụ quote.VN30@*
     await ws.send(json.dumps({"method": "SUBSCRIBE", "channel": "DATA", "topics": [topic]}))
     print(f"  Đã gửi SUBSCRIBE {topic}; nghe {seconds:.0f} giây ...")
     end, n, shown, levels = time.time() + seconds, 0, 0, set()
@@ -103,13 +106,92 @@ async def run_session(ws, symbol: str, seconds: float) -> None:
     print(f"  Nhận {n} tin. Số mức giá (mua, bán) từng tin: {sorted(levels) or 'chưa thấy tin sổ lệnh'}")
 
 
+def api_get(token: str, path: str, params: dict) -> object:
+    r = requests.get(f"{API}{path}", params=params, timeout=20,
+                     headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    print(f"  GET {path} {params}: HTTP {r.status_code}"
+          f"  (giới hạn còn {r.headers.get('X-RATELIMIT-REMAINING', '?')}/{r.headers.get('X-RATELIMIT-LIMIT', '?')})")
+    time.sleep(0.3)
+    if r.status_code == 204:
+        return []
+    if not r.ok:
+        print("   ", clean(r.text[:200]))
+        return None
+    return r.json()
+
+
+def rows_of(body: object) -> list[dict]:
+    if isinstance(body, dict):
+        body = body.get("data")
+    return [x for x in (body or []) if isinstance(x, dict)]
+
+
+def neo_final_rows(symbol: str) -> dict[str, dict]:
+    """Dòng bảng giá VN30 cuối mỗi ngày của NEO (từ market.db), chỉ lấy ảnh chụp từ 14:45 trở đi."""
+    import sqlite3
+
+    from neo_api.config import get_settings
+    db = get_settings().db_path
+    db = db if Path(db).is_absolute() else ROOT / db
+    con = sqlite3.connect(db)
+    out: dict[str, dict] = {}
+    q = ("SELECT day, ts, last_px, total_vol, foreign_buy_vol, foreign_sell_vol, foreign_remain FROM board "
+         "WHERE grp='VN30' AND symbol=? ORDER BY day, ts")
+    for day, ts, px, vol, fb, fs, room in con.execute(q, (symbol,)):
+        if ts[11:16] >= "14:45":                      # đã qua ATC; dòng sau ghi đè dòng trước
+            out[day] = {"close": px, "vol": vol, "fbuy": fb, "fsell": fs, "room": room}
+    return out
+
+
+def rest_check(token: str, symbol: str) -> None:
+    """Lấy giá đóng cửa, khối lượng, mua bán nước ngoài theo ngày từ SSI rồi đối chiếu với NEO. Chỉ đọc."""
+    today = pd.Timestamp.now(tz="Asia/Ho_Chi_Minh").normalize()
+    frm, to = (today - pd.Timedelta(days=21)).strftime("%Y/%m/%d"), today.strftime("%Y/%m/%d")
+    print(f"\nSSI {symbol}, từ {frm} đến {to}")
+    summ = rows_of(api_get(token, "/api/v3/data/securitiesSummary",
+                           {"symbol": symbol, "from": frm, "to": to, "pageSize": 50}))
+    ohlc = rows_of(api_get(token, "/api/v3/data/ohlc", {"symbol": symbol, "from": frm, "to": to,
+                                                        "timeFrame": "1d", "pageSize": 50}))
+    if summ:
+        print("  Các trường securitiesSummary:", sorted(summ[0]))
+        print("  Dòng mẫu:", {k: summ[0].get(k) for k in ("tradingDate", "close", "totalMatch", "totalForeignBuy",
+                                                           "totalForeignSell", "remainForeignRoom")})
+    if ohlc:
+        print("  Dòng mẫu ohlc:", {k: ohlc[0].get(k) for k in ("tradingDate", "open", "close", "volume", "value")})
+    idx = rows_of(api_get(token, "/api/v3/data/indexSummary",
+                          {"index": "VNINDEX", "tradingDate": (today - pd.Timedelta(days=4)).strftime("%Y/%m/%d")}))
+    if idx:
+        print("  indexSummary VNINDEX mẫu:", {k: idx[0].get(k) for k in ("tradingDate", "indexValue", "totalMatch",
+                                                                        "totalAdvanceStock", "totalBuyForeign")})
+    neo = neo_final_rows(symbol)
+    print(f"\n  So với NEO ({len(neo)} ngày có ảnh chụp sau ATC). Giá NEO đơn vị đồng; tỷ lệ SSI/NEO cho biết đơn vị SSI.")
+    print(f"  {'ngày':10s} {'đóng SSI':>10s} {'đóng NEO':>10s} {'KL SSI':>12s} {'KL NEO':>12s} "
+          f"{'NN mua SSI':>12s} {'NN mua NEO':>12s} {'room SSI':>12s} {'room NEO':>12s}")
+    for r in sorted(summ, key=lambda x: str(x.get("tradingDate"))):
+        day = str(r.get("tradingDate", ""))[:10].replace("/", "-")
+        n = neo.get(day)
+        if not n:
+            continue
+        print(f"  {day:10s} {r.get('close')!s:>10} {n['close']!s:>10} {r.get('totalMatch')!s:>12} {n['vol']!s:>12} "
+              f"{r.get('totalForeignBuy')!s:>12} {n['fbuy']!s:>12} {r.get('remainForeignRoom')!s:>12} {n['room']!s:>12}")
+    sd = {str(r.get("tradingDate", ""))[:10] for r in summ}
+    print(f"\n  SSI có {len(summ)} ngày (securitiesSummary), {len(ohlc)} ngày (ohlc). Ngày SSI có mà NEO chưa có: "
+          f"{sorted(d.replace('/', '-') for d in sd if d.replace('/', '-') not in neo)}")
+
+
 def main() -> None:
     load_dotenv(ROOT / ".env")
-    symbol = (sys.argv[1] if len(sys.argv) > 1 else "VCB").upper()
-    seconds = float(sys.argv[2]) if len(sys.argv) > 2 else 20
+    args = sys.argv[1:]
+    mode = args.pop(0) if args and args[0] in ("rest", "stream") else "stream"
+    symbol = (args[0] if args else "VCB").upper()
     body = login()
+    if mode == "rest":
+        rest_check(body["accessToken"], symbol)
+        print("\nXong.")
+        return
+    seconds = float(args[1]) if len(args) > 1 else 20
     ok = asyncio.run(stream(body["accessToken"], symbol, seconds))
-    print("\nXong." if ok else "\nKhông nối được luồng trực tiếp bằng cả hai cách; gửi kết quả trên cho Claude.")
+    print("\nXong." if ok else "\nKhông nối được luồng trực tiếp; gửi kết quả trên cho Claude.")
 
 
 if __name__ == "__main__":
