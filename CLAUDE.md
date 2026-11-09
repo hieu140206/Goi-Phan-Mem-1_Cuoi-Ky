@@ -17,15 +17,15 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 3. **Dữ liệu luôn phải đúng, hơn mọi thứ khác.** Thiếu thì để trống hoặc "–", không đoán, không điền, không nội suy. Đổi giao diện không được làm đổi số.
 4. Giới hạn NEO: **5 yêu cầu/giây**, IP phải đăng ký. Không tăng tần suất gọi khi chưa đo.
 5. Người dùng là **sinh viên mới học**: giải thích ngắn gọn, tiếng Việt, tránh thuật ngữ không cần thiết. Việc lớn thì **nhận xét và hỏi trước** rồi mới làm; không cắt phạm vi tự ý.
-6. Làm xong phải chạy `python -m pytest` (hiện **204 passed**) và xem lại giao diện trước khi báo xong.
+6. Làm xong phải chạy `python -m pytest` (hiện **218 passed**) và xem lại giao diện trước khi báo xong.
 
 ## Kiến trúc
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), stream WebSocket (nhị phân, phụ, mới giải mã được `stockInfo`).
-- `src/data/`: schema + làm sạch, storage (SQLite `data/market.db`), rest_recorder (bộ ghi), market_board (bảng giá nhiều sàn, phái sinh), overview (hàm dữ liệu trang Tổng quan), backfill, market_day.
+- `src/data/`: `ssi.py` (SSI v3 REST, nguồn PHỤ chỉ đọc: client có làm mới token, bảng `ssi_daily`, `ssi_index_daily`), schema + làm sạch, storage (SQLite `data/market.db`), rest_recorder (bộ ghi), market_board (bảng giá nhiều sàn, phái sinh), overview (hàm dữ liệu trang Tổng quan), backfill, market_day.
 - `src/finance/`: liquidity, anomaly, factors, sessions (lọc phiên khớp lệnh liên tục).
 - `src/analytics/`: baseline (cảnh báo theo khung giờ), lrs, screener (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường).
 - `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py` (Tổng quan), `screen_page.py` (Bộ lọc), `radar.py`, `stock.py` (Chi tiết mã), `shared.py` (tải và phân tích dùng chung, cùng số trên mọi trang), `charts.py`, `watchlist.py` (`data/watchlist.json`, không commit), `board.py` (bảng giá HTML), `theme.py`.
-- `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`, `backfill_extra.py`, `fetch_day_index.py`.
+- `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`, `backfill_extra.py`, `fetch_day_index.py`, `fetch_ssi_history.py` (lịch sử theo ngày từ SSI; `--check` đối chiếu với NEO), `probe_ssi.py` (thử SSI: `rest`, `stream`).
 - Dashboard **chỉ đọc** market.db, không giữ mật khẩu. Bộ ghi và dashboard là hai phần riêng.
 
 ## Điều đã xác nhận bằng dữ liệu thật vs chưa
@@ -45,7 +45,17 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 2. Kiểm chứng bảng giá các sàn bằng dữ liệu NEO thật (phiên 30/10), sau đó cân nhắc nâng HOSE/HNX lên 15 giây (cần đo, tránh lỗi 429).
 3. Spread theo bước giá: ĐÃ LÀM 1/11 (`tick_size`, `spread_ticks` trong liquidity.py; 3/11 ĐỔI: điểm thanh khoản (rank_symbols, cũng là cổng Bộ lọc) dùng spread bps TRUNG BÌNH vì là chi phí thật; chấm theo bước giá làm điểm ngược với chi phí (VIC 4 bps bị Loại, SHB 47 bps đứng đầu); cảnh báo vẫn dùng số bước giá vì mỗi mã so với chính nó). Baseline theo khung giờ: ĐÃ LÀM 2/11 (`analytics/baseline.py`, Radar dùng thay cửa sổ trượt của anomaly.py): so cùng mã, cùng khung 30 phút, tối đa 10 phiên trước (>= 2 phiên, >= 20 lần chụp); độ sâu và |lệch| dùng z bền vững trung vị/MAD; spread dùng số bước giá + tỷ lệ đuôi <= 5% (MAD spread = 0 ở 92% nhóm); cảnh báo phải kéo dài >= 2 lần chụp, đếm theo đợt. Phiên 30/10: 67 đợt ở 20 mã, hết dồn đầu phiên. Còn lại: hiệu chỉnh ngưỡng khi có >= 5 phiên; chi phí tác động lệnh cỡ Q; kiểm chứng H1/H4.
 4. WebSocket: đã có bộ ghi thử nghiệm song song (`run_live.py --ws` hoặc `scripts/record_ws.py`, bảng `ws_quotes` thanh 5 giây, `scripts/compare_ws_rest.py` đối chiếu với REST). REST vẫn là nguồn chính thức; chưa dùng WS cho phân tích cho đến khi đối chiếu khớp. 2/11: `probe_ws_schema.py` chạy thật, nhận 26 schema; bộ ghi WS đã chuyển sang giải mã bằng schema (sync mỗi lần kết nối, lui về giải mã thủ công nếu lỗi) và ghi kênh marketData vào `ws_trades` (PK symbol+seq; ts = giờ sàn, giây UTC -> UTC+7; lastColor B/S chưa kiểm chứng nghĩa). sequenceMsg đánh chung mọi mã. Cần một phiên đầy đủ với `run_live.py --ws` rồi `compare_ws_rest.py` (có phần so tổng khối lượng khớp WS với REST). 30/10 giải mã cũ: giá mức 1 khớp 98,8%. 4/11 (sau khi sửa thanh 5 giây): mọi trường khớp >95%, ws_trades 99,8% khối lượng REST, 0 lần kết nối lại; 88/91 dòng REST không ghép được là TCX khóa trần (bộ ghi WS trước đây bỏ dòng khóa trần, đã sửa: lưu như REST).
-5. Báo cáo, video demo, README, cập nhật file Excel theo dõi; nộp trước 1/12/2026.
+5. SSI: nối `ssi_daily` vào động lượng 5 phiên của Bộ lọc (có nhãn nguồn); thử luồng sổ lệnh SSI làm bộ ghi dự phòng song song.
+6. Báo cáo, video demo, README, cập nhật file Excel theo dõi; nộp trước 1/12/2026.
+
+## SSI (nguồn PHỤ, thêm 9/11/2026)
+- NEO vẫn là nguồn lõi (trần 50 điểm nếu không). SSI chỉ bù lịch sử NEO không có; nằm ở bảng riêng; giao diện phải ghi rõ nguồn; chưa nối vào Bộ lọc/Radar.
+- Khóa: `SSI_API_KEY`, `SSI_API_SECRET` trong `.env` (không commit). **KHÔNG dùng và không lưu Private Key** (chỉ để ký lệnh đặt/sửa/hủy; quy tắc chỉ đọc). KHÔNG cài `ssi-sdk` (có API đặt lệnh), tự gọi bằng requests/websockets.
+- API v3 (developers.ssi.com.vn): đăng nhập `POST api.ssi.com.vn/api/v3/auth/token`; token sống 15 phút (refreshToken 8 giờ); giới hạn 20 lần gọi mỗi API (header X-RateLimit-Remaining), chưa rõ chu kỳ.
+- Dữ liệu theo ngày đã kiểm chứng (9/11, 30 mã VN30, 4 ngày NEO có ảnh chụp sau ATC): giá đóng cửa 120/120, khối lượng 120/120, room NN 116/116 khớp NEO. NN mua/bán lệch chỉ ở 2/11 (NEO chụp 14:45:55, sớm) và 2 mã ngày 29/10 (chưa rõ nguyên nhân); ngày NEO chụp lúc 15:02 (3/11, 4/11) khớp 100%; SSI luôn >= NEO. Điểm VNINDEX/VN30 khớp 10/10.
+- Khác định nghĩa: số mã TĂNG/GIẢM của NEO gồm cả trần/sàn (= SSI tăng + trần, giảm + sàn, khớp 5/5). SSI trả toàn 0 số mã tăng/giảm của VN30: để trống, không dùng.
+- `securitiesSummary` (symbol hoặc index, from/to YYYY/MM/DD, lật trang) có đóng cửa, khối lượng, mua bán nước ngoài, room theo ngày; `ohlc` ngày cần `YYYY/MM/DD 00:00:00` (tài liệu ghi sai), nến 1 phút 200 dòng/trang, intraday giữ 1 năm; `indexSummary` chỉ nhận MỘT ngày (`tradingDate`).
+- Luồng trực tiếp: `wss://stream.ssi.com.vn/ws/v3`, token trong header Authorization (không để lên URL), `SUBSCRIBE` kênh `DATA` chủ đề `quote.<mã>` (mỗi mã một chủ đề); nối được và nhận ack, CHƯA thấy tin sổ lệnh (thử ngoài giờ): chạy `probe_ssi.py stream VCB 30` trong giờ giao dịch để biết số mức giá, đơn vị, tin đủ hay chỉ phần đổi.
 
 ## WebSocket: phát hiện từ NeoInvestSDK (đọc mã nguồn 1/11/2026, chưa kiểm chứng trên máy chủ thật)
 - Tin nhị phân = 1 byte id schema + bản ghi Avro. Id: 1 marketData, 2 marketInfo, 3 stockInfo, 10 marketVolume, 23 fuTopNPrice, 26 marketSession (khớp byte đầu thật của tin mẫu 28/10).

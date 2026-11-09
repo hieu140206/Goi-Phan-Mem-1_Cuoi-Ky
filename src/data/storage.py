@@ -11,6 +11,7 @@ from neo_api.config import TZ
 from .market import INDEX_COLUMNS
 from .market_board import BOARD_COLUMNS, DEPTH_COLUMNS, FUTURES_COLUMNS
 from .schema import QUOTE_COLUMNS
+from .ssi import SSI_DAILY_COLUMNS, SSI_DAILY_TEXT, SSI_INDEX_COLUMNS, SSI_INDEX_TEXT
 
 WS_COLUMNS = [*QUOTE_COLUMNS, "n_msgs", "age_ms"]  # sổ lệnh từ WebSocket theo thanh 5 giây (thử nghiệm)
 # Từng lần khớp từ kênh WebSocket marketData. ts = giờ sàn (timestamp của tin, chính xác tới giây), recv_ts = giờ máy nhận.
@@ -38,6 +39,9 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     _create(conn, "futures", FUTURES_COLUMNS, ("ts", "symbol", "name", "maturity"), "ts, symbol")
     _create(conn, "ws_quotes", WS_COLUMNS, ("ts", "symbol"), "ts, symbol")
     _create(conn, "ws_trades", WS_TRADE_COLUMNS, ("ts", "recv_ts", "symbol", "side"), "symbol, seq")
+    # Dữ liệu SSI theo ngày (nguồn PHỤ, bù lịch sử cho NEO): bảng riêng, không đụng bảng của NEO.
+    _create(conn, "ssi_daily", SSI_DAILY_COLUMNS, SSI_DAILY_TEXT, "day, symbol")
+    _create(conn, "ssi_index_daily", SSI_INDEX_COLUMNS, SSI_INDEX_TEXT, "day, index_code")
     return conn
 
 
