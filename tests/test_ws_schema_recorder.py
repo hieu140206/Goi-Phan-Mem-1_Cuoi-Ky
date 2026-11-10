@@ -176,3 +176,43 @@ def test_compare_script_detects_missing_trades(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "900 / REST 1,200 = 75.0%" in out
     assert "Mã lệch quá 2%: 1/2: BBB 50.0%" in out
+
+
+def _trade(day: str, seq: int, symbol: str = "VCB", volume: float = 100.0) -> dict:
+    return {"ts": pd.Timestamp(f"{day} 10:00:00", tz=TZ), "recv_ts": "x", "symbol": symbol, "seq": seq,
+            "price": 54300.0, "volume": volume, "side": "B"}
+
+
+def test_same_sequence_on_another_day_is_kept(tmp_path):
+    """NEO đánh lại sequenceMsg mỗi ngày: cùng mã, cùng số thứ tự nhưng KHÁC ngày là hai lần khớp khác nhau."""
+    from data.storage import save_ws_trades
+
+    db = tmp_path / "m.db"
+    assert save_ws_trades(pd.DataFrame([_trade("2026-11-03", 500)]), db) == 1
+    assert save_ws_trades(pd.DataFrame([_trade("2026-11-04", 500, volume=700.0)]), db) == 1   # trước đây bị bỏ qua
+    assert save_ws_trades(pd.DataFrame([_trade("2026-11-04", 500)]), db) == 0                 # trùng trong ngày vẫn bỏ
+    assert len(load_ws_trades(db)) == 2
+    day4 = load_ws_trades(db, "2026-11-04")
+    assert len(day4) == 1 and day4["volume"].iloc[0] == 700 and day4["day"].iloc[0] == "2026-11-04"
+
+
+def test_old_ws_trades_table_is_migrated_without_losing_rows(tmp_path):
+    """market.db ghi bằng bản cũ (khóa symbol, seq; chưa có cột day): lần mở đầu tiên chuyển sang khóa mới, giữ đủ dòng."""
+    import sqlite3
+
+    from data.storage import save_ws_trades
+
+    db = tmp_path / "m.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE ws_trades (ts TEXT, recv_ts TEXT, symbol TEXT, seq REAL, price REAL, volume REAL, side TEXT, "
+                "PRIMARY KEY (symbol, seq))")
+    con.executemany("INSERT INTO ws_trades VALUES (?, 'x', 'VCB', ?, 54300.0, 100.0, 'B')",
+                    [("2026-11-03T10:00:00+07:00", 500), ("2026-11-03T10:00:01+07:00", 501)])
+    con.commit()
+    con.close()
+    old = load_ws_trades(db)                                          # mở bằng bản mới: tự chuyển bảng
+    assert len(old) == 2 and set(old["day"]) == {"2026-11-03"} and list(old["seq"]) == [500, 501]
+    assert save_ws_trades(pd.DataFrame([_trade("2026-11-04", 500)]), db) == 1   # số thứ tự cũ, ngày mới: lưu được
+    con = sqlite3.connect(db)
+    assert not con.execute("SELECT name FROM sqlite_master WHERE name = 'ws_trades_old'").fetchall()
+    con.close()

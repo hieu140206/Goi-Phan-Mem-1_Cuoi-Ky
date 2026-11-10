@@ -17,6 +17,11 @@ WS_COLUMNS = [*QUOTE_COLUMNS, "n_msgs", "age_ms"]  # sổ lệnh từ WebSocket 
 # Từng lần khớp từ kênh WebSocket marketData. ts = giờ sàn (timestamp của tin, chính xác tới giây), recv_ts = giờ máy nhận.
 # side = lastColor nguyên văn ("B"/"S"; giả thuyết B = mua chủ động, khớp ở giá bán, CHƯA kiểm chứng đủ).
 WS_TRADE_COLUMNS = ["ts", "recv_ts", "symbol", "seq", "price", "volume", "side"]
+# Cột của bảng ws_trades: thêm `day` (ngày giao dịch, YYYY-MM-DD theo giờ sàn) để làm khóa cùng mã và số thứ tự.
+# NEO đánh lại sequenceMsg từ đầu mỗi ngày: khóa cũ (symbol, seq) làm lần khớp hôm nay trùng số với ngày trước bị bỏ qua
+# (phát hiện 10/11/2026: phiên 9/11 đọc 64.829 lần khớp nhưng chỉ lưu 64.469, thiếu đúng 360 lần trùng số với 3-6/11).
+WS_TRADE_TABLE_COLUMNS = ["day", *WS_TRADE_COLUMNS]
+_WS_TRADE_TEXT = ("day", "ts", "recv_ts", "symbol", "side")
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -38,7 +43,7 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     _create(conn, "depth_market", DEPTH_COLUMNS, ("ts", "grp"), "ts, grp")
     _create(conn, "futures", FUTURES_COLUMNS, ("ts", "symbol", "name", "maturity"), "ts, symbol")
     _create(conn, "ws_quotes", WS_COLUMNS, ("ts", "symbol"), "ts, symbol")
-    _create(conn, "ws_trades", WS_TRADE_COLUMNS, ("ts", "recv_ts", "symbol", "side"), "symbol, seq")
+    _create_ws_trades(conn)
     # Dữ liệu SSI theo ngày (nguồn PHỤ, bù lịch sử cho NEO): bảng riêng, không đụng bảng của NEO.
     _create(conn, "ssi_daily", SSI_DAILY_COLUMNS, SSI_DAILY_TEXT, "day, symbol")
     _create(conn, "ssi_index_daily", SSI_INDEX_COLUMNS, SSI_INDEX_TEXT, "day, index_code")
@@ -49,6 +54,24 @@ def _create(conn: sqlite3.Connection, table: str, columns: list[str], text_cols:
     """Tạo bảng nếu chưa có. Cột giá khai báo REAL nhưng SQLite vẫn giữ được chữ ATO/ATC (không ép thành số)."""
     cols = ", ".join(f"{c} TEXT" if c in text_cols else f"{c} REAL" for c in columns)
     conn.execute(f"CREATE TABLE IF NOT EXISTS {table} ({cols}, PRIMARY KEY ({pk}))")
+
+
+def _create_ws_trades(conn: sqlite3.Connection) -> None:
+    """Bảng ws_trades với khóa (day, symbol, seq). Bảng tạo bởi bản cũ (khóa symbol, seq, chưa có cột day) được chuyển
+    sang một lần: mọi dòng cũ giữ nguyên, day lấy từ 10 ký tự đầu của ts (giờ sàn, +07:00). Không dòng nào bị bỏ vì
+    khóa mới rộng hơn khóa cũ."""
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "ws_trades" in tables and "ws_trades_old" not in tables:
+        have = {r[1] for r in conn.execute("PRAGMA table_info(ws_trades)")}
+        if "day" not in have:
+            conn.execute("ALTER TABLE ws_trades RENAME TO ws_trades_old")
+            tables.add("ws_trades_old")
+    _create(conn, "ws_trades", WS_TRADE_TABLE_COLUMNS, _WS_TRADE_TEXT, "day, symbol, seq")
+    if "ws_trades_old" in tables:  # cũng chạy tiếp nếu lần chuyển trước bị ngắt giữa chừng
+        old = ", ".join(WS_TRADE_COLUMNS)
+        conn.execute(f"INSERT OR IGNORE INTO ws_trades (day, {old}) SELECT substr(ts, 1, 10), {old} FROM ws_trades_old")
+        conn.execute("DROP TABLE ws_trades_old")
+        conn.commit()
 
 
 def _write(df: pd.DataFrame, columns: list[str], table: str, db_path: Path, replace: bool) -> int:
@@ -84,15 +107,19 @@ def load_ws_quotes(db_path: Path) -> pd.DataFrame:
 
 
 def save_ws_trades(df: pd.DataFrame, db_path: Path) -> int:
-    """Lần khớp trùng (cùng mã, cùng số thứ tự, ví dụ nhận lại sau khi kết nối lại) bị bỏ qua."""
-    return _write(df, WS_TRADE_COLUMNS, "ws_trades", db_path, replace=False)
+    """Lần khớp trùng (cùng NGÀY, cùng mã, cùng số thứ tự, ví dụ nhận lại sau khi kết nối lại) bị bỏ qua.
+    day = ngày của giờ sàn (ts), đúng 10 ký tự đầu của ts khi lưu."""
+    if df.empty:
+        return 0
+    data = df.assign(day=df["ts"].map(lambda t: t.isoformat()[:10]))
+    return _write(data, WS_TRADE_TABLE_COLUMNS, "ws_trades", db_path, replace=False)
 
 
 def load_ws_trades(db_path: Path, day: str | None = None) -> pd.DataFrame:
     sql, params = "SELECT * FROM ws_trades", ()
     if day:
-        sql, params = sql + " WHERE substr(ts, 1, 10) = ?", (day,)
-    return _read(db_path, sql + " ORDER BY symbol, seq", params, WS_TRADE_COLUMNS)
+        sql, params = sql + " WHERE day = ?", (day,)
+    return _read(db_path, sql + " ORDER BY day, symbol, seq", params, WS_TRADE_TABLE_COLUMNS)
 
 
 def save_futures(df: pd.DataFrame, db_path: Path) -> int:
