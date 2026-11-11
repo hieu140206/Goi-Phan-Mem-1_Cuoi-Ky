@@ -205,3 +205,18 @@ def test_market_context_facts():
     assert ctx["basis_contract"] == "VN30F1M" and ctx["basis"] == pytest.approx(-3.2)
     assert ctx["vn30_foreign_net"] == pytest.approx(1.5e9)   # 2e9 (mới nhất của A) - 0,5e9
     assert "giảm" in ctx["summary"] and "mua ròng" in ctx["summary"] and "thấp hơn" in ctx["summary"]
+
+
+def test_momentum_calendar_counts_days_not_recorded():
+    # Lịch thật có D2 nhưng bạn không ghi ngày đó. "1 phiên trước" của D3 là D2 (không có giá) -> NaN,
+    # không được lùi sang D1 (đó là 2 phiên trước). Không có lịch thì D2 không tồn tại với chương trình (hành vi cũ, sai).
+    rows = [("AAA", D1, 100.0, True), ("AAA", D3, 110.0, True)]
+    closes = pd.DataFrame(rows, columns=["symbol", "day", "close", "final"])
+    no_cal = momentum(closes, 1).set_index("day")
+    assert no_cal.loc[D3, "mom_1"] == pytest.approx(0.10)             # sai: coi D1 là phiên trước
+    cal = momentum(closes, 1, calendar=[D1, D2, D3]).set_index("day")
+    assert np.isnan(cal.loc[D3, "mom_1"])
+    assert momentum(closes, 2, calendar=[D1, D2, D3]).set_index("day").loc[D3, "mom_2"] == pytest.approx(0.10)
+    # lịch có thể là chuỗi YYYY-MM-DD (như bảng SSI) và có ngày ngoài dữ liệu
+    cal2 = momentum(closes, 2, calendar=["2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30"]).set_index("day")
+    assert cal2.loc[D3, "mom_2"] == pytest.approx(0.10)

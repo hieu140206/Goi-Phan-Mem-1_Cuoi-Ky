@@ -259,7 +259,8 @@ def _cards_block(day, market_json: dict, live: bool) -> None:
     shown = list(cards_now["index_code"])
     missing = [INDEX_NAMES[c] for c in ("VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX") if c not in shown]
     st.html('<div class="idx-cards">' + "".join(card_html(r, idx_now, day, market_json) for _, r in cards_now.iterrows()) + "</div>")
-    st.caption("Trong ngoặc: số mã trần (tím) và số mã sàn (xanh). Khối lượng và giá trị là lũy kế cả sàn/rổ trong ngày.")
+    st.caption("Trong ngoặc: số mã trần (tím) và số mã sàn (xanh). Khối lượng và giá trị là lũy kế cả sàn/rổ trong ngày, "
+               "do NEO tính; thường cao hơn tổng các mã trong bảng giá vài phần trăm (có thể do giao dịch thỏa thuận, chưa xác nhận).")
     if missing:
         st.caption("Chưa có dữ liệu: " + ", ".join(missing) + ".")
 

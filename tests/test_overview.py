@@ -163,3 +163,14 @@ def test_day_range():
     s = pd.DataFrame({"ts": pd.date_range("2026-10-27 09:00", periods=3, freq="min", tz=TZ), "value": [10.0, 12.5, 11.0]})
     assert day_range(s) == (10.0, 12.5)
     assert day_range(pd.DataFrame(columns=["ts", "value"])) is None
+
+
+def test_market_depth_keeps_symbols_with_an_empty_book_level():
+    q = _quotes()
+    q.loc[q.index[0], ["ask_px2", "ask_qty2", "ask_px3", "ask_qty3"]] = np.nan   # một mã chỉ còn 1 mức bán
+    full = market_depth(_quotes(), DAY)
+    part = market_depth(q, DAY)
+    assert len(part) == len(full) == 2
+    lost = q.loc[q.index[0], "ask_px1"] * 0  # không thể mất cả dòng: bên bán chỉ giảm đúng phần của mức 2, 3 đã bỏ
+    assert part["ask_value"].iloc[0] < full["ask_value"].iloc[0] and part["ask_value"].iloc[0] > 0
+    assert part["bid_value"].iloc[0] == pytest.approx(full["bid_value"].iloc[0])

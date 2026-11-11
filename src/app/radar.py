@@ -207,7 +207,9 @@ n_alert_syms = alerts["symbol"].nunique()
 weakest = ranking.iloc[0]
 top_alert_sym = alert_counts.idxmax() if len(alert_counts) else None
 top_alert_n = int(alert_counts.max()) if len(alert_counts) else 0
-top_alert_ratio = alerts.loc[alerts["symbol"] == top_alert_sym, "spread_ratio"].max() if n_alerts else np.nan
+# Chỉ lấy các lần chụp cảnh báo DO SPREAD: cảnh báo độ sâu mỏng có spread_ratio bình thường (~1) nên không nói được "spread gấp mấy lần".
+top_alert_ratio = (alerts.loc[(alerts["symbol"] == top_alert_sym) & alerts["alert_type"].str.contains("Spread"),
+                              "spread_ratio"].max() if n_alerts else np.nan)
 
 # ---------- đầu trang ----------
 is_sim = source == SRC_SAMPLE
@@ -452,8 +454,9 @@ ATO, ATC và nghỉ trưa bị loại vì sổ lệnh lúc đó không phản á
 **Điểm thanh khoản (0-100)** là xếp hạng tương đối giữa các mã đang chọn: spread trung bình tính bằng bps thấp (40%),
 độ sâu lớn (40%), ít lệch mua/bán (20%). Trọng số là giả định ban đầu, chưa được hiệu chỉnh.
 Điểm dùng spread bps vì đó là chi phí thật khi mua rồi bán. Chấm theo số bước giá cho kết quả gần như ngược với chi phí:
-mã giá cao (VIC ~240.000đ) có bước giá nhỏ so với giá nên spread hay rộng 2-3 bước giá mà chỉ tốn ~4 bps, còn mã giá
-thấp (SHB ~10.000đ) luôn đúng 1 bước giá nhưng tốn ~47 bps. Giới hạn: mã giá thấp luôn có bps cao do bước giá, nên điểm
+mã giá cao (VIC ~240.000đ) có bước giá nhỏ so với giá (1 bước giá chỉ ~4 bps) nên dù spread trung bình khoảng 2 bước giá
+vẫn chỉ tốn ~8 bps (trung vị ~4 bps), còn mã giá thấp (SHB ~10.700đ) luôn đúng 1 bước giá nhưng tốn ~47 bps (số liệu
+28/10 đến 11/11/2026). Giới hạn: mã giá thấp luôn có bps cao do bước giá, nên điểm
 cho biết mua bán *tốn kém* đến đâu, không cho biết sổ lệnh có "căng" hay không. Cảnh báo bên dưới vẫn dùng số bước giá
 vì mỗi mã chỉ so với chính nó.
 
@@ -464,8 +467,8 @@ phiên. Phiên hiện tại và tương lai không được dùng.
 
 **Điểm rủi ro LRS** = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), so với baseline cùng khung giờ. Z của độ sâu
 (logarit) và của |lệch mua/bán| là z bền vững = (x − trung vị) / (1,4826 × MAD) (Leys và cộng sự, 2013). Z của spread
-lấy từ thứ hạng phần trăm của spread (theo bước giá) trong baseline, vì spread gần như luôn đúng 1 bước giá nên MAD
-bằng 0. Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" tại mỗi thời điểm là phân vị
+lấy từ thứ hạng phần trăm của spread (theo bước giá) trong baseline, vì spread phần lớn đúng 1 bước giá (khoảng 85% lần
+chụp) nên MAD thường bằng 0. Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" tại mỗi thời điểm là phân vị
 95% và 99% của mọi điểm LRS có *trước* thời điểm đó (cần ít nhất 300 điểm), nên không dùng dữ liệu tương lai và
 ngưỡng thay đổi dần theo thời gian. Vì là phân vị nên về lâu dài khoảng 1% lần chụp ở mức "Cao" dù thị trường yên;
 mức này để theo dõi xu hướng, còn danh sách cảnh báo dựa trên điều kiện bên dưới.

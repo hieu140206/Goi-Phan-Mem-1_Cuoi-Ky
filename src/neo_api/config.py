@@ -42,8 +42,6 @@ def get_settings() -> Settings:
     db_path = Path(os.getenv("NEO_DB_PATH", "data/market.db"))
     if not db_path.is_absolute():  # luôn tính từ thư mục dự án, dù chạy lệnh ở đâu
         db_path = PROJECT_ROOT / db_path
-    if not db_path.is_absolute():
-        db_path = PROJECT_ROOT / db_path
     return Settings(
         base_url=(os.getenv("NEO_BASE_URL") or DEFAULT_BASE_URL).rstrip("/"),
         ws_url=(os.getenv("NEO_WS_URL") or DEFAULT_WS_URL).strip(),

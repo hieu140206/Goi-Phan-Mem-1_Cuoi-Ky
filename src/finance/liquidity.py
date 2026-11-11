@@ -11,7 +11,7 @@ Công thức (mỗi lần chụp sổ lệnh):
 
 Điểm so sánh GIỮA các mã (rank_symbols) dùng spread bps trung bình, vì đó là chi phí thật nhà đầu tư trả khi mua rồi
 bán. Quyết định 3/11/2026, sau khi rà soát dữ liệu thật: chấm theo số bước giá làm điểm gần như ngược với chi phí
-(VIC spread 4 bps, rẻ nhất rổ, bị xếp "Yếu"; SHB 47 bps, đắt nhất rổ, đứng đầu), vì mã giá cao có bước giá nhỏ so với
+(VIC rẻ nhất rổ: trung vị 4 bps, trung bình 8 bps, bị xếp "Yếu"; SHB 47 bps, đắt nhất rổ, đứng đầu), vì mã giá cao có bước giá nhỏ so với
 giá nên spread hay rộng 2-3 bước giá mà chi phí vẫn thấp. Mặt trái cần ghi trong báo cáo: mã giá thấp luôn có bps cao
 do bước giá chiếm tỷ lệ lớn (bị "kẹp bởi bước giá", Harris 1994), nên điểm phản ánh CHI PHÍ chứ không phải độ "căng"
 của sổ lệnh. Spread theo bước giá vẫn dùng cho cảnh báo (analytics/baseline.py), vì ở đó mỗi mã so với chính nó.
@@ -49,8 +49,10 @@ def add_liquidity_metrics(df: pd.DataFrame) -> pd.DataFrame:
     out["bid_depth"] = out[BID_QTY].sum(axis=1, min_count=1)
     out["ask_depth"] = out[ASK_QTY].sum(axis=1, min_count=1)
     out["depth_shares"] = out["bid_depth"] + out["ask_depth"]
-    value = sum(out[p] * out[q] for p, q in zip(BID_PX + ASK_PX, BID_QTY + ASK_QTY))
-    out["depth_value"] = value
+    # Mức không có lệnh (giá và khối lượng đều trống, ví dụ mã sát trần chỉ còn 1-2 mức bán) đóng góp 0 chứ không làm cả
+    # tổng thành trống: đó là sự thật "không có lệnh ở mức này". Chỉ khi cả 6 mức đều trống thì độ sâu mới để trống.
+    levels = [out[p] * out[q] for p, q in zip(BID_PX + ASK_PX, BID_QTY + ASK_QTY)]
+    out["depth_value"] = pd.concat(levels, axis=1).sum(axis=1, min_count=1)
     total = out["depth_shares"].where(out["depth_shares"] > 0)
     out["imbalance"] = (out["bid_depth"] - out["ask_depth"]) / total
     return out

@@ -44,14 +44,15 @@ with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
     horizon = st.segmented_control(
         "Động lượng", ["intraday", "5d"], default="intraday", required=True,
         format_func=lambda h: "Trong phiên" if h == "intraday" else "5 phiên",
-        help="5 phiên cần ít nhất 6 ngày có giá đóng cửa hợp lệ (bảng giá chụp từ 14:45, đã có ATC).")
+        help="5 phiên cần giá đóng cửa hợp lệ (bảng giá chụp từ 14:45, đã có ATC) của phiên này và của phiên cách đó "
+             "5 phiên giao dịch; lịch phiên lấy từ SSI (python scripts/fetch_ssi_history.py).")
 
 if probe is None:
     st.info("Phiên này không có sổ lệnh theo phút trong phiên khớp lệnh liên tục.")
     st.stop()
 if horizon == "5d" and not probe["mom5_ok"]:
-    st.html('<div class="notice">Chưa đủ giá đóng cửa hợp lệ để tính động lượng 5 phiên (cần 6 ngày bảng giá chụp từ 14:45). '
-            "Đang dùng động lượng trong phiên.</div>")
+    st.html('<div class="notice">Chưa đủ dữ liệu để tính động lượng 5 phiên: cần bảng giá chụp từ 14:45 của phiên này và của '
+            "phiên cách đó 5 phiên giao dịch, cùng lịch phiên từ SSI. Đang dùng động lượng trong phiên.</div>")
     horizon = "intraday"
 res = screen_for_day(source, day, min_score, horizon) if horizon != "intraday" else probe
 r = res["result"]
@@ -176,8 +177,8 @@ Mã thiếu một yếu tố được tính trên yếu tố còn lại.
 **Giới hạn**
 - Chưa kiểm chứng điểm cao có đi kèm lợi suất ngày sau tốt hơn hay không: cần nhiều phiên hơn. Đây là công cụ so sánh,
   không dự báo giá, không phải khuyến nghị mua bán.
-- Điểm thanh khoản là xếp hạng *tương đối* giữa 30 mã, nên với ngưỡng 33,3 khoảng 1/3 số mã luôn bị Loại, kể cả khi cả
-  thị trường thanh khoản tốt. Cổng trả lời "mã nào kém nhất trong VN30", chưa phải "mã nào kém tuyệt đối".
+- Điểm thanh khoản là xếp hạng *tương đối* giữa 30 mã, nên luôn có mã bị Loại kể cả khi cả thị trường thanh khoản tốt
+  (với ngưỡng 33,3, trên dữ liệu 28/10 đến 11/11 thường 4 đến 6 trong 30 mã bị Loại). Cổng trả lời "mã nào kém nhất trong VN30", chưa phải "mã nào kém tuyệt đối".
 - Bảng giá chụp trước 14:45 chưa gồm phiên ATC; trang ghi rõ giờ chụp.
 - Dòng tiền nước ngoài và giá trị giao dịch là số lũy kế NEO trả tại thời điểm chụp.
         """

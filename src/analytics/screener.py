@@ -75,11 +75,14 @@ def daily_closes_from_board(board: pd.DataFrame) -> pd.DataFrame:
 
 
 # 2. Động lượng nhiều phiên
-def momentum(closes: pd.DataFrame, n: int, index_closes: pd.DataFrame | None = None) -> pd.DataFrame:
+def momentum(closes: pd.DataFrame, n: int, index_closes: pd.DataFrame | None = None,
+             calendar=None) -> pd.DataFrame:
     """Lợi suất n phiên = close hôm nay / close cách n phiên - 1, chỉ dùng dòng final.
 
-    "Cách n phiên" tính theo lịch phiên chung (mọi ngày có trong `closes`, kể cả ngày chưa chốt), không theo số dòng
-    của từng mã. Ngày chưa chốt (final = False) vẫn giữ chỗ trong lịch nhưng giá là NaN, nên lợi suất chạm tới ngày
+    "Cách n phiên" tính theo lịch phiên chung, không theo số dòng của từng mã. Lịch là các ngày có trong `closes` (kể cả
+    ngày chưa chốt) HỢP với `calendar` nếu có: `calendar` là các ngày giao dịch thật (ví dụ lấy từ SSI) để một ngày bạn
+    không ghi vẫn chiếm chỗ trong lịch; thiếu nó thì "5 phiên trước" bị tính nhầm thành ngày đã ghi thứ 5 trước đó.
+    Ngày chưa chốt (final = False) hoặc không có giá vẫn giữ chỗ trong lịch nhưng giá là NaN, nên lợi suất chạm tới ngày
     đó là NaN; mã thiếu ngày cũng NaN chứ không lấy ngày gần nhất (không nội suy).
     Có `index_closes` (day, close của VN30) thì thêm index_mom_n và rel_mom_n = mom_n - index_mom_n cùng kỳ."""
     col = f"mom_{n}"
@@ -89,8 +92,11 @@ def momentum(closes: pd.DataFrame, n: int, index_closes: pd.DataFrame | None = N
     if "final" in c:
         c["close"] = c["close"].where(c["final"].astype(bool))
     c = c[["symbol", "day", "close"]].sort_values(["symbol", "day"]).reset_index(drop=True)
-    cal = sorted(c["day"].unique())
-    back = {d: (cal[i - n] if i - n >= 0 else None) for i, d in enumerate(cal)}
+    days = set(c["day"].unique())
+    if calendar is not None:
+        days |= {pd.Timestamp(d).date() for d in calendar}
+    cal = sorted(days)
+    back ={d: (cal[i - n] if i - n >= 0 else None) for i, d in enumerate(cal)}
     c["day_back"] = c["day"].map(back)
     prev = c[["symbol", "day", "close"]].rename(columns={"day": "day_back", "close": "close_back"})
     c = c.merge(prev, on=["symbol", "day_back"], how="left")

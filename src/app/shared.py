@@ -18,7 +18,8 @@ import streamlit as st  # noqa: E402
 
 from analytics.baseline import detect_anomalies_tod  # noqa: E402
 from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
-from data.schema import limit_lock_side, normalize_quotes  # noqa: E402
+from data.schema import limit_lock_side, normalize_quotes
+from data.ssi import load_ssi_daily  # noqa: E402
 from analytics.screener import (ATC_DONE, daily_closes_from_board, intraday_factors, liquidity_gate,  # noqa: E402
                                 market_context, momentum, screen)
 from data.overview import (breadth_frame, futures_view, index_cards, load_market_json)  # noqa: E402
@@ -123,6 +124,16 @@ def _board(db_path: str, version: float, day: str, grp: str) -> pd.DataFrame:
     return load_board(Path(db_path), day, grp)
 
 
+@st.cache_data(show_spinner=False)
+def _ssi_calendar(db_path: str, version: float) -> list[str]:
+    """Các ngày giao dịch thật theo SSI (ngày có dòng của chỉ số VNINDEX hoặc VN30 trong ssi_daily), YYYY-MM-DD.
+    Dùng làm lịch phiên cho động lượng nhiều phiên. Chưa lấy SSI (scripts/fetch_ssi_history.py) thì rỗng."""
+    df = load_ssi_daily(Path(db_path))
+    if df.empty:
+        return []
+    return sorted(df.loc[df["symbol"].isin(["VNINDEX", "VN30"]), "day"].dropna().unique())
+
+
 def board_dates() -> list[str]:
     """Các ngày có bảng giá (ảnh chụp mới nhất mỗi ngày, cuối ngày là lúc đóng cửa), dạng YYYY-MM-DD."""
     return _board_days(str(get_settings().db_path), db_version())
@@ -186,8 +197,9 @@ def screen_for_day(source: str, day, min_score: float = GATE_MIN_SCORE, horizon:
             if not ix.empty:
                 last = ix.sort_values("ts").iloc[-1]
                 ix_rows.append({"day": d, "close": last["index_value"] if last["ts"].time() >= ATC_DONE else None})
-        if not closes.empty:
-            mom = momentum(closes, 5, pd.DataFrame(ix_rows) if ix_rows else None)
+        cal = _ssi_calendar(str(get_settings().db_path), db_version())
+        if not closes.empty and cal:   # chưa có lịch phiên thật thì không tính: không đoán ngày giao dịch
+            mom = momentum(closes, 5, pd.DataFrame(ix_rows) if ix_rows else None, calendar=cal)
             today = mom[mom["day"] == day]
             if "rel_mom_5" in today and today["rel_mom_5"].notna().any():
                 factors = factors.merge(today[["symbol", "mom_5", "rel_mom_5"]], on="symbol", how="left")

@@ -129,3 +129,39 @@ def test_tier_with_per_row_thresholds():
     lrs = pd.Series([0.5, 1.5, 3.0, 1.0])
     thr = pd.DataFrame({"watch": [1.0, 1.0, 1.0, np.nan], "high": [2.0, 2.0, 2.0, np.nan]})
     assert lrs_tier(lrs, thr).tolist() == ["Bình thường", "Chú ý", "Cao", ""]
+
+
+def test_thin_no_trade_compares_with_same_time_of_day_not_yesterday_afternoon():
+    from analytics.baseline import tod_bucket
+
+    # Mỗi ngày: sáng 25 lần chụp mỏng và ít khớp, chiều 30 lần chụp dày và khớp nhiều (nhịp thật của VN30).
+    def day_frame(offset_days):
+        base = pd.Timestamp("2026-11-02", tz="Asia/Ho_Chi_Minh") + pd.Timedelta(days=offset_days)
+        rows, cum = [], 0.0
+        for part, start, n, q, dv in (("am", 9 * 60 + 15, 25, 1000.0, 10.0), ("pm", 13 * 60, 30, 10_000.0, 800.0)):
+            for i in range(n):
+                cum += dv
+                r = {"ts": base + pd.Timedelta(minutes=start + i), "symbol": "AAA", "total_vol": cum}
+                for k in (1, 2, 3):
+                    r[f"bid_px{k}"], r[f"ask_px{k}"] = 99_900 - (k - 1) * 100, 100_100 + (k - 1) * 100
+                    r[f"bid_qty{k}"] = r[f"ask_qty{k}"] = q
+                rows.append(r)
+        return add_liquidity_metrics(pd.DataFrame(rows))
+
+    df = pd.concat([day_frame(0), day_frame(1), day_frame(2)], ignore_index=True)
+    plain = add_absorption(df)                                  # cửa sổ trượt: sáng bị so với chiều hôm trước
+    assert plain["thin_no_trade"].sum() > 0
+    df["bucket"] = tod_bucket(df["ts"])
+    tod = add_absorption(df)                                    # so cùng khung giờ: sáng bình thường so với sáng
+    assert not tod["thin_no_trade"].any()
+    # và vẫn bắt được một buổi sáng thật sự bất thường: ngày thứ 3, 9:20, độ sâu rút còn 10% và không có lệnh khớp
+    d3 = df["ts"].dt.date == df["ts"].dt.date.max()
+    t_hit = df.loc[d3 & (df["bucket"] == 0), "ts"].iloc[5]
+    prev_vol = df.loc[df["ts"] == t_hit - pd.Timedelta(minutes=1), "total_vol"].iloc[0]
+    sel = df["ts"] == t_hit
+    df.loc[sel, "total_vol"] = prev_vol                          # không khớp thêm cổ phiếu nào so với phút trước
+    for k in (1, 2, 3):
+        df.loc[sel, [f"bid_qty{k}", f"ask_qty{k}"]] = 100.0
+    flagged = add_absorption(add_liquidity_metrics(df))
+    assert flagged.loc[flagged["ts"] == t_hit, "thin_no_trade"].iloc[0]
+    assert flagged["thin_no_trade"].sum() == 1

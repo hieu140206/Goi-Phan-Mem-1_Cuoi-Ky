@@ -132,9 +132,10 @@ def market_depth(quotes: pd.DataFrame, day: dt.date) -> pd.DataFrame:
     d = quotes[quotes["ts"].dt.date == day]
     if d.empty:
         return pd.DataFrame(columns=["ts", "bid_value", "ask_value", "imbalance", "median_spread_bps"])
+    # Mức không có lệnh tính 0 (như depth_row và add_liquidity_metrics), để một mã sát trần/sàn không làm mất cả dòng.
     work = d.assign(
-        bid_value=sum(d[p] * d[q] for p, q in zip(BID_PX, BID_QTY)),
-        ask_value=sum(d[p] * d[q] for p, q in zip(ASK_PX, ASK_QTY)),
+        bid_value=sum((d[p] * d[q]).fillna(0) for p, q in zip(BID_PX, BID_QTY)),
+        ask_value=sum((d[p] * d[q]).fillna(0) for p, q in zip(ASK_PX, ASK_QTY)),
     )
     g = work.groupby("ts").agg(bid_value=("bid_value", "sum"), ask_value=("ask_value", "sum"),
                                median_spread_bps=("rel_spread_bps", "median")).reset_index()

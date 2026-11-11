@@ -3,7 +3,7 @@
 Chạy mỗi ngày giao dịch, khoảng 9:05 (kích hoạt .venv trước):
   python scripts/record_rest.py
 
-Bộ ghi tự chờ tới phiên, tự bỏ qua giờ nghỉ trưa, tự dừng sau khi đóng cửa (khoảng 14:45-15:00).
+Bộ ghi tự chờ tới phiên, tự bỏ qua giờ nghỉ trưa, tự dừng sau khi đóng cửa (khoảng 15:02, sau khi chốt số cuối ngày).
 Dừng sớm: Ctrl+C (dữ liệu đã ghi vẫn giữ nguyên, tóm tắt phiên vẫn được lưu).
 Giữ máy bật, không cho máy ngủ, dùng đúng mạng có IP đã đăng ký với NEO.
 
@@ -12,7 +12,7 @@ Kết quả:
   data/raw/<ngày>/stocks.jsonl.gz     phản hồi gốc của NEO mỗi phút (bằng chứng, xử lý lại được)
   data/raw/<ngày>/market.json         chuỗi VN30/VNINDEX trong ngày và độ rộng thị trường
   data/sessions.csv                   tóm tắt từng phiên (điền sheet "Dữ liệu thu thập" trong Excel)
-Chỉ ĐỌC dữ liệu, không đặt lệnh. Mỗi phút 2 yêu cầu API.
+Chỉ ĐỌC dữ liệu, không đặt lệnh. Mỗi phút 3 yêu cầu API (4.4, 4.7, 4.3).
 """
 from __future__ import annotations
 

@@ -7,7 +7,7 @@ Việc nó làm:
   1. Đăng nhập NEO một lần (hỏi tài khoản và mật khẩu; mật khẩu không hiển thị, không lưu ra đĩa).
   2. Mở dashboard Streamlit ở chế độ "Trực tiếp" (tự đọc lại dữ liệu khi có bản ghi mới).
   3. Chạy bộ ghi (giống scripts/record_rest.py): mỗi phút lấy sổ lệnh 3 mức của rổ VN30 rồi ghi vào data/market.db.
-  4. Bộ ghi tự dừng khi hết phiên (khoảng 14:45). Dashboard vẫn mở để xem lại; bấm Ctrl+C để tắt hẳn.
+  4. Bộ ghi tự dừng khi hết phiên (khoảng 15:02, sau khi chốt số cuối ngày). Dashboard vẫn mở để xem lại; bấm Ctrl+C để tắt hẳn.
 
 Bộ ghi và dashboard là hai phần riêng: dashboard chỉ ĐỌC market.db, nên đóng tab trình duyệt hay dashboard lỗi
 không làm mất dữ liệu phiên. Dữ liệu "trực tiếp" trễ tối đa khoảng 1 phút (bộ ghi chụp mỗi phút).

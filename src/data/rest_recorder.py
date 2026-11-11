@@ -1,8 +1,8 @@
 """Bộ ghi dữ liệu sổ lệnh qua REST (NEO 4.7 stockDetailByIndex), dùng cho mỗi phiên giao dịch.
 
 Vì sao dùng REST: định dạng 4.7 đã xác nhận bằng dữ liệu thật (JSON, 30 mã VN30 trong 1 lần gọi), còn tin
-WebSocket là nhị phân chưa có schema. Mỗi chu kỳ (mặc định 60 giây) chỉ gọi 2 yêu cầu: 4.4 trạng thái phiên
-và 4.7 sổ lệnh, rất xa giới hạn 5 yêu cầu/giây.
+WebSocket là nhị phân chưa có schema. Mỗi chu kỳ (mặc định 60 giây) chỉ gọi 3 yêu cầu: 4.4 trạng thái phiên,
+4.7 sổ lệnh và 4.3 chỉ số, rất xa giới hạn 5 yêu cầu/giây.
 
 Tùy chọn (run_live bật): vòng chỉ số 5 giây (4.3), bảng giá HOSE/HNX/UPCoM/ETF/CW (4.6), độ sâu theo sàn, hợp đồng VN30 (4.9).
 
@@ -275,7 +275,7 @@ class RestRecorder:
 
     def finalize_close(self, until: dt.time = dt.time(15, 2), step: int = 30) -> None:
         """Sau khi HOSE hết phiên khớp lệnh (14:45), chỉ số vẫn đổi: giá đóng cửa ATC được chốt, HNX/UPCoM còn khớp tới 15:00,
-        giao dịch thỏa thuận cộng vào khối lượng và giá trị. Hỏi 4.3 mỗi 30 giây tới 15:02 để thẻ chỉ số cuối ngày
+        giao dịch thỏa thuận (nghi cộng vào khối lượng và giá trị của chỉ số, chưa xác nhận). Hỏi 4.3 mỗi 30 giây tới 15:02 để thẻ chỉ số cuối ngày
         khớp với các bảng giá chính thức (không có bước này, ngày 29/10 thẻ chỉ số dừng ở 14:44, lệch VN-Index 2 điểm).
         Cũng làm mới các bảng giá: ngày 30/10 bảng dừng ở 14:44 nên tổng khối lượng thiếu đúng khối lượng khớp ATC của từng mã."""
         log.info("Hết phiên khớp lệnh. Chờ giá đóng cửa chính thức và giao dịch thỏa thuận tới %s...", until.strftime("%H:%M"))

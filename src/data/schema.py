@@ -56,8 +56,8 @@ def normalize_quotes(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
       - Khóa trần/sàn: mua tốt nhất = giá trần mà không có bên bán (hoặc bán tốt nhất = giá sàn mà không có bên mua).
         Spread không tính được nên dòng không vào `clean`, nhưng KHÔNG bị bỏ im lặng: được đếm ở
         report["dropped_limit_lock"] và trả nguyên dòng ở report["limit_locked"] để bộ ghi lưu và giao diện báo.
-        Đây là lúc thanh khoản một chiều kém nhất. Chưa gặp trên dữ liệu thật 28-30/10/2026, nên cách NEO biểu diễn
-        bên trống (để trống hay số 0) chưa được xác nhận; cả hai cách đều được nhận.
+        Đây là lúc thanh khoản một chiều kém nhất. Gặp thật ngày 4/11/2026 (TCX khóa trần, 87 lần chụp): NEO để
+        bên trống là NULL (không phải số 0); cả hai cách đều được nhận.
     """
     report = {"rows_in": len(df)}
     out = df.copy()

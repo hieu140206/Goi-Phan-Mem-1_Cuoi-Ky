@@ -13,7 +13,7 @@ Khung giờ tính từ đầu mỗi buổi khớp lệnh liên tục: 9:15, 9:45
 Cách đo độ lệch:
   - Độ sâu (log) và |mất cân bằng|: z bền vững = (x - trung vị) / (1,4826 * MAD) (Leys và cộng sự 2013).
     Trung vị và MAD không bị chính các giá trị bất thường kéo lệch như trung bình và độ lệch chuẩn.
-  - Spread: KHÔNG dùng MAD vì spread VN30 gần như luôn đúng 1 bước giá (92% nhóm mã x khung 30 phút có MAD = 0,
+  - Spread: KHÔNG dùng MAD vì spread VN30 phần lớn đúng 1 bước giá (85% lần chụp; khoảng 90% nhóm mã x khung 30 phút có MAD = 0, đo 28/10 đến 11/11/2026,
     chia cho 0). Dùng spread theo bước giá và tỷ lệ lần chụp lịch sử có spread >= hiện tại (`spread_tail_share`).
     z_spread (cho điểm LRS) = phân vị hạng giữa của giá trị hiện tại trong baseline, đổi sang thang chuẩn.
 

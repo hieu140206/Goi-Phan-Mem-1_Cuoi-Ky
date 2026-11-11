@@ -98,3 +98,23 @@ def test_ranking_uses_mean_spread_not_median():
     assert ranked.loc["A", "rel_spread_bps"] == ranked.loc["B", "rel_spread_bps"]
     assert ranked.loc["B", "spread_bps_mean"] > ranked.loc["A", "spread_bps_mean"]
     assert ranked.loc["A", "score"] > ranked.loc["B", "score"]
+
+
+def test_depth_value_counts_levels_with_orders_when_a_level_is_empty():
+    # Như FPT lúc sát trần 4/11/2026: bên bán chỉ còn mức 1, mức 2 và 3 không có lệnh. Độ sâu = tổng các mức CÓ lệnh,
+    # không được thành trống (trước đây cả dòng mất độ sâu nên không bao giờ cảnh báo "độ sâu mỏng" được).
+    row = make_row(bq=(1000, 1000, 1000), aq=(500, 0, 0))
+    for k in (2, 3):
+        row[f"ask_px{k}"], row[f"ask_qty{k}"] = np.nan, np.nan
+    df = add_liquidity_metrics(pd.DataFrame([row]))
+    expected = 1000 * (99_900 + 99_800 + 99_700) + 500 * 100_100
+    assert df.loc[0, "depth_value"] == pytest.approx(expected)
+    assert df.loc[0, "depth_shares"] == 3500
+
+
+def test_depth_value_is_nan_only_when_every_level_is_empty():
+    row = make_row()
+    for k in (1, 2, 3):
+        for side in ("bid", "ask"):
+            row[f"{side}_px{k}"], row[f"{side}_qty{k}"] = np.nan, np.nan
+    assert np.isnan(add_liquidity_metrics(pd.DataFrame([row])).loc[0, "depth_value"])
