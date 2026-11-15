@@ -12,13 +12,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from shared import GATE_MIN_SCORE, SRC_SAMPLE, analyzed_data, current_source, screen_for_day  # noqa: E402
-from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, NEG, WARN, base_layout, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, base_layout, vn  # noqa: E402
 
 GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Loại": "#b5bac1"}
 

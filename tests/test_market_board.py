@@ -1,6 +1,5 @@
 """Bảng giá toàn thị trường, độ sâu theo sàn, phái sinh và vòng chỉ số nhanh (client giả, đồng hồ giả)."""
 import json
-from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -8,7 +7,7 @@ import pytest
 from data.market_board import board_frame, depth_row, futures_frame
 from data.rest_recorder import RestRecorder
 from data.storage import board_days, load_board, load_depth_market, load_futures, load_market_index
-from test_rest_recorder import REAL, FakeClient, FakeClock
+from test_rest_recorder import FakeClient, FakeClock
 
 TS = pd.Timestamp("2026-10-29 10:00:00", tz="Asia/Ho_Chi_Minh")
 

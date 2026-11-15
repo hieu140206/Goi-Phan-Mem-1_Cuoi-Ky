@@ -8,7 +8,6 @@ from pathlib import Path
 
 import fastavro
 import pandas as pd
-import pytest
 
 from data.storage import load_ws_quotes, load_ws_trades
 from data.ws_recorder import WsBarRecorder

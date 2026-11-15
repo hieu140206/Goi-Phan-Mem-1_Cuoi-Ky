@@ -30,7 +30,7 @@ from data.storage import (data_days, latest_ts, load_board, load_depth_market, l
 from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
-from theme import BORDER, CHART_CONFIG, FAINT, FONT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, naive_vn, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, FAINT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, naive_vn, vn  # noqa: E402
 
 def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
     """Chèn dòng trống vào chỗ dữ liệu đứt quãng (nghỉ trưa) để biểu đồ không nối thẳng qua khoảng nghỉ."""

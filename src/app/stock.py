@@ -20,7 +20,7 @@ from charts import intraday_caption, intraday_figure  # noqa: E402
 from data.overview import board_view, price_board  # noqa: E402
 from shared import (SRC_DB, SRC_SAMPLE, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
                     current_source, liquidity_ranking, screen_for_day)
-from theme import BORDER, CHART_CONFIG, GRID, INK, MUTED, NEG, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, vn  # noqa: E402
 from watchlist import load_watchlist, toggle  # noqa: E402
 
 POS = "#2e7d32"

@@ -4,14 +4,15 @@
 Bộ lọc cổ phiếu VN30 cho nhà đầu tư cá nhân (gợi ý 2 của đề), xây trên Radar thanh khoản (gợi ý 3 và 6): Radar cho biết
 mã nào đang khó mua bán và khi nào spread hoặc độ dày sổ lệnh lệch khỏi mức thường lệ của chính mã đó; bộ lọc dùng kết quả
 này làm cổng, rồi xếp hạng các mã qua cổng theo dòng tiền nước ngoài và động lượng giá so với VN30.
-Nguồn dữ liệu chính: NEO API của VPBankS (REST, WebSocket để đối chiếu).
+Nguồn dữ liệu chính: NEO API của VPBankS (REST, WebSocket để đối chiếu). Nguồn phụ: SSI FastConnect API (lịch phiên và số
+liệu cuối ngày để đối chiếu, và sổ lệnh dự phòng khi bộ ghi NEO không chạy đủ phiên); mọi chỗ dùng SSI đều ghi rõ nguồn trên giao diện.
 
 ## Bốn trang, nối với nhau qua "một mã"
 | Trang | Nội dung |
 | --- | --- |
 | Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá VN30 để mở hồ sơ mã |
 | Bộ lọc cổ phiếu (`screen_page.py`) | Bối cảnh thị trường; cổng thanh khoản (Đạt / Chú ý / Loại); xếp hạng theo dòng tiền ngoại và động lượng; chọn dòng để mở hồ sơ mã |
-| Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên |
+| Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên với bản đồ nhiệt thẻ lật |
 | Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi |
 
 Danh sách theo dõi ở thanh bên (mọi trang) lưu trong `data/watchlist.json` (không commit); mã bị Loại hoặc có đợt cảnh báo
@@ -21,8 +22,10 @@ Danh sách theo dõi ở thanh bên (mọi trang) lưu trong `data/watchlist.jso
 > không gửi, sửa hay hủy lệnh thật.
 
 ## Trạng thái hiện tại
-- Chạy trên **dữ liệu NEO thật** do bộ ghi lưu vào `data/market.db` (các phiên từ 28/10/2026). Dữ liệu mô phỏng
-  (`data_sample/`) vẫn có để chạy thử khi chưa có dữ liệu thật; giao diện ghi rõ khi đang dùng nguồn mô phỏng.
+- Chạy trên **dữ liệu NEO thật** do bộ ghi lưu vào `data/market.db` (các phiên từ 28/10/2026; đến 13/11/2026 có 8 phiên đủ 225 lần
+  chụp sổ lệnh mỗi phiên: 28/10, 29/10, 3/11, 4/11, 9/11, 10/11, 11/11, 13/11; phiên 30/10 có 221 lần; 2/11, 5/11, 6/11 dở dang).
+  Phiên 12/11 bộ ghi NEO bị dừng sớm nên ứng dụng dùng sổ lệnh SSI cho ngày đó, có nhãn "SSI" (xem mục Nguồn phụ SSI).
+  Dữ liệu mô phỏng (`data_sample/`) vẫn có để chạy thử khi chưa có dữ liệu thật; giao diện ghi rõ khi đang dùng nguồn mô phỏng.
 - REST đã xác nhận bằng dữ liệu thật: 4.3, 4.4, 4.5, 4.6, 4.7 (30 mã VN30 một lần gọi), 4.9. REST là nguồn chính thức.
 - WebSocket đã kết nối thật qua `wss://`, nhận schema Avro bằng bước "sync" và giải mã được mọi kênh (2/11/2026).
   Bộ ghi WebSocket chạy song song để đối chiếu với REST (xem mục cuối).
@@ -36,10 +39,17 @@ pip install -r requirements.txt
 ```
 macOS/Linux: dùng `source .venv/bin/activate` thay cho dòng `activate`.
 
+**Lưu ý trên Windows:** nên dùng Python 3.12 hoặc 3.13 (bản quá mới ít người dùng nên gói như pandas có thể bị chặn). Nếu `pytest` hay
+ứng dụng báo `DLL load failed ... An Application Control policy has blocked this file`, nguyên nhân là Smart App Control của Windows chặn tệp `.pyd`
+chưa có chữ ký của pandas (xem nhật ký Code Integrity). Cách an toàn: tạo lại `.venv` bằng Python 3.12 hoặc 3.13; cách cuối cùng là tắt Smart App Control
+(sau khi tắt không bật lại được nếu không cài lại Windows). Nếu terminal báo `No module named pytest`, kiểm tra đang dùng đúng `.venv` của dự án.
+
 ## Chạy
 ```
 streamlit run src/app/app.py     # mở bảng điều khiển tại http://localhost:8501
-python -m pytest                 # chạy kiểm thử
+python -m pytest                 # chạy kiểm thử (237 bài, khoảng 1 phút)
+python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi mật khẩu) và mở bảng điều khiển
+python scripts/fetch_ssi_history.py --check   # đối chiếu số cuối ngày của SSI với NEO (không gọi mạng)
 python scripts/generate_sample_data.py   # tạo lại dữ liệu mô phỏng (tùy chọn)
 ```
 Chạy mọi lệnh từ thư mục gốc dự án.
@@ -93,6 +103,24 @@ Chạy mọi lệnh từ thư mục gốc dự án.
    Từ 2/11/2026 giải mã bằng schema máy chủ gửi qua bước "sync" (`avro_sync.py`); `binary_msg.py` là cách giải mã thủ công
    cũ, dùng dự phòng. WebSocket đang là nguồn phụ để đối chiếu.
 
+## Nguồn phụ SSI (FastConnect API v3, chỉ đọc)
+- **Vì sao có SSI:** NEO không có lịch sử trong REST ("không ghi thì mất") và bộ ghi có ngày bị dừng. Đề cho phép dùng thêm SSI; ứng dụng
+  luôn ghi rõ nguồn, không trộn hai nguồn thành một số mà không có nhãn.
+- **Khóa:** `SSI_API_KEY` và `SSI_API_SECRET` trong `.env` (xem `.env.example`, không commit). Không dùng và không lưu Private Key (chỉ để ký lệnh
+  đặt/sửa/hủy; ứng dụng chỉ đọc). Không cài `ssi-sdk` (có API đặt lệnh); `src/data/ssi.py` tự gọi bằng `requests`.
+- **Dữ liệu theo ngày:** `python scripts/fetch_ssi_history.py` lấy giá đóng cửa, khối lượng, mua bán nước ngoài, room và điểm chỉ số vào bảng
+  `ssi_daily`, `ssi_index_daily`. Bộ lọc dùng LỊCH phiên từ đây cho động lượng 5 phiên. `--check` đối chiếu với NEO: giá đóng cửa, khối lượng và
+  room khớp gần hoàn toàn. **Giá đóng cửa SSI có dấu hiệu là giá đã điều chỉnh theo cổ tức** ở các ngày trước ngày không hưởng quyền (GVR, VNM: giá lẻ, tỷ lệ lệch cố định; chưa đối chiếu thông báo cổ tức), còn NEO là giá giao dịch
+  thật; `--check` tách các dòng này ra (giá điều chỉnh có số lẻ) và cảnh báo không dùng giá SSI để tính lợi suất hay động lượng.
+- **Sổ lệnh SSI (dự phòng):** bảng `ssi_quotes` (thanh 5 giây của 30 mã VN30, giá và khối lượng 3 mức mua bán) do bộ ghi luồng SSI ghi
+  (`wss://stream.ssi.com.vn/ws/v3`, chủ đề `quote.<mã>`; dùng `scripts/probe_ssi.py` để thử luồng). Giá mức 1 khớp NEO REST khoảng 99,8%.
+- **Bù ngày NEO thiếu:** ngày NEO không có lần chụp nào trong phiên liên tục mà `ssi_quotes` có (hiện là 12/11) thì `shared.load_source` lấy sổ lệnh SSI,
+  lấy mẫu mỗi phút (`ssi.load_ssi_minute_quotes`, cùng các phút với NEO; thanh cũ quá 60 giây thì bỏ, không điền). Ngày có NEO luôn dùng NEO. Quy tắc để số không đổi và không lẫn nguồn:
+  - SSI không có giá khớp và tổng khối lượng khớp nên các cột đó để trống (giá hiện "–"), không tính tỷ lệ hấp thụ và cờ "không khớp".
+  - **Ngày SSI không làm mốc so sánh cho ngày NEO** và không vào nền tính ngưỡng LRS; nên số của các phiên NEO giữ nguyên (đã so 64.473 dòng x 64 cột giống hệt
+    khi bật và tắt phần bù). Bản thân ngày SSI được so với mốc là các phiên NEO trước đó, tức là một phép so chéo nguồn.
+  - Nhãn "· SSI" ở danh sách phiên (Radar, Chi tiết mã) và ghi chú nguồn ở Radar và Chi tiết mã. Trang Bộ lọc không dùng ngày SSI (cần giá khớp và nước ngoài của NEO).
+
 ## Bộ lọc cổ phiếu (gợi ý 2 của đề), logic ở `src/analytics/screener.py`
 1. **Cổng thanh khoản** (cùng số với Radar): Loại nếu điểm thanh khoản trong phiên ≤ 33,3 (mốc "Yếu", chỉnh được);
    Chú ý nếu có ít nhất một đợt cảnh báo; còn lại Đạt. Điểm thanh khoản là xếp hạng tương đối nên khoảng 1/3 mã luôn bị Loại.
@@ -104,25 +132,32 @@ Chạy mọi lệnh từ thư mục gốc dự án.
 
 ## Cấu trúc
 ```
-src/neo_api/    kết nối NEO: cấu hình, giới hạn tần suất, REST, WebSocket (stream.py)
-src/data/       cột chuẩn và làm sạch (schema), lưu trữ SQLite, chụp snapshot (snapshot.py), bộ mô phỏng
-src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng, điểm xếp hạng), lọc phiên ATO/ATC, tỷ lệ hấp thụ,
-                yếu tố nước ngoài và động lượng (factors.py, chưa nối vào giao diện)
-src/analytics/  phát hiện bất thường bằng z-score cuốn chiếu, điểm rủi ro LRS
-src/app/        bảng điều khiển Streamlit
-tests/          kiểm thử cho hàm tính toán, làm sạch dữ liệu, lưu trữ
-scripts/        tạo dữ liệu mô phỏng, ghi luồng WebSocket
+src/neo_api/    kết nối NEO: cấu hình, đăng nhập (JWT), giới hạn tần suất, REST (client.py), WebSocket (stream.py, giải mã Avro)
+src/data/       cột chuẩn và làm sạch (schema), lưu trữ SQLite (storage), bộ ghi REST và WebSocket, bảng giá nhiều sàn,
+                hàm dữ liệu trang Tổng quan, SSI (ssi.py), bộ mô phỏng
+src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng, điểm xếp hạng), lọc phiên khớp lệnh liên tục,
+                tỷ lệ hấp thụ, yếu tố nước ngoài và động lượng
+src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu (screener.py)
+src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
+tests/          237 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
+scripts/        ghi dữ liệu (run_live, record_rest, record_ws), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
+                dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn
 docs/, report/  tài liệu và báo cáo
 ```
 
 ## Luồng xử lý
-NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `storage.py`) → chỉ số tài chính (`liquidity.py`)
-→ phát hiện bất thường (`anomaly.py`) → bảng điều khiển (`app.py`) → người dùng.
+NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py`, `ws_recorder.py`) → chuẩn hóa/lưu trữ (`schema.py`, `storage.py`, SQLite `data/market.db`)
+→ chỉ số tài chính (`liquidity.py`) → cảnh báo theo khung giờ và điểm LRS (`baseline.py`, `lrs.py`) → bộ lọc (`screener.py`)
+→ bảng điều khiển Streamlit (`app.py` và các trang) → người dùng. Bộ ghi và bảng điều khiển là hai phần riêng; bảng điều khiển chỉ đọc `market.db`.
 
 ## Chế độ xem trên dashboard
 - **Tổng hợp theo kỳ:** xem các phiên đã chọn, lọc theo mã.
-- **Phát lại một phiên:** tua từng bước (nút Phát, Dừng, Về đầu) để tái hiện một phiên đã ghi, dùng được khi sàn đã đóng cửa.
+- **Phát lại một phiên:** tua từng bước (nút Phát, Dừng, Về đầu, thanh trượt thời điểm) để tái hiện một phiên đã ghi, dùng được khi sàn đã đóng cửa.
+  Mỗi bước là một lần chụp sổ lệnh (1 phút, từ NEO REST). **Tốc độ phát** 1x, 2x, 4x = mỗi nhịp sang 1, 2, 4 lần chụp (bảng và biểu đồ khác vẫn tính đủ mọi lần chụp đến thời điểm đó).
+  **Bản đồ nhiệt thẻ lật** (treemap): mỗi mã VN30 một ô; màu theo điểm rủi ro LRS (xanh nhạt dễ giao dịch, xám bình thường, cam rồi đỏ khó hơn; viền đậm cho mức Chú ý và Cao),
+  diện tích ô theo độ sâu sổ lệnh trung vị của mã trong cả phiên (cố định khi phát để ô không nhảy chỗ). Ô nào đổi điểm sang bước kế tiếp thì lật; có công tắc "Hiệu ứng lật".
+  Các mốc của thang màu lấy từ phân phối LRS trên toàn bộ dữ liệu đã ghi (phân vị 5%, 50%, 95%, 99%), chỉ để tô màu, không quyết định mức cảnh báo. Bấm vào ô để mở hồ sơ mã.
   Dashboard đọc từ tệp mẫu hoặc SQLite nên không giữ WebSocket bên trong Streamlit; script ghi dữ liệu chạy riêng.
 - **Trực tiếp:** bật công tắc "Trực tiếp: tự cập nhật" (hoặc chạy `python scripts/run_live.py`) để dashboard tự đọc lại khi
   bộ ghi ghi thêm dữ liệu; nút "Tải lại" đọc lại ngay.
@@ -134,10 +169,12 @@ NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `
 - Lệch mua/bán = (mua − bán) / (mua + bán).
 - Điểm thanh khoản 0-100: xếp hạng tương đối giữa các mã (spread 40%, độ sâu 40%, lệch 20%). Trọng số là giả định ban đầu.
 - Điểm rủi ro LRS = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), trọng số mặc định 0,4/0,4/0,2 (giả định, chỉnh được).
-  Ngưỡng "Chú ý" và "Cao" là phân vị 95% và 99% của LRS trên dữ liệu thu được, không đặt cố định.
+  Ngưỡng "Chú ý" và "Cao" là phân vị 95% và 99% của các điểm LRS CÓ TRƯỚC thời điểm xét (không nhìn trước), không đặt cố định.
 - Tỷ lệ hấp thụ = khối lượng khớp giữa hai lần chụp / độ sâu sổ lệnh. Cờ "mỏng, không khớp lệnh" chỉ là dấu hiệu, không kết luận thao túng.
-- Cảnh báo: z-score cuốn chiếu chỉ dùng dữ liệu trước thời điểm xét (không nhìn trước tương lai), kèm điều kiện thay đổi tối thiểu
-  về kinh tế (spread ≥ 2,5 lần hoặc độ sâu ≤ 0,4 lần trung vị lịch sử).
+- Cảnh báo (`analytics/baseline.py`): so từng mã với CHÍNH NÓ ở cùng khung 30 phút trong tối đa 10 phiên trước (cần ít nhất 2 phiên và 20 lần chụp),
+  chỉ dùng dữ liệu trước phiên đang xét. Spread rộng: từ 2 bước giá trở lên, gấp ít nhất 2 lần trung vị và thuộc nhóm 5% rộng nhất của lịch sử; độ sâu mỏng:
+  z bền vững (trung vị và MAD) từ -3 trở xuống (ngưỡng chỉnh được ở thanh bên, mặc định 3) và độ sâu không quá 0,4 lần trung vị. Một cảnh báo phải kéo dài ít nhất 2 lần chụp liên tiếp; số liệu đếm theo đợt.
+  Cách này thay cho cửa sổ trượt cũ (so với chiều hôm trước) để không gán nhầm dạng chữ U của thanh khoản trong ngày thành bất thường.
 
 ## Giới hạn đã biết
 - Ngưỡng và trọng số chưa được hiệu chỉnh trên dữ liệu thật.
@@ -146,11 +183,15 @@ NEO API → thu thập (`stream.py`) → chuẩn hóa/lưu trữ (`schema.py`, `
 - Z-score kém ổn định khi spread gần như không đổi; đã thêm điều kiện tỷ lệ tối thiểu để giảm báo động giả.
 - Tài liệu NEO cho biết giá mức 1 có thể là chữ ATO/ATC hoặc chuỗi số ("29750.0"); bộ làm sạch đã xử lý cả hai và lọc thêm theo giờ, nhưng chưa kiểm tra trên dữ liệu thật.
 - Ngưỡng LRS là phân vị nên luôn có khoảng 1% lần chụp ở mức "Cao" dù thị trường yên; chỉ dùng để theo dõi xu hướng.
-- Cửa sổ lịch sử chưa loại bỏ dạng chữ U của thanh khoản trong ngày. Hướng cải thiện: so với cùng khung giờ ở các phiên trước.
+- Cảnh báo đã so cùng khung giờ (thay cho cửa sổ trượt), nhưng chưa có kiểm chứng định lượng (event study, dạng chữ U, hiệu chỉnh ngưỡng) vì mới có khoảng 8 phiên đủ.
 - Tỷ lệ hấp thụ dùng `totalTradingVolume`; cần kiểm tra trên dữ liệu thật rằng đây là số lũy kế trong ngày.
 - Giả định mỗi thông điệp stockInfo là trạng thái đầy đủ của mã; nếu thật ra chỉ chứa trường thay đổi thì phải sửa `Snapshotter.update` thành gộp.
 - NEO chưa công bố giới hạn tần suất, số mã tối đa hay số kết nối tối đa của WebSocket; chưa biết theo dõi 30 mã có ổn không.
 - NEO không có giá nhiều phiên: động lượng 5/10/20 phiên phải tự lưu giá đóng cửa mỗi ngày (`finance/factors.py: daily_closes`).
+- Phát lại theo phút (từ lần chụp REST), chưa phát theo từng thanh 5 giây của WebSocket dù đã ghi.
+- Phiên SSI (12/11) không có giá khớp, khối lượng khớp và nước ngoài, nên Chi tiết mã hiện "–" ở các ô đó, Bộ lọc không có ngày này và không tính tỷ lệ hấp thụ; đây là phép so chéo nguồn, không tính vào các phiên đủ để kiểm chứng bằng NEO.
+- Giá đóng cửa SSI có dấu hiệu là giá điều chỉnh cổ tức ở một số ngày (xem mục Nguồn phụ SSI); chưa dùng giá SSI để bù ngày không ghi.
+- Bộ ghi luồng SSI (nguồn của `ssi_quotes`) hiện chưa nằm trong kho mã này, nên chưa tái lập được bước ghi `ssi_quotes` chỉ từ mã nguồn của dự án.
 
 ## Bộ ghi WebSocket thử nghiệm (chạy song song với REST)
 - Cách 1 (khuyên dùng, một đăng nhập): `python scripts/run_live.py --ws`

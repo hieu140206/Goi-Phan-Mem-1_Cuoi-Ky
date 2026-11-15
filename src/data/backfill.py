@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import gzip
 import json
-import sqlite3
 from pathlib import Path
 
 from .schema import QUOTE_COLUMNS  # noqa: F401  (bảo đảm import schema trước khi mở DB)

@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from analytics.anomaly import detect_anomalies
-from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds, lrs_tier
+from analytics.lrs import compute_lrs, lrs_thresholds, lrs_tier
 from finance.absorption import add_absorption
 from finance.liquidity import add_liquidity_metrics
 from test_anomaly import build
