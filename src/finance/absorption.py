@@ -21,7 +21,8 @@ import numpy as np
 import pandas as pd
 
 
-def _tod_median(df: pd.DataFrame, col: str, max_sessions: int, min_sessions: int, min_obs: int) -> pd.Series:
+def _tod_median(df: pd.DataFrame, col: str, max_sessions: int, min_sessions: int, min_obs: int,
+                excl: set | None = None) -> pd.Series:
     """Trung vị của `col` ở cùng mã, cùng khung giờ (`bucket`), tối đa `max_sessions` phiên TRƯỚC phiên của dòng đó.
     Trống nếu có ít hơn `min_sessions` phiên trước hoặc ít hơn `min_obs` giá trị (không dùng phiên hiện tại hay tương lai)."""
     out = np.full(len(df), np.nan)
@@ -31,7 +32,7 @@ def _tod_median(df: pd.DataFrame, col: str, max_sessions: int, min_sessions: int
         d_here = days[idx]
         uniq = sorted(set(d_here))
         for k, d in enumerate(uniq):
-            prior = uniq[max(0, k - max_sessions):k]
+            prior = [x for x in uniq[:k] if x not in (excl or ())][-max_sessions:]
             if len(prior) < min_sessions:
                 continue
             base = vals[idx[np.isin(d_here, prior)]]
@@ -50,6 +51,7 @@ def add_absorption(
     quiet_ratio: float = 0.1,
     max_sessions: int = 10,
     min_sessions: int = 2,
+    no_baseline_days: frozenset | set | None = None,
 ) -> pd.DataFrame:
     out = df.sort_values(["symbol", "ts"]).reset_index(drop=True).copy()
     day = out["ts"].dt.date
@@ -58,8 +60,8 @@ def add_absorption(
     out["absorption"] = out["delta_vol"] / out["depth_shares"].where(out["depth_shares"] > 0)
 
     if "bucket" in out.columns:
-        med_dv = _tod_median(out, "delta_vol", max_sessions, min_sessions, min_periods)
-        med_depth = _tod_median(out, "depth_shares", max_sessions, min_sessions, min_periods)
+        med_dv = _tod_median(out, "delta_vol", max_sessions, min_sessions, min_periods, no_baseline_days)
+        med_depth = _tod_median(out, "depth_shares", max_sessions, min_sessions, min_periods, no_baseline_days)
     else:
         g = out.groupby("symbol")
         med_dv = g["delta_vol"].transform(lambda s: s.shift(1).rolling(window, min_periods=min_periods).median())

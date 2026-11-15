@@ -79,6 +79,7 @@ use_board = source == SRC_DB
 quote_days = sorted(analyzed["ts"].dt.date.unique())
 board_day_list = [pd.Timestamp(d).date() for d in board_dates()] if use_board else []
 days = sorted(set(quote_days) | set(board_day_list), reverse=True)
+ssi_days = set(analyzed.loc[analyzed["src"] == "SSI", "ts"].dt.date.unique()) if "src" in analyzed else set()
 
 with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
     sym = st.selectbox("Mã", symbols, key="detail_sym", width=140)
@@ -86,7 +87,7 @@ with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
     sym_q_days = analyzed.loc[analyzed["symbol"] == sym, "ts"].dt.date
     default_day = sym_q_days.max() if len(sym_q_days) else days[0]
     day = st.selectbox("Phiên", days, index=days.index(default_day), width=160,
-                       format_func=lambda d: d.strftime("%d/%m/%Y"))
+                       format_func=lambda d: d.strftime("%d/%m/%Y") + (" · SSI" if d in ssi_days else ""))
 st.session_state["_ma_seen"] = sym
 st.query_params["ma"] = sym          # địa chỉ trang luôn trỏ đúng mã đang xem (chia sẻ hoặc tải lại vẫn đúng)
 st.session_state["sym"] = sym        # Radar mở sẵn đúng mã này khi chuyển sang
@@ -109,6 +110,10 @@ else:
     snap_ts = last_q["ts"].iloc[-1] if not last_q.empty else None
     snap_note = (f"lần chụp sổ lệnh cuối trong phiên khớp lệnh liên tục ({snap_ts:%H:%M}), chưa gồm phiên ATC"
                  if snap_ts is not None else "")
+    if day in ssi_days:
+        snap_note = ("sổ lệnh lấy từ SSI (NEO không ghi được phiên này), mỗi phút một lần; không có giá khớp và khối lượng khớp"
+                     if snap_ts is None else f"sổ lệnh lấy từ SSI lúc {snap_ts:%H:%M} (NEO không ghi được phiên này); "
+                     "không có giá khớp, khối lượng khớp và nước ngoài")
     f_buy = last_q["foreign_buy_val"].iloc[-1] if not last_q.empty else float("nan")
     f_sell = last_q["foreign_sell_val"].iloc[-1] if not last_q.empty else float("nan")
 

@@ -13,13 +13,14 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from analytics.baseline import detect_anomalies_tod  # noqa: E402
 from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
 from data.schema import limit_lock_side, normalize_quotes
-from data.ssi import load_ssi_daily  # noqa: E402
+from data.ssi import load_ssi_daily, load_ssi_minute_quotes, ssi_quote_days  # noqa: E402
 from analytics.screener import (ATC_DONE, daily_closes_from_board, intraday_factors, liquidity_gate,  # noqa: E402
                                 market_context, momentum, screen)
 from data.overview import (breadth_frame, futures_view, index_cards, load_market_json)  # noqa: E402
@@ -70,27 +71,56 @@ def source_version(source: str) -> float:
 
 
 @st.cache_data(show_spinner=False)
-def load_source(source: str, db_path: str, version: float) -> tuple[pd.DataFrame, dict]:
-    """Đọc, làm sạch, chỉ giữ phiên khớp lệnh liên tục (loại ATO/ATC/nghỉ trưa), tính chỉ số sổ lệnh."""
+def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True) -> tuple[pd.DataFrame, dict]:
+    """Đọc, làm sạch, chỉ giữ phiên khớp lệnh liên tục (loại ATO/ATC/nghỉ trưa), tính chỉ số sổ lệnh.
+
+    Ngày NEO không có lần chụp nào trong phiên liên tục (ví dụ bộ ghi bị dừng) mà SSI có sổ lệnh thì lấy SSI thay
+    (mỗi phút một lần, cùng các phút với NEO). Ngày nào có NEO thì luôn dùng NEO. Các ngày lấy từ SSI nằm ở
+    report["ssi_days"]; SSI không có giá khớp và tổng khối lượng khớp nên các cột đó để trống ở những ngày này.
+    ssi_fill=False tắt việc bù này (dùng để kiểm tra số liệu NEO không đổi)."""
     raw = pd.read_csv(SAMPLE_CSV) if source == SRC_SAMPLE else load_quotes(Path(db_path))
     clean, report = normalize_quotes(raw)
     clean, dropped = filter_continuous(clean)
     report["dropped_session"] = dropped
     locked, _ = filter_continuous(report["limit_locked"])
     report["limit_locked"] = locked.assign(side=limit_lock_side(locked))[["ts", "symbol", "side"]]
+    report["ssi_days"] = []
+    if source == SRC_DB and ssi_fill:
+        neo_days = {d.strftime("%Y-%m-%d") for d in clean["ts"].dt.date.unique()} if not clean.empty else set()
+        todo = [d for d in ssi_quote_days(Path(db_path)) if d not in neo_days]
+        if todo:
+            s_raw = load_ssi_minute_quotes(Path(db_path), todo)
+            s_clean, s_rep = normalize_quotes(s_raw)
+            s_clean, s_drop = filter_continuous(s_clean)
+            report["ssi_days"] = sorted(s_clean["ts"].dt.date.unique()) if not s_clean.empty else []
+            report["ssi_rows"] = len(s_clean)
+            report["dropped_session"] += s_drop
+            s_lock, _ = filter_continuous(s_rep["limit_locked"])
+            report["limit_locked"] = pd.concat(
+                [report["limit_locked"], s_lock.assign(side=limit_lock_side(s_lock))[["ts", "symbol", "side"]]],
+                ignore_index=True)
+            clean = pd.concat([clean, s_clean], ignore_index=True)
     return add_liquidity_metrics(clean), report
 
 
 @st.cache_data(show_spinner=False)
 def analyze(source: str, db_path: str, version: float, max_sessions: int, threshold: float,
-            w_spread: float, w_depth: float, w_imb: float) -> pd.DataFrame:
-    """Cảnh báo bất thường, tỷ lệ hấp thụ và điểm LRS. Tính trên toàn bộ lịch sử để đủ dữ liệu khởi động."""
-    df, _ = load_source(source, db_path, version)
+            w_spread: float, w_depth: float, w_imb: float, ssi_fill: bool = True) -> pd.DataFrame:
+    """Cảnh báo bất thường, tỷ lệ hấp thụ và điểm LRS. Tính trên toàn bộ lịch sử để đủ dữ liệu khởi động.
+
+    Các ngày lấy từ SSI (cột `src` = "SSI") KHÔNG được dùng làm mốc hay làm nền tính ngưỡng cho ngày NEO, nên số của
+    các ngày NEO không đổi dù có thêm ngày SSI; bản thân ngày SSI được so với mốc là các phiên NEO trước đó."""
+    df, report = load_source(source, db_path, version, ssi_fill)
+    ssi_days = frozenset(report.get("ssi_days", []))
     # Cảnh báo so với cùng khung giờ ở các phiên trước (analytics/baseline.py), không dùng cửa sổ trượt.
-    out = add_absorption(detect_anomalies_tod(df, threshold=threshold, max_sessions=max_sessions))
+    out = add_absorption(detect_anomalies_tod(df, threshold=threshold, max_sessions=max_sessions,
+                                              no_baseline_days=ssi_days),
+                         no_baseline_days=ssi_days)
+    out["src"] = np.where(out["ts"].dt.date.isin(ssi_days), "SSI", "NEO")
+    is_ssi = out["src"] == "SSI"
     out["lrs"] = compute_lrs(out, {"spread": w_spread, "depth": w_depth, "imbalance": w_imb})
-    # Ngưỡng Chú ý/Cao tại mỗi thời điểm chỉ dùng điểm LRS có trước thời điểm đó (không nhìn trước).
-    thr = lrs_thresholds_past(out["lrs"], out["ts"])
+    # Ngưỡng Chú ý/Cao tại mỗi thời điểm chỉ dùng điểm LRS có trước thời điểm đó (không nhìn trước), không gồm điểm SSI.
+    thr = lrs_thresholds_past(out["lrs"].where(~is_ssi), out["ts"])
     out["lrs_watch"], out["lrs_high"] = thr["watch"], thr["high"]
     out["lrs_tier"] = lrs_tier(out["lrs"], thr)
     return out

@@ -116,6 +116,13 @@ if all_df.empty:
     st.stop()
 
 days = sorted(all_df["ts"].dt.date.unique())
+ssi_days = set(report.get("ssi_days", []))   # ngày NEO không ghi được, lấy sổ lệnh từ SSI (xem shared.load_source)
+
+
+def day_label(d) -> str:
+    return d.strftime("%d/%m/%Y") + (" · SSI" if d in ssi_days else "")
+
+
 symbols_all = sorted(all_df["symbol"].unique())
 
 with st.sidebar:
@@ -164,7 +171,7 @@ replay_day = cut_ts = None
 if mode == MODE_REPLAY:
     with st.sidebar:
         group("Phát lại")
-        replay_day = st.selectbox("Phiên", sorted(days, reverse=True), format_func=lambda d: d.strftime("%d/%m/%Y"))
+        replay_day = st.selectbox("Phiên", sorted(days, reverse=True), format_func=day_label)
         day_ts = (analyzed.loc[analyzed["ts"].dt.date == replay_day, "ts"].drop_duplicates().sort_values().tolist())
         n_steps = len(day_ts)
         if st.session_state.get("replay_day") != replay_day:  # đổi phiên: về cuối phiên, dừng phát
@@ -256,6 +263,16 @@ if is_sim:
     st.html(f'<div class="notice">{notes[0]} {"; ".join(notes[1:]).capitalize()}.</div>')
 else:
     st.caption("; ".join(notes).capitalize() + ".")
+
+# Phiên lấy từ SSI: nói rõ nguồn, vì khác NEO ở mấy điểm (xem shared.load_source).
+view_ssi = sorted(d for d in view["ts"].dt.date.unique() if d in ssi_days)
+if view_ssi:
+    st.html('<div class="notice"><b>Nguồn SSI:</b> phiên ' + ", ".join(f"{d:%d/%m}" for d in view_ssi)
+            + " không có dữ liệu NEO (bộ ghi NEO không chạy đủ phiên) nên dùng sổ lệnh 3 mức giá của SSI, lấy mẫu mỗi phút "
+            "như NEO. SSI không có giá khớp và tổng khối lượng khớp nên không tính tỷ lệ hấp thụ và cờ không khớp cho phiên này. "
+            "Phiên SSI không được dùng làm mốc so sánh cho các phiên NEO, nên số của các phiên NEO không đổi; bản thân "
+            "phiên SSI được so với mốc là các phiên NEO trước đó. Đối chiếu ngày 11/11 (có cả hai nguồn): giá 3 mức khớp NEO 99,8%, "
+            "khối lượng 3 mức khớp 96 đến 99%.</div>")
 
 # Phiên chưa có baseline (chưa đủ 2 phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
 no_base_days = sorted(d for d, g in view.groupby(view["ts"].dt.date) if g["n_hist"].isna().all())

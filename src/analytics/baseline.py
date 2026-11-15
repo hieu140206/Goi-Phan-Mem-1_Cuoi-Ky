@@ -79,12 +79,16 @@ def detect_anomalies_tod(
     spread_tail: float = 0.05,
     max_depth_ratio: float = 0.4,
     persist: int = 2,
+    no_baseline_days: frozenset | set | None = None,
 ) -> pd.DataFrame:
     """Thêm các cột baseline, z_spread, z_depth, z_imb, n_hist, alert_type, severity, is_alert.
 
     Đầu vào cần có cột từ finance.liquidity.add_liquidity_metrics (spread_ticks, depth_value, imbalance).
     Cột n_hist, z_spread, z_depth, z_imb dùng chung tên với analytics.anomaly để tính điểm LRS.
+    no_baseline_days: các ngày (datetime.date) KHÔNG được dùng làm mốc cho ngày khác (ví dụ phiên lấy từ nguồn SSI);
+    chính các ngày đó vẫn được so với mốc là các phiên còn lại. Rỗng thì kết quả y hệt trước đây.
     """
+    excl = set(no_baseline_days or ())
     out = df.sort_values(["symbol", "ts"]).reset_index(drop=True).copy()
     out["day"] = out["ts"].dt.date
     out["bucket"] = tod_bucket(out["ts"], bucket_minutes)
@@ -101,7 +105,7 @@ def detect_anomalies_tod(
         days = out["day"].to_numpy()[idx]
         uniq = sorted(set(days))
         for k, d in enumerate(uniq):
-            prior = uniq[max(0, k - max_sessions):k]
+            prior = [x for x in uniq[:k] if x not in excl][-max_sessions:]
             if len(prior) < min_sessions:
                 continue
             base = idx[np.isin(days, prior)]

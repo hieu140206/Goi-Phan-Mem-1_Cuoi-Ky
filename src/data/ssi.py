@@ -306,3 +306,59 @@ def load_ssi_index(db_path: Path) -> pd.DataFrame:
 def stored_index_days(db_path: Path, index_code: str) -> set[str]:
     df = _read(db_path, "SELECT day FROM ssi_index_daily WHERE index_code = ?", (index_code.upper(),), ["day"])
     return set(df["day"])
+
+
+# ---------- sổ lệnh SSI theo phút (dùng thay NEO cho ngày NEO không ghi được) ----------
+SSI_QUOTE_COLS = ["bid_px1", "bid_px2", "bid_px3", "bid_qty1", "bid_qty2", "bid_qty3",
+                  "ask_px1", "ask_px2", "ask_px3", "ask_qty1", "ask_qty2", "ask_qty3"]
+MINUTE_GRID = [f"{h:02d}:{m:02d}:00" for h in (9, 10, 11) for m in range(60) if "09:16" <= f"{h:02d}:{m:02d}" <= "11:30"] + \
+              [f"{h:02d}:{m:02d}:00" for h in (13, 14) for m in range(60) if "13:01" <= f"{h:02d}:{m:02d}" <= "14:30"]
+MAX_STALE_SECONDS = 60
+
+
+def ssi_quote_days(db_path: Path) -> list[str]:
+    """Các ngày (YYYY-MM-DD) có thanh sổ lệnh SSI trong bảng ssi_quotes. Bảng chưa có thì rỗng."""
+    import sqlite3
+    if not Path(db_path).exists():
+        return []
+    try:
+        with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as con:
+            return [r[0] for r in con.execute("SELECT DISTINCT substr(ts, 1, 10) FROM ssi_quotes ORDER BY 1")]
+    except sqlite3.Error:
+        return []
+
+
+def load_ssi_minute_quotes(db_path: Path, days: list[str]) -> pd.DataFrame:
+    """Sổ lệnh SSI lấy mẫu MỖI PHÚT, cùng các phút với lần chụp NEO (09:16-11:30 và 13:01-14:30).
+
+    Mỗi (mã, phút) lấy thanh 5 giây MỚI NHẤT có thời điểm không sau phút đó và không cũ quá 60 giây; không có thì
+    bỏ dòng (không điền, không nội suy). Chỉ giữ giá và khối lượng 3 mức mua bán (SSI không có giá khớp và tổng khối
+    lượng khớp, các cột đó để trống). Trả DataFrame cột ts (UTC+7), symbol và SSI_QUOTE_COLS."""
+    import sqlite3
+    empty = pd.DataFrame(columns=["ts", "symbol", *SSI_QUOTE_COLS])
+    if not days or not Path(db_path).exists():
+        return empty
+    marks = pd.DataFrame([(f"{d}T{t}+07:00",) for d in days for t in MINUTE_GRID], columns=["ts"])
+    marks["ts"] = pd.to_datetime(marks["ts"]).dt.tz_convert(TZ)
+    marks = marks.sort_values("ts")
+    marks_utc = marks.assign(_k=marks["ts"].dt.tz_convert("UTC"))
+    q = ",".join("?" for _ in days)
+    with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as con:
+        raw = pd.read_sql_query(
+            f"SELECT ts, symbol, {', '.join(SSI_QUOTE_COLS)} FROM ssi_quotes WHERE substr(ts, 1, 10) IN ({q})",
+            con, params=tuple(days))
+    if raw.empty:
+        return empty
+    raw["ts"] = pd.to_datetime(raw["ts"], utc=True)
+    raw = raw.sort_values("ts")
+    parts = []
+    for sym, g in raw.groupby("symbol"):
+        m = pd.merge_asof(marks_utc[["ts", "_k"]].rename(columns={"ts": "mark"}), g.rename(columns={"ts": "bar_ts"}),
+                          left_on="_k", right_on="bar_ts", direction="backward",
+                          tolerance=pd.Timedelta(seconds=MAX_STALE_SECONDS))
+        m = m.dropna(subset=["bar_ts"])
+        m["symbol"] = sym
+        parts.append(m)
+    out = pd.concat(parts, ignore_index=True) if parts else empty
+    out = out.rename(columns={"mark": "ts"})[["ts", "symbol", *SSI_QUOTE_COLS]]
+    return out.sort_values(["symbol", "ts"]).reset_index(drop=True)

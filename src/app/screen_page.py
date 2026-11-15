@@ -31,7 +31,9 @@ if source is None:
              title="Chưa có dữ liệu")
     st.stop()
 
-days = sorted(analyzed_data(source)["ts"].dt.date.unique(), reverse=True)
+_an = analyzed_data(source)
+# Bộ lọc cần giá khớp, nước ngoài và bảng giá của NEO; ngày chỉ có sổ lệnh SSI (không có các trường này) không đưa vào.
+days = sorted(_an.loc[_an["src"] == "NEO", "ts"].dt.date.unique(), reverse=True)
 if not days:
     st.info("Chưa có lần chụp sổ lệnh nào trong phiên khớp lệnh liên tục.")
     st.stop()
