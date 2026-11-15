@@ -28,20 +28,8 @@ def test_state_colors_and_missing():
     assert s.loc["ZZZ", "cls"] == "na" and s.loc["ZZZ", "text"] == "–"      # mã không có dòng
 
 
-def test_only_changed_tiles_flip():
-    syms = ["AAA", "BBB", "CCC", "DDD"]
-    prev, cur = fg.grid_state(_df(), syms, T0), fg.grid_state(_df(), syms, T1)
-    assert fg.flipped(cur, prev) == {"BBB", "DDD"}          # AAA, CCC giữ nguyên
-    assert fg.flipped(cur, None) == set()                   # chưa có lần trước thì không lật
 
 
-def test_html_has_flip_only_for_changed_and_alternates_animation():
-    syms = ["AAA", "BBB"]
-    prev, cur = fg.grid_state(_df(), syms, T0), fg.grid_state(_df(), syms, T1)
-    h0, h1 = fg.flip_grid_html(cur, prev, 4), fg.flip_grid_html(cur, prev, 5)
-    assert h0.count('class="in go0"') == 1 and h1.count('class="in go1"') == 1
-    assert 'ma?ma=BBB' in h0 and 'class="f md"' in h0 and 'class="b hi"' in h0   # trước Chú ý, sau Cao
-    assert fg.flip_grid_html(cur, None, 4).count("go0") == 0
 
 
 def test_empty_and_none_ts():
@@ -57,10 +45,9 @@ def test_color_scale_is_monotone_and_anchored():
     assert red == sorted(red, reverse=True)
 
 
-def test_missing_has_white_bg_and_tiles_carry_inline_color():
+def test_missing_has_white_bg():
     s = fg.grid_state(_df(), ["AAA", "DDD", "ZZZ"], T0).set_index("symbol")
     assert s.loc["DDD", "bg"] == "#ffffff" and s.loc["ZZZ", "bg"] == "#ffffff"
-    assert f'background:{fg.lrs_color(0.5)}' in fg.flip_grid_html(s.reset_index(), None, 0)
 
 
 def test_treemap_areas_match_weights_and_fill_the_rectangle():
@@ -96,7 +83,19 @@ def test_tile_weights_use_session_median_depth_and_floor_for_missing():
     assert w["ZZZ"] == 10                                                # thiếu: nửa mã nhỏ nhất (vẫn hiện ô "–")
 
 
-def test_html_positions_tiles_by_layout():
-    cur = fg.grid_state(_df(), ["AAA", "BBB"], T0)
-    h = fg.flip_grid_html(cur, None, 0, layout={"AAA": (0, 0, 50, 40), "BBB": (50, 0, 50, 40)})
-    assert "left:0.000%;top:0.000%;width:50.000%;height:100.000%" in h and "left:50.000%" in h
+def test_payload_has_position_color_text_and_skips_unlaid_symbols():
+    cur = fg.grid_state(_df(), ["AAA", "BBB", "DDD"], T0)
+    pay = fg.tiles_payload(cur, {"AAA": (0, 0, 50, 46), "BBB": (50, 0, 50, 46)}, 100.0, 46.0)
+    assert [t["sym"] for t in pay] == ["AAA", "BBB"]                         # DDD không có trong bố cục: bỏ
+    a, b = pay
+    assert a["x"] == 0 and a["w"] == 50 and a["h"] == 100 and b["x"] == 50
+    assert a["text"] == "0,5" and a["bg"] == fg.lrs_color(0.5) and a["cls"] == "ok"
+    assert b["cls"] == "md" and b["text"] == "2,4"                           # Chú ý: viền cam ở phía JS
+    assert "LRS 0,5" in a["title"]
+
+
+def test_payload_for_missing_score_is_dash_dashed_tile():
+    cur = fg.grid_state(_df(), ["DDD"], T0)
+    t = fg.tiles_payload(cur, {"DDD": (0, 0, 10, 10)})[0]
+    assert t["text"] == "–" and t["cls"] == "na" and t["bg"] == "#ffffff" and "không có điểm" in t["title"]
+

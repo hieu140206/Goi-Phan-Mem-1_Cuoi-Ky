@@ -27,7 +27,8 @@ import streamlit as st  # noqa: E402
 from analytics.baseline import bucket_label, tod_bucket  # noqa: E402
 from analytics.lrs import MIN_OBS_PAST  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
-from flipgrid import flip_css, flip_grid_html, grid_state, tile_weights, treemap_layout  # noqa: E402
+from flipgrid import grid_state, tile_weights, treemap_layout  # noqa: E402
+from flipgrid_component import flip_treemap  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from shared import (SRC_SAMPLE, analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
                     params, source_version)
@@ -192,6 +193,7 @@ if mode == MODE_REPLAY:
         st.segmented_control("Tốc độ phát", list(SPEEDS), default="1x", required=True, key="speed", width="stretch",
                              help="1x: mỗi nhịp sang 1 lần chụp (1 phút); 2x: sang 2 lần chụp; 4x: sang 4 lần chụp. "
                                   "Bản đồ nhiệt chỉ hiện các bước dừng lại; bảng và biểu đồ khác vẫn tính đủ mọi lần chụp từ đầu phiên đến thời điểm đang xem.")
+        st.toggle("Hiệu ứng lật", value=True, key="flip_on", help="Tắt thì ô đổi màu ngay, không lật.")
         with st.container(horizontal=True, gap="small"):
             st.button("Phát", icon=":material/play_arrow:", on_click=_play, args=(n_steps,), type="primary")
             st.button("Dừng", icon=":material/pause:", on_click=_pause)
@@ -320,13 +322,8 @@ st.html(
 # ---------- bản đồ nhiệt thẻ lật (chỉ khi phát lại một phiên) ----------
 if mode == MODE_REPLAY:
     i_now = st.session_state["replay_idx"]
-    last = st.session_state.get("flip_last")            # (phiên, bước) đã vẽ ở lần chạy trước
     flip_syms = sorted(picked)
     cur_state = grid_state(analyzed, flip_syms, cut_ts)
-    # Lật so với bước đã hiện trước đó; chạy lại đúng bước đang hiện (đổi bộ lọc...) thì ô đứng yên.
-    prev_state = (grid_state(analyzed, flip_syms, day_ts[last[1]])
-                  if last and last[0] == replay_day and last[1] != i_now and last[1] < n_steps else None)
-    st.session_state["flip_last"] = (replay_day, i_now)
     GRID_W, GRID_H = 100.0, 46.0   # tỷ lệ khung bản đồ nhiệt (rộng : cao)
     layout = treemap_layout(tile_weights(analyzed, flip_syms, replay_day), GRID_W, GRID_H)
     with st.container(border=True, key="panel_flipgrid"):
@@ -336,8 +333,9 @@ if mode == MODE_REPLAY:
                    "thường, cam rồi đỏ = khó hơn (LRS càng cao càng rủi ro). Viền cam đậm = mức Chú ý, viền đỏ đậm = mức Cao "
                    "(theo ngưỡng của Radar). Viền nét đứt = chưa đủ dữ liệu so với các phiên trước. Sang lần chụp kế tiếp, "
                    "ô nào đổi điểm sẽ lật. Bấm vào ô để mở hồ sơ mã.")
-        st.html(flip_css(INK, MUTED, NEG, WARN) + flip_grid_html(cur_state, prev_state, i_now, link="ma", layout=layout,
-                                                                  width=GRID_W, height=GRID_H))
+        # Component giữ nguyên các ô giữa các nhịp; JS so với trạng thái đang hiện và chỉ lật ô nào đổi.
+        flip_treemap(cur_state, layout, reset_key=f"{replay_day}|{','.join(flip_syms)}", step=i_now,
+                     width=GRID_W, height=GRID_H, flip_ms=450, link="ma", animate=st.session_state.get("flip_on", True))
 
 # ---------- xếp hạng + cảnh báo ----------
 TABLE_H = 438
