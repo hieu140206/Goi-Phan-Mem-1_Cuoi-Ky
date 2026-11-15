@@ -1,10 +1,11 @@
-"""Lưới thẻ lật: mỗi mã VN30 một thẻ, màu theo mức rủi ro thanh khoản (LRS) tại một thời điểm.
+"""Bản đồ nhiệt thẻ lật (dạng treemap): mỗi mã VN30 một ô, màu theo điểm rủi ro thanh khoản (LRS) tại một thời điểm,
+diện tích ô theo độ sâu sổ lệnh trung vị của mã trong phiên (cố định khi phát lại để các ô không nhảy chỗ).
 
-Dùng khi "Phát lại phiên" của Radar: sang lần chụp kế tiếp, thẻ nào đổi mức hoặc đổi điểm thì lật sang mặt mới
-(mặt trước = trạng thái lần chụp trước, mặt sau = lần chụp hiện tại), thẻ không đổi đứng yên.
+Dùng khi "Phát lại phiên" của Radar: sang lần chụp kế tiếp, ô nào đổi điểm thì lật sang mặt mới
+(mặt trước = trạng thái lần chụp trước, mặt sau = lần chụp hiện tại), ô không đổi đứng yên.
 
 Dữ liệu luôn lấy đúng từ cột `lrs` và `lrs_tier` của kết quả phân tích; mã không có lần chụp ở thời điểm đó,
-hoặc chưa đủ lịch sử để tính LRS, thì hiện "–" (xám), không đoán và không điền.
+hoặc chưa đủ lịch sử để tính LRS, thì hiện "–" (viền nét đứt), không đoán và không điền.
 
 Chỉ phụ thuộc pandas (không import streamlit) để kiểm thử được; phần vẽ lên trang nằm ở radar.py.
 """
@@ -71,12 +72,78 @@ def flipped(cur: pd.DataFrame, prev: pd.DataFrame | None) -> set[str]:
             if r.symbol in old.index and (r.cls != old.at[r.symbol, "cls"] or r.text != old.at[r.symbol, "text"])}
 
 
-def flip_grid_html(cur: pd.DataFrame, prev: pd.DataFrame | None, step: int, link: str | None = "ma") -> str:
-    """HTML của lưới. `step` đổi tên hiệu ứng lần lượt (flipA/flipB) để hiệu ứng chạy lại ở mỗi bước phát."""
+def tile_weights(analyzed: pd.DataFrame, symbols: list[str], day) -> dict[str, float]:
+    """Trọng số diện tích mỗi ô = độ sâu 3 mức giá (depth_value) TRUNG VỊ của mã trong cả phiên `day`.
+    Dùng cả phiên để bố cục đứng yên suốt lúc phát lại (chỉ để chia diện tích, không phải chỉ số phân tích).
+    Mã không có độ sâu trong phiên: nhận trọng số bằng nửa mã nhỏ nhất, vẫn hiện ô "–" nhỏ, không bịa số."""
+    d = analyzed[analyzed["ts"].dt.date == day] if not analyzed.empty else analyzed
+    med = d.groupby("symbol")["depth_value"].median() if not d.empty else pd.Series(dtype=float)
+    w = {s: float(med[s]) for s in symbols if s in med.index and pd.notna(med[s]) and med[s] > 0}
+    floor = 0.5 * min(w.values()) if w else 1.0
+    return {s: w.get(s, floor) for s in symbols}
+
+
+def treemap_layout(weights: dict[str, float], width: float = 100.0, height: float = 40.0) -> dict[str, tuple]:
+    """Treemap kiểu "squarified" (Bruls, Huizing, van Wijk 2000): chia hình chữ nhật width x height thành các ô có diện
+    tích tỷ lệ với trọng số, cố giữ ô gần vuông. Trả {mã: (x, y, w, h)}. Thứ tự ổn định (trọng số giảm dần, rồi theo mã)."""
+    items = sorted(((k, v) for k, v in weights.items() if v > 0), key=lambda kv: (-kv[1], kv[0]))
+    if not items:
+        return {}
+    scale = width * height / sum(v for _, v in items)
+    queue = [(k, v * scale) for k, v in items]
+    rects: dict[str, tuple] = {}
+
+    def worst(row: list, side: float) -> float:
+        s = sum(a for _, a in row)
+        return max(side * side * max(a for _, a in row) / (s * s), s * s / (side * side * min(a for _, a in row)))
+
+    x, y, w, h = 0.0, 0.0, width, height
+    while queue:
+        side = min(w, h)
+        row, rest = [queue[0]], queue[1:]
+        while rest and worst(row + [rest[0]], side) <= worst(row, side):
+            row.append(rest[0])
+            rest = rest[1:]
+        s = sum(a for _, a in row)
+        if w >= h:                       # xếp thành một cột bên trái, rộng s/h
+            cw, yy = s / h, y
+            for k, a in row:
+                rects[k] = (x, yy, cw, a / cw)
+                yy += a / cw
+            x, w = x + cw, w - cw
+        else:                            # xếp thành một hàng phía trên, cao s/w
+            rh, xx = s / w, x
+            for k, a in row:
+                rects[k] = (xx, y, a / rh, rh)
+                xx += a / rh
+            y, h = y + rh, h - rh
+        queue = rest
+    return rects
+
+
+def _size_class(w: float, h: float, width: float, height: float) -> str:
+    frac = (w * h) / (width * height)
+    return "xl" if frac > 0.09 else "lg" if frac > 0.04 else "md2" if frac > 0.018 else "sm"
+
+
+def flip_grid_html(cur: pd.DataFrame, prev: pd.DataFrame | None, step: int, link: str | None = "ma",
+                   layout: dict[str, tuple] | None = None, width: float = 100.0, height: float = 40.0) -> str:
+    """HTML của bản đồ nhiệt. `step` đổi tên hiệu ứng lần lượt (flipA/flipB) để hiệu ứng chạy lại ở mỗi bước phát.
+    `layout`: {mã: (x, y, w, h)} từ treemap_layout; không có thì xếp lưới đều 6 cột."""
     flips = flipped(cur, prev)
     old = prev.set_index("symbol") if prev is not None and not prev.empty else None
+    if layout is None:
+        cols = 6
+        rows_n = max(-(-len(cur) // cols), 1)
+        layout = {s: ((i % cols) * width / cols, (i // cols) * height / rows_n, width / cols, height / rows_n)
+                  for i, s in enumerate(cur["symbol"])}
     tiles = []
     for r in cur.itertuples(index=False):
+        if r.symbol not in layout:
+            continue
+        x, y, w, h = layout[r.symbol]
+        pos = (f"left:{x / width * 100:.3f}%;top:{y / height * 100:.3f}%;"
+               f"width:{w / width * 100:.3f}%;height:{h / height * 100:.3f}%")
         sym = html.escape(str(r.symbol))
         back = f'<span class="s">{sym}</span><span class="v">{r.text}</span>'
         label = f"{r.symbol}: {'không có điểm' if r.cls == 'na' else 'LRS ' + r.text}"
@@ -87,34 +154,41 @@ def flip_grid_html(cur: pd.DataFrame, prev: pd.DataFrame | None, step: int, link
                      f'<div class="b {r.cls}" style="background:{r.bg}">{back}</div></div>')
         else:
             inner = f'<div class="in"><div class="b {r.cls}" style="background:{r.bg}">{back}</div></div>'
-        tile = f'<div class="tile" title="{html.escape(label)}">{inner}</div>'
+        tile = f'<div class="tile {_size_class(w, h, width, height)}" title="{html.escape(label)}">{inner}</div>'
         if link:
-            tile = f'<a class="tl" href="{link}?ma={html.escape(str(r.symbol))}" target="_self">{tile}</a>'
+            tile = f'<a class="tl" href="{link}?ma={html.escape(str(r.symbol))}" target="_self" style="{pos}">{tile}</a>'
+        else:
+            tile = f'<div class="tl" style="{pos}">{tile}</div>'
         tiles.append(tile)
-    return f'<div class="flipgrid">{"".join(tiles)}</div>'
+    return f'<div class="flipgrid" style="aspect-ratio:{width:g}/{height:g}">{"".join(tiles)}</div>'
 
 
-def flip_css(ink: str, muted: str, neg: str, warn: str) -> str:
-    """CSS của lưới. Mặt sau (b) là trạng thái hiện tại; mặt trước (f) chỉ hiện trong lúc lật."""
+def flip_css(ink: str, muted: str, neg: str, warn: str, flip_seconds: float = 0.4) -> str:
+    """CSS của bản đồ nhiệt. Mặt sau (b) là trạng thái hiện tại; mặt trước (f) chỉ hiện trong lúc lật.
+    flip_seconds: thời gian một lần lật (ngắn lại khi phát nhanh để kịp xong trước bước kế tiếp)."""
     return f"""<style>
-.flipgrid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }}
-.flipgrid a.tl {{ text-decoration: none; color: inherit; display: block; }}
-.flipgrid .tile {{ perspective: 600px; height: 58px; }}
+.flipgrid {{ position: relative; width: 100%; min-height: 280px; --flip: {flip_seconds:.2f}s; }}
+.flipgrid .tl {{ position: absolute; text-decoration: none; color: inherit; display: block; padding: 2px; box-sizing: border-box; }}
+.flipgrid .tile {{ perspective: 800px; width: 100%; height: 100%; }}
 .flipgrid .in {{ position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }}
 .flipgrid .f, .flipgrid .b {{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; border-radius: 8px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
-    border: 1px solid #e3e6ea; line-height: 1.25; }}
+    justify-content: center; border-radius: 6px; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border: 1px solid #e3e6ea; line-height: 1.2; overflow: hidden; }}
 .flipgrid .b {{ transform: rotateX(0deg); }}
 .flipgrid .in.go0 .b, .flipgrid .in.go1 .b {{ transform: rotateX(180deg); }}
-.flipgrid .in.go0 {{ animation: flipA .4s ease-in-out forwards; }}
-.flipgrid .in.go1 {{ animation: flipB .4s ease-in-out forwards; }}
+.flipgrid .in.go0 {{ animation: flipA var(--flip) ease-in-out forwards; }}
+.flipgrid .in.go1 {{ animation: flipB var(--flip) ease-in-out forwards; }}
 @keyframes flipA {{ from {{ transform: rotateX(0deg); }} to {{ transform: rotateX(180deg); }} }}
 @keyframes flipB {{ from {{ transform: rotateX(0deg); }} to {{ transform: rotateX(180deg); }} }}
-.flipgrid .s {{ font-size: 12px; font-weight: 700; color: {ink}; }}
-.flipgrid .v {{ font-size: 12px; font-variant-numeric: tabular-nums; color: {muted}; }}
+.flipgrid .s {{ font-weight: 700; color: {ink}; }}
+.flipgrid .v {{ font-variant-numeric: tabular-nums; color: {muted}; }}
+.flipgrid .tile.xl .s {{ font-size: 26px; }} .flipgrid .tile.xl .v {{ font-size: 18px; }}
+.flipgrid .tile.lg .s {{ font-size: 20px; }} .flipgrid .tile.lg .v {{ font-size: 15px; }}
+.flipgrid .tile.md2 .s {{ font-size: 15px; }} .flipgrid .tile.md2 .v {{ font-size: 12px; }}
+.flipgrid .tile.sm .s {{ font-size: 12px; }} .flipgrid .tile.sm .v {{ font-size: 10.5px; }}
 .flipgrid .md {{ border: 2px solid #d99a1c; }} .flipgrid .md .v {{ color: {warn}; font-weight: 600; }}
 .flipgrid .hi {{ border: 2px solid {neg}; }} .flipgrid .hi .v {{ color: {neg}; font-weight: 700; }}
-.flipgrid .na {{ border-style: dashed; }} .flipgrid .na .v {{ color: #b5bac1; }}
-.flipgrid .tile:hover .b, .flipgrid .tile:hover .f {{ border-color: #9aa3ad; }}
+.flipgrid .na {{ border-style: dashed; }}
+.flipgrid a.tl:hover .b, .flipgrid a.tl:hover .f {{ border-color: #9aa3ad; }}
 @media (prefers-reduced-motion: reduce) {{ .flipgrid .in.go0, .flipgrid .in.go1 {{ animation-duration: .01s; }} }}
 </style>"""

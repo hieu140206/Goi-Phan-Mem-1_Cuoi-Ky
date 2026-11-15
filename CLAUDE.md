@@ -17,7 +17,7 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 3. **Dữ liệu luôn phải đúng, hơn mọi thứ khác.** Thiếu thì để trống hoặc "–", không đoán, không điền, không nội suy. Đổi giao diện không được làm đổi số.
 4. Giới hạn NEO: **5 yêu cầu/giây**, IP phải đăng ký. Không tăng tần suất gọi khi chưa đo.
 5. Người dùng là **sinh viên mới học**: giải thích ngắn gọn, tiếng Việt, tránh thuật ngữ không cần thiết. Việc lớn thì **nhận xét và hỏi trước** rồi mới làm; không cắt phạm vi tự ý.
-6. Làm xong phải chạy `python -m pytest` (hiện **234 passed**) và xem lại giao diện trước khi báo xong.
+6. Làm xong phải chạy `python -m pytest` (hiện **238 passed**) và xem lại giao diện trước khi báo xong.
 
 ## Kiến trúc
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), stream WebSocket (nhị phân, phụ, mới giải mã được `stockInfo`).
@@ -38,7 +38,7 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 ## Dữ liệu và cách chạy
 - Hằng ngày trong giờ giao dịch: `python scripts/run_live.py` (~9:10), tự dừng khoảng 15:02. Chỉ số hỏi mỗi 5 giây, sổ lệnh VN30 mỗi phút (bảng giá VN30 làm mới 5 giây để hiển thị), bảng giá các sàn mỗi phút.
 - Không có lịch sử trong REST: **không ghi thì mất**. Phiên đủ 225 lần chụp (6.750 dòng): 28/10, 29/10, 3/11, 4/11, 9/11, 10/11, 11/11, 13/11; 30/10 có 221 lần; dở dang: 2/11, 5/11, 6/11. Phiên 9/11 đã dựng lại ngày 10/11 từ dữ liệu gốc vì market.db bị ghi đè (mất chuỗi chỉ số 5 giây, Tổng quan dùng market.json). Mục tiêu **ít nhất 5 phiên, tốt nhất 10**. Ngày đi học mang laptop nên không ghi được.
-- **Bù ngày NEO thiếu bằng SSI (15/11):** ngày NEO không có lần chụp nào trong phiên liên tục mà bảng `ssi_quotes` có (hiện 12/11, bộ ghi NEO dừng lúc 9:05) thì `shared.load_source` lấy sổ lệnh 3 mức của SSI lấy mẫu mỗi phút (`ssi.load_ssi_minute_quotes`, cùng các phút với NEO; đối chiếu 11/11: giá 3 mức khớp NEO 99,8%, khối lượng 96 đến 99%). Nhãn "SSI" ở danh sách phiên, ghi chú ở Radar và Chi tiết mã; Bộ lọc không dùng ngày SSI (cần giá khớp, nước ngoài). SSI không có giá khớp và tổng khối lượng nên các cột đó để trống (giá hiện "–"), không tính hấp thụ. **Ngày SSI không làm mốc cho ngày NEO** (tham số `no_baseline_days` ở baseline và absorption, và không vào nền tính ngưỡng LRS) nên số NEO giữ nguyên: đã so 64.473 dòng x 64 cột giống hệt khi bật và tắt bù SSI. Radar có lưới thẻ lật (`flipgrid.py`) khi phát lại phiên.
+- **Bù ngày NEO thiếu bằng SSI (15/11):** ngày NEO không có lần chụp nào trong phiên liên tục mà bảng `ssi_quotes` có (hiện 12/11, bộ ghi NEO dừng lúc 9:05) thì `shared.load_source` lấy sổ lệnh 3 mức của SSI lấy mẫu mỗi phút (`ssi.load_ssi_minute_quotes`, cùng các phút với NEO; đối chiếu 11/11: giá 3 mức khớp NEO 99,8%, khối lượng 96 đến 99%). Nhãn "SSI" ở danh sách phiên, ghi chú ở Radar và Chi tiết mã; Bộ lọc không dùng ngày SSI (cần giá khớp, nước ngoài). SSI không có giá khớp và tổng khối lượng nên các cột đó để trống (giá hiện "–"), không tính hấp thụ. **Ngày SSI không làm mốc cho ngày NEO** (tham số `no_baseline_days` ở baseline và absorption, và không vào nền tính ngưỡng LRS) nên số NEO giữ nguyên: đã so 64.473 dòng x 64 cột giống hệt khi bật và tắt bù SSI. Radar có bản đồ nhiệt thẻ lật dạng treemap (`flipgrid.py`) khi phát lại phiên: màu theo điểm LRS, diện tích ô theo độ sâu sổ lệnh trung vị cả phiên (cố định khi phát), ô đổi điểm thì lật; tốc độ 1x/2x/4x = nhảy 1/2/4 lần chụp mỗi nhịp.
 - Windows, `.venv`; pip dùng `--break-system-packages` chỉ khi ở môi trường cloud.
 
 ## Việc còn lại (theo thứ tự ưu tiên)

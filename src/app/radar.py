@@ -27,11 +27,12 @@ import streamlit as st  # noqa: E402
 from analytics.baseline import bucket_label, tod_bucket  # noqa: E402
 from analytics.lrs import MIN_OBS_PAST  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
-from flipgrid import flip_css, flip_grid_html, grid_state  # noqa: E402
+from flipgrid import flip_css, flip_grid_html, grid_state, tile_weights, treemap_layout  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from shared import (SRC_SAMPLE, analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
                     params, source_version)
 
+SPEEDS = {"1x": 1, "2x": 2, "4x": 4}   # số lần chụp (phút) nhảy qua mỗi nhịp phát
 MODE_SUMMARY = "Tổng hợp theo kỳ"
 MODE_REPLAY = "Phát lại một phiên"
 SCOPE_ALL, SCOPE_PICK = "Tất cả mã", "Chọn từng mã"
@@ -181,13 +182,16 @@ if mode == MODE_REPLAY:
         idx = min(max(int(st.session_state.get("replay_idx", n_steps - 1)), 0), n_steps - 1)
         if st.session_state.get("playing"):
             if idx < n_steps - 1:
-                idx += 1
+                idx = min(idx + SPEEDS[st.session_state.get("speed", "1x")], n_steps - 1)   # 2x, 4x: nhảy 2, 4 lần chụp mỗi nhịp
             else:
                 st.session_state["playing"] = False
         st.session_state["replay_idx"] = idx
         if n_steps > 1:
             st.select_slider("Thời điểm", options=list(range(n_steps)), key="replay_idx",
                              format_func=lambda i: day_ts[i].strftime("%H:%M"))
+        st.segmented_control("Tốc độ phát", list(SPEEDS), default="1x", required=True, key="speed", width="stretch",
+                             help="1x: mỗi nhịp sang 1 lần chụp (1 phút); 2x: sang 2 lần chụp; 4x: sang 4 lần chụp. "
+                                  "Bản đồ nhiệt chỉ hiện các bước dừng lại; bảng và biểu đồ khác vẫn tính đủ mọi lần chụp từ đầu phiên đến thời điểm đang xem.")
         with st.container(horizontal=True, gap="small"):
             st.button("Phát", icon=":material/play_arrow:", on_click=_play, args=(n_steps,), type="primary")
             st.button("Dừng", icon=":material/pause:", on_click=_pause)
@@ -313,21 +317,27 @@ st.html(
     "</div>"
 )
 
-# ---------- lưới thẻ lật (chỉ khi phát lại một phiên) ----------
+# ---------- bản đồ nhiệt thẻ lật (chỉ khi phát lại một phiên) ----------
 if mode == MODE_REPLAY:
     i_now = st.session_state["replay_idx"]
-    first_look = st.session_state.get("flip_seen") != (replay_day, i_now)   # chạy lại cùng một bước thì thẻ đứng yên
-    st.session_state["flip_seen"] = (replay_day, i_now)
+    last = st.session_state.get("flip_last")            # (phiên, bước) đã vẽ ở lần chạy trước
     flip_syms = sorted(picked)
     cur_state = grid_state(analyzed, flip_syms, cut_ts)
-    prev_state = grid_state(analyzed, flip_syms, day_ts[i_now - 1]) if first_look and i_now > 0 else None
+    # Lật so với bước đã hiện trước đó; chạy lại đúng bước đang hiện (đổi bộ lọc...) thì ô đứng yên.
+    prev_state = (grid_state(analyzed, flip_syms, day_ts[last[1]])
+                  if last and last[0] == replay_day and last[1] != i_now and last[1] < n_steps else None)
+    st.session_state["flip_last"] = (replay_day, i_now)
+    GRID_W, GRID_H = 100.0, 46.0   # tỷ lệ khung bản đồ nhiệt (rộng : cao)
+    layout = treemap_layout(tile_weights(analyzed, flip_syms, replay_day), GRID_W, GRID_H)
     with st.container(border=True, key="panel_flipgrid"):
         st.subheader(f"Bản đồ nhiệt thẻ lật · {cut_ts:%H:%M}", anchor=False)
-        st.caption("Mỗi thẻ là một mã, hiện điểm rủi ro thanh khoản LRS tại lần chụp đang xem. Nền: xanh nhạt = dễ giao dịch "
-                   "hơn thường lệ, xám = bình thường, cam rồi đỏ = khó hơn (LRS càng cao càng rủi ro). Viền cam đậm = mức Chú ý, "
-                   "viền đỏ đậm = mức Cao (theo ngưỡng của Radar). Viền nét đứt = chưa đủ dữ liệu so với các phiên trước. "
-                   "Sang lần chụp kế tiếp, thẻ nào đổi điểm sẽ lật. Bấm vào thẻ để mở hồ sơ mã.")
-        st.html(flip_css(INK, MUTED, NEG, WARN) + flip_grid_html(cur_state, prev_state, i_now, link="ma"))
+        st.caption("Mỗi ô là một mã, hiện điểm rủi ro thanh khoản LRS tại lần chụp đang xem. Diện tích ô theo độ sâu sổ lệnh "
+                   "trung vị của mã trong cả phiên (cố định khi phát). Nền: xanh nhạt = dễ giao dịch hơn thường lệ, xám = bình "
+                   "thường, cam rồi đỏ = khó hơn (LRS càng cao càng rủi ro). Viền cam đậm = mức Chú ý, viền đỏ đậm = mức Cao "
+                   "(theo ngưỡng của Radar). Viền nét đứt = chưa đủ dữ liệu so với các phiên trước. Sang lần chụp kế tiếp, "
+                   "ô nào đổi điểm sẽ lật. Bấm vào ô để mở hồ sơ mã.")
+        st.html(flip_css(INK, MUTED, NEG, WARN) + flip_grid_html(cur_state, prev_state, i_now, link="ma", layout=layout,
+                                                                  width=GRID_W, height=GRID_H))
 
 # ---------- xếp hạng + cảnh báo ----------
 TABLE_H = 438
