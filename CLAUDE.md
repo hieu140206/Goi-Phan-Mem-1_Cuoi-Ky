@@ -11,22 +11,11 @@ xếp hạng theo dòng tiền nước ngoài và động lượng so VN30; 4 tr
 Lõi phân tích: **Radar thanh khoản VN30** (spread tương đối bps, độ sâu, mất cân bằng mua/bán, z-score trượt, cảnh báo bất thường, điểm LRS).
 Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nhóm, độ sâu, độ rộng, thanh khoản) là phần mở rộng.
 
-## Quy tắc bất di bất dịch
-1. **Chỉ ĐỌC dữ liệu.** Không đặt, sửa, hủy lệnh thật (cần văn bản chấp thuận của giảng viên).
-2. **Bảo mật:** không in/ghi/chia sẻ token JWT, mật khẩu, số tài khoản. Mật khẩu chỉ nằm trong bộ nhớ tiến trình, `.env` không commit.
-3. **Dữ liệu luôn phải đúng, hơn mọi thứ khác.** Thiếu thì để trống hoặc "–", không đoán, không điền, không nội suy. Đổi giao diện không được làm đổi số.
-4. Giới hạn NEO: **5 yêu cầu/giây**, IP phải đăng ký. Không tăng tần suất gọi khi chưa đo.
-5. Người dùng là **sinh viên mới học**: giải thích ngắn gọn, tiếng Việt, tránh thuật ngữ không cần thiết. Việc lớn thì **nhận xét và hỏi trước** rồi mới làm; không cắt phạm vi tự ý.
-6. Làm xong phải chạy `python -m pytest` (hiện **237 passed**) và xem lại giao diện trước khi báo xong.
-
-## Kiến trúc
-- `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), stream WebSocket (nhị phân, phụ, mới giải mã được `stockInfo`).
-- `src/data/`: `ssi.py` (SSI v3 REST, nguồn PHỤ chỉ đọc: client có làm mới token, bảng `ssi_daily`, `ssi_index_daily`), schema + làm sạch, storage (SQLite `data/market.db`), rest_recorder (bộ ghi), market_board (bảng giá nhiều sàn, phái sinh), overview (hàm dữ liệu trang Tổng quan), backfill, market_day.
-- `src/finance/`: liquidity, anomaly, factors, sessions (lọc phiên khớp lệnh liên tục).
-- `src/analytics/`: baseline (cảnh báo theo khung giờ), lrs, screener (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường).
-- `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py` (Tổng quan), `screen_page.py` (Bộ lọc), `radar.py`, `stock.py` (Chi tiết mã), `shared.py` (tải và phân tích dùng chung, cùng số trên mọi trang), `charts.py`, `watchlist.py` (`data/watchlist.json`, không commit), `board.py` (bảng giá HTML), `theme.py`.
-- `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`, `backfill_extra.py`, `fetch_day_index.py`, `fetch_ssi_history.py` (lịch sử theo ngày từ SSI; `--check` đối chiếu với NEO), `probe_ssi.py` (thử SSI: `rest`, `stream`), `restore_session.py` (dựng lại MỘT phiên vào market.db từ data/raw/<ngày>/, không gọi mạng; `--only trades` lấy lại riêng các lần khớp WebSocket).
-- Dashboard **chỉ đọc** market.db, không giữ mật khẩu. Bộ ghi và dashboard là hai phần riêng.
+## Luật làm việc, thiết kế (đọc và tuân thủ, nguồn gốc duy nhất)
+- **Luật làm việc, phạm vi sửa, vòng test và commit, giao thức câu hỏi:** @AGENT.md
+- **Thiết kế, kiến trúc, quy ước giao diện và quy tắc dữ liệu:** @DESIGN.md
+- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **237 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
+- Ba tệp mâu thuẫn nhau thì luật an toàn và dữ liệu trong AGENT.md thắng; còn lại hỏi sinh viên.
 
 ## Điều đã xác nhận bằng dữ liệu thật vs chưa
 - Đã xác nhận: 4.7 (30 mã VN30 một lần gọi), 4.3 (cả 4 chỉ số), 4.4, 4.9 (4 hợp đồng VN30, mã `41I1GB000`..., tên ở `otherName` VN30F1M/F2M/F1Q/F2Q), 4.5 (đếm mã), 4.6 trả ít dòng hơn số mã xin (10/11 và 11/11: HOSE 408/413, HNX 299/301, UPCoM 810/846, ETF và chứng quyền đủ). 4.3 có dòng `FU` lặp lại đúng số của VN30 (đã bỏ khi lưu).
