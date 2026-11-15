@@ -27,6 +27,7 @@ import streamlit as st  # noqa: E402
 from analytics.baseline import bucket_label, tod_bucket  # noqa: E402
 from analytics.lrs import MIN_OBS_PAST  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
+from flipgrid import flip_css, flip_grid_html, grid_state  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from shared import (SRC_SAMPLE, analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
                     params, source_version)
@@ -294,6 +295,22 @@ st.html(
     f'<div class="s">điểm thấp nhất trong {len(ranking)} mã</div></div>'
     "</div>"
 )
+
+# ---------- lưới thẻ lật (chỉ khi phát lại một phiên) ----------
+if mode == MODE_REPLAY:
+    i_now = st.session_state["replay_idx"]
+    first_look = st.session_state.get("flip_seen") != (replay_day, i_now)   # chạy lại cùng một bước thì thẻ đứng yên
+    st.session_state["flip_seen"] = (replay_day, i_now)
+    flip_syms = sorted(picked)
+    cur_state = grid_state(analyzed, flip_syms, cut_ts)
+    prev_state = grid_state(analyzed, flip_syms, day_ts[i_now - 1]) if first_look and i_now > 0 else None
+    with st.container(border=True, key="panel_flipgrid"):
+        st.subheader(f"Bản đồ nhiệt thẻ lật · {cut_ts:%H:%M}", anchor=False)
+        st.caption("Mỗi thẻ là một mã, hiện điểm rủi ro thanh khoản LRS tại lần chụp đang xem. Nền: xanh nhạt = dễ giao dịch "
+                   "hơn thường lệ, xám = bình thường, cam rồi đỏ = khó hơn (LRS càng cao càng rủi ro). Viền cam đậm = mức Chú ý, "
+                   "viền đỏ đậm = mức Cao (theo ngưỡng của Radar). Viền nét đứt = chưa đủ dữ liệu so với các phiên trước. "
+                   "Sang lần chụp kế tiếp, thẻ nào đổi điểm sẽ lật. Bấm vào thẻ để mở hồ sơ mã.")
+        st.html(flip_css(INK, MUTED, NEG, WARN) + flip_grid_html(cur_state, prev_state, i_now, link="ma"))
 
 # ---------- xếp hạng + cảnh báo ----------
 TABLE_H = 438

@@ -91,7 +91,20 @@ def check() -> None:
         a_ = a if a in m else a + "_x"
         both = m.dropna(subset=[a_, b])
         diff = both[(both[a_] - both[b]).abs() > 0.5]
-        print(f"  {name:13s} khớp {len(both) - len(diff)}/{len(both)}")
+        if name == "giá đóng cửa":
+            # SSI trả giá ĐÃ ĐIỀU CHỈNH cổ tức cho các ngày trước ngày giao dịch không hưởng quyền (bước giá thật
+            # luôn là bội của 10 đồng, giá điều chỉnh thì lẻ, vd 31315,025). Tách riêng, không tính là lệch dữ liệu.
+            adj_mask = diff[b].map(lambda v: abs(v / 10 - round(v / 10)) > 1e-6)
+            adj, diff = diff[adj_mask], diff[~adj_mask]
+            print(f"  {name:13s} khớp {len(both) - len(diff) - len(adj)}/{len(both)}"
+                  f"  (+ {len(adj)} dòng SSI là giá điều chỉnh cổ tức, không so được)")
+            if len(adj):
+                ratio = (adj[b] / adj[a_]).groupby(adj["symbol"]).agg(["count", "min", "max"])
+                print("    Mã có giá điều chỉnh (SSI/NEO): " + "; ".join(
+                    f"{s} {r['count']:.0f} ngày, tỷ lệ {r['min']:.3f}-{r['max']:.3f}" for s, r in ratio.iterrows()))
+                print("    => KHÔNG dùng giá SSI để tính lợi suất/động lượng nếu chưa xử lý điều chỉnh.")
+        else:
+            print(f"  {name:13s} khớp {len(both) - len(diff)}/{len(both)}")
         bad += [(name, r.day, r.symbol, getattr(r, a_), getattr(r, b)) for r in diff.itertuples()]
     for name, day, sym, n, s in bad[:25]:
         pct = (s - n) / n * 100 if n else float("nan")

@@ -68,7 +68,9 @@ if not symbols:
 
 watch = load_watchlist(WATCHLIST_PATH)
 wanted = str(st.query_params.get("ma", "")).strip().upper()
-if wanted in symbols:
+if wanted in symbols and wanted != st.session_state.get("_ma_seen"):
+    # Chỉ nhận mã từ địa chỉ khi nó MỚI (mở từ trang khác hoặc dán link). Nếu không, mỗi lần chọn mã khác,
+    # địa chỉ vẫn còn mã cũ và ghi đè lại lựa chọn của người dùng.
     st.session_state["detail_sym"] = wanted
 elif st.session_state.get("detail_sym") not in symbols:
     st.session_state["detail_sym"] = next((s for s in watch if s in symbols), symbols[0])
@@ -85,6 +87,7 @@ with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
     default_day = sym_q_days.max() if len(sym_q_days) else days[0]
     day = st.selectbox("Phiên", days, index=days.index(default_day), width=160,
                        format_func=lambda d: d.strftime("%d/%m/%Y"))
+st.session_state["_ma_seen"] = sym
 st.query_params["ma"] = sym          # địa chỉ trang luôn trỏ đúng mã đang xem (chia sẻ hoặc tải lại vẫn đúng)
 st.session_state["sym"] = sym        # Radar mở sẵn đúng mã này khi chuyển sang
 
