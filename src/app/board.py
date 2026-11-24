@@ -39,6 +39,11 @@ def fmt_qty(v: float) -> str:
     return DASH if pd.isna(v) else _vn(v, 0)
 
 
+def _arrow(sign: str) -> str:
+    """Mũi tên đặt SAU con số (thẻ riêng, nên chuỗi số và lớp CSS của ô không đổi): ▲ tăng, ▼ giảm, để người không phân biệt màu vẫn đọc được."""
+    return '<span class="ar">▲</span>' if sign == "up" else '<span class="ar">▼</span>' if sign == "dn" else ""
+
+
 def _cell(text: str, cls: str = "") -> str:
     return f'<td class="{cls}">{text}</td>' if cls else f"<td>{text}</td>"
 
@@ -111,8 +116,8 @@ def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | No
             cells += [_cell(px_fmt(px), (fl(f"bid_px{i}", k(px)) + (" g" if i == 3 else "")).strip()),
                       _cell(fmt_qty(q), fl(f"bid_qty{i}", k(px)))]
         cells += [_cell(px_fmt(r.last_px), (fl("last_px", match) + " g").strip()), _cell(fmt_qty(r.last_vol), fl("last_vol", match)),
-                  _cell(DASH if pd.isna(r.change) else ("+" if r.change > 0 else "") + _vn(r.change / div, 2 if not fut else 1), fl("change", sign)),
-                  _cell(DASH if pd.isna(r.pct) else ("+" if r.pct > 0 else "") + _vn(r.pct, 2) + "%", fl("pct", sign))]
+                  _cell(DASH if pd.isna(r.change) else ("+" if r.change > 0 else "") + _vn(r.change / div, 2 if not fut else 1) + _arrow(sign), fl("change", sign)),
+                  _cell(DASH if pd.isna(r.pct) else ("+" if r.pct > 0 else "") + _vn(r.pct, 2) + "%" + _arrow(sign), fl("pct", sign))]
         for i in (1, 2, 3):
             px, q = getattr(r, f"ask_px{i}"), getattr(r, f"ask_qty{i}")
             cells += [_cell(px_fmt(px), (fl(f"ask_px{i}", k(px)) + (" g" if i == 1 else "")).strip()),
@@ -152,4 +157,5 @@ def board_css(border: str, grid: str, muted: str, ink: str, up: str, dn: str) ->
 .board .f-ce {{ background: #e9ddfb; }} .board .f-fl {{ background: #d9e7fb; }}
 .board .mat {{ font-weight: 400; font-size: 11px; color: {muted}; margin-left: 4px; }}
 .board .up {{ color: {up}; }} .board .dn {{ color: {dn}; }} .board .na {{ color: #b5bac1; }}
+.board .ar {{ font-size: 9px; margin-left: 3px; }}
 </style>"""

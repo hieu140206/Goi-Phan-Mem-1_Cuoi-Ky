@@ -12,7 +12,28 @@ import streamlit as st
 INK, MUTED, FAINT = "#0a0a0a", "#6b6b6b", "#9a9a9a"
 BORDER, GRID = "#e3e6ea", "#eceef1"
 HUE, NEG, WARN = "#1d5fbf", "#c4242a", "#92400e"
+POS = "#2e7d32"   # tăng (cùng màu với bảng giá và thẻ chỉ số ở trang Tổng quan)
+# Huy hiệu trạng thái: chữ theo màu của bảng màu, nền là bản nhạt của chính màu đó (không thêm màu mới).
+BADGE = {"ok": (HUE, "#e8f0fb"), "warn": (WARN, "#fdf0e3"), "neg": (NEG, "#fbe9ea"), "muted": (MUTED, "#eef0f2"), "faint": (MUTED, "#f3f5f8")}
 FONT = "Geist, Inter, system-ui, sans-serif"
+
+
+def badge_style(kind: str) -> str:
+    """CSS cho một ô bảng (Styler) dạng huy hiệu: ok, warn, neg, muted hoặc faint. Bảng của Streamlit chỉ nhận màu chữ, màu nền và độ đậm."""
+    fg, bg = BADGE[kind]
+    return f"color: {fg}; background-color: {bg}; font-weight: 600"
+
+
+def arrow_pct(digits: int = 1):
+    """Hàm định dạng ô phần trăm có mũi tên: ▲ tăng, ▼ giảm (đọc được cả khi không phân biệt màu), số kiểu Việt; 0 không có mũi tên."""
+    def fmt(v: float) -> str:
+        body = f"{abs(v):.{digits}f}".replace(".", ",") + "%"
+        return ("▲ " if v > 0 else "▼ " if v < 0 else "") + body
+    return fmt
+
+
+def sign_color(v: float) -> str:
+    return f"color: {POS}" if v > 0 else f"color: {NEG}" if v < 0 else ""
 
 
 def inject_css() -> None:

@@ -19,8 +19,10 @@ import streamlit as st  # noqa: E402
 from analytics.screener import sample_warning  # noqa: E402
 from data.special_days import describe  # noqa: E402
 from shared import GATE_MIN_SCORE, analyzed_data, current_source, screen_for_day  # noqa: E402
-from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, base_layout, vn  # noqa: E402
+from theme import (BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, arrow_pct, badge_style, base_layout, sign_color,  # noqa: E402
+                   vn)
 
+GATE_BADGE = {"Đạt": "ok", "Chú ý": "warn", "Chưa đánh giá": "muted", "Loại": "faint"}
 GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Chưa đánh giá": MUTED, "Loại": "#b5bac1"}
 
 source = current_source()
@@ -117,9 +119,10 @@ with left, st.container(border=True, key="panel_screen"):
         "liq": r["liq_score"], "alerts": r["alerts"], "reason": r["gate_reason"],
     })
     event = st.dataframe(
-        table.style.format({"score": "{:.0f}", "f_rank": "{:.0f}", "f_ratio": "{:+.1f}%", "m_rank": "{:.0f}",
-                            "m_val": "{:+.2f}%", "liq": "{:.0f}"}, decimal=",", thousands=".", na_rep="–")
-             .map(lambda g: f"color: {GATE_COLOR.get(g, INK)}; font-weight: 600", subset=["gate"]),
+        table.style.format({"score": "{:.0f}", "f_rank": "{:.0f}", "f_ratio": arrow_pct(1), "m_rank": "{:.0f}",
+                            "m_val": arrow_pct(2), "liq": "{:.0f}"}, decimal=",", thousands=".", na_rep="–")
+             .map(lambda g: badge_style(GATE_BADGE.get(g, "muted")), subset=["gate"])
+             .map(sign_color, subset=["f_ratio", "m_val"]),
         hide_index=True, height=438, key=f"screen_tbl_{day}_{min_score}_{horizon}", on_select="rerun",
         selection_mode="single-row", alt="Bảng xếp hạng bộ lọc cổ phiếu VN30",
         column_config={

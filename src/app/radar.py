@@ -45,16 +45,16 @@ MODE_REPLAY = "Phát lại một phiên"
 SCOPE_ALL, SCOPE_PICK = "Tất cả mã", "Chọn từng mã"
 ALERT_SHORT = {"Spread mở rộng": "Spread rộng", "Độ sâu mỏng": "Sổ mỏng", "Spread rộng, độ sâu mỏng": "Spread rộng, sổ mỏng"}
 
-from theme import CHART_CONFIG, INK, MUTED, NEG, WARN, base_layout, group, vn  # noqa: E402
+from theme import CHART_CONFIG, INK, MUTED, NEG, WARN, badge_style, base_layout, group, vn  # noqa: E402
 
 
 # ---------- tiện ích ----------
 def tier_style(v: str) -> str:
-    """Màu chữ cho cột mức rủi ro: đỏ cho 'Cao', hổ phách cho 'Chú ý', xám cho phần còn lại."""
+    """Cột mức rủi ro dạng huy hiệu: đỏ nhạt cho 'Cao', hổ phách nhạt cho 'Chú ý', chữ xám (không nền) cho phần còn lại."""
     if v == "Cao":
-        return f"color: {NEG}; font-weight: 500"
+        return badge_style("neg")
     if v == "Chú ý":
-        return f"color: {WARN}"
+        return badge_style("warn")
     return f"color: {MUTED}"
 
 
