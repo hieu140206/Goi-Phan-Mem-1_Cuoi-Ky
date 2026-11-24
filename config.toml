@@ -43,6 +43,7 @@ max_sessions_past = 20         # ngưỡng chỉ lấy điểm LRS của tối �
 min_obs_describe = 50          # riêng hàm mô tả lrs_thresholds (không dùng cho cảnh báo)
 
 [quality]            # chất lượng chuỗi chụp (finance/quality.py, analytics/baseline.py)
+min_price_vnd = 1000           # giá tốt nhất trung vị dưới mức này thì nghi dữ liệu đang ở đơn vị nghìn đồng (giá HOSE thấp nhất cũng cả chục nghìn đồng)
 max_gap_seconds = 90           # hai lần chụp "liên tiếp" cách nhau không quá chừng này giây; lớn hơn là có lần chụp bị thiếu
 stale_run_snapshots = 10       # sổ lệnh không đổi qua chừng này lần chụp liên tiếp thì nghi dữ liệu cũ (lựa chọn ban đầu)
 stale_peer_share = 0.5         # ... nhưng chỉ khi từ chừng này tỷ lệ mã khác vẫn đổi cùng lúc (lựa chọn ban đầu)

@@ -46,6 +46,14 @@ def limit_touch_side(df: pd.DataFrame) -> pd.Series:
     return pd.Series(np.select([ceil_touch, floor_touch], ["trần", "sàn"], default=""), index=df.index)
 
 
+def price_unit_check(df: pd.DataFrame, min_price_vnd: float = _Q["min_price_vnd"]) -> tuple[bool, float]:
+    """Kiểm tra giá đang ở đơn vị ĐỒNG (như NEO trả và như toàn bộ dự án giả định). Trả (đúng, giá mua tốt nhất trung vị).
+    Cổ phiếu HOSE giá thấp nhất cũng hơn 1.000 đồng (VN30 từ khoảng 10.000 đồng), nên trung vị dưới `min_price_vnd` gần như chắc chắn
+    là dữ liệu bị đổi sang nghìn đồng. Chỉ KIỂM TRA và báo, không tự nhân 1.000: không đoán đơn vị thay người dùng."""
+    med = float(pd.to_numeric(df["bid_px1"], errors="coerce").median()) if len(df) else float("nan")
+    return (bool(med >= min_price_vnd) if med == med else True), med
+
+
 def _session_key(d: pd.DataFrame) -> pd.Series:
     half = (d["ts"].dt.hour >= 12).astype(int).astype(str)
     return d["symbol"].astype(str) + "|" + d["ts"].dt.strftime("%Y-%m-%d") + "|" + half

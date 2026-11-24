@@ -31,7 +31,7 @@ from data.storage import (board_days, count_rows, load_board, load_futures, load
                           load_quotes)
 from finance.absorption import add_absorption  # noqa: E402
 from finance.liquidity import add_liquidity_metrics, add_window_stats, rank_symbols, window_scores  # noqa: E402
-from finance.quality import add_quality_flags, limit_touch_side, quality_table  # noqa: E402
+from finance.quality import add_quality_flags, limit_touch_side, price_unit_check, quality_table  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from model_config import section  # noqa: E402
 from status import STATUS_NA, STATUS_OK  # noqa: E402
@@ -105,6 +105,10 @@ def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True
             log.warning("Đã loại %d dòng %s: lỗi dữ liệu.", report[key], label)
     if len(report["limit_touch"]):
         log.info("Đã loại %d lần chụp có giá tốt nhất chạm trần/sàn (còn đủ hai bên): không dùng được cho spread.", len(report["limit_touch"]))
+    # Đơn vị giá phải là đồng (kiểm một lần ở lớp nạp, không tự đổi): nếu nghi là nghìn đồng thì ghi lỗi rõ và đánh dấu để giao diện báo.
+    report["price_unit_ok"], _med_px = price_unit_check(clean)
+    if not report["price_unit_ok"]:
+        log.error("Giá mua tốt nhất trung vị chỉ %.2f: có vẻ dữ liệu đang ở nghìn đồng thay vì đồng; spread theo bước giá và độ sâu sẽ sai.", _med_px)
     report["ssi_days"] = []
     if source == SRC_DB and ssi_fill:
         neo_days = {d.strftime("%Y-%m-%d") for d in clean["ts"].dt.date.unique()} if not clean.empty else set()
