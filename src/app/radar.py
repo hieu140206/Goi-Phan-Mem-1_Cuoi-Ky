@@ -382,7 +382,7 @@ with left, st.container(border=True, key="panel_rank"):
                                                      help="Độ sâu 3 mức giá trung vị, triệu đồng"),
             "lrs": st.column_config.NumberColumn("LRS", width=54,
                                                  help="Điểm rủi ro thanh khoản ở lần chụp mới nhất. Cao hơn là rủi ro hơn."),
-            "lrs_tier": st.column_config.TextColumn("Mức", width=84),
+            "lrs_tier": st.column_config.TextColumn("Mức", width=112),
             "alerts": st.column_config.NumberColumn("Đợt CB", format="%d", width=60, help="Số đợt cảnh báo trong kỳ"),
         },
     )

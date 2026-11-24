@@ -20,6 +20,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from analytics.baseline import STATUS_NA
 from model_config import section
 
 _L = section("lrs")
@@ -53,10 +54,12 @@ def lrs_thresholds(lrs: pd.Series, q_watch: float = _L["q_watch"], q_high: float
 
 
 def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = _L["q_watch"], q_high: float = _L["q_high"],
-                        min_obs: int = MIN_OBS_PAST) -> pd.DataFrame:
+                        min_obs: int = MIN_OBS_PAST, max_sessions: int | None = _L["max_sessions_past"]) -> pd.DataFrame:
     """Ngưỡng tại mỗi dòng = phân vị của mọi điểm LRS có thời điểm TRƯỚC thời điểm của dòng đó (không nhìn trước).
 
     Các mã chụp cùng thời điểm không dùng điểm của nhau. Chưa đủ `min_obs` điểm quá khứ thì ngưỡng là NaN.
+    `max_sessions`: chỉ lấy điểm của tối đa chừng này phiên gần nhất tính đến thời điểm đang xét (gồm cả phiên đó, phần
+    trước thời điểm); None hoặc <= 0 là không giới hạn (cửa sổ mở rộng từ đầu dữ liệu).
     Trả DataFrame cột watch, high, cùng index với `lrs`.
     """
     out = pd.DataFrame({"watch": np.nan, "high": np.nan}, index=lrs.index)
@@ -69,13 +72,22 @@ def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = _L["q_wa
     past_val = lrs[valid].to_numpy(dtype=float)[order]
     # Tính ngưỡng một lần cho mỗi thời điểm khác nhau, rồi gán gộp cho mọi dòng (nhanh hơn ghi từng nhóm dòng bằng .loc).
     uniq = np.unique(key[has_ts].to_numpy())
+    # Nửa đêm (giờ địa phương) của ngày chứa từng thời điểm, cùng đơn vị với `key`, để cắt đúng `max_sessions` phiên gần nhất.
+    mid_key = pd.to_datetime(pd.to_datetime(ts[has_ts]).dt.normalize(), utc=True).astype("int64").to_numpy()
+    days_sorted = np.unique(mid_key)
+    mid_by_key = pd.Series(mid_key, index=key[has_ts].to_numpy()).groupby(level=0).first()
+    day_pos = np.searchsorted(days_sorted, mid_by_key.reindex(uniq).to_numpy())
+    keep = len(days_sorted) if not max_sessions or max_sessions <= 0 else int(max_sessions)
+    first_day = days_sorted[np.maximum(0, day_pos - (keep - 1))]
+    lo_arr = np.searchsorted(past_key, first_day, side="left")      # điểm đầu tiên của phiên cũ nhất còn được dùng
+    n_past_arr = np.searchsorted(past_key, uniq, side="left")       # số điểm có thời điểm < t
     watch_t = np.full(len(uniq), np.nan)
     high_t = np.full(len(uniq), np.nan)
-    for i, t in enumerate(uniq):
-        n_past = int(np.searchsorted(past_key, t, side="left"))  # số điểm có thời điểm < t
-        if n_past < min_obs:
+    for i in range(len(uniq)):
+        lo, n_past = int(lo_arr[i]), int(n_past_arr[i])
+        if n_past - lo < min_obs:
             continue
-        watch_t[i], high_t[i] = np.quantile(past_val[:n_past], [q_watch, q_high])
+        watch_t[i], high_t[i] = np.quantile(past_val[lo:n_past], [q_watch, q_high])
     pos = np.searchsorted(uniq, key[has_ts].to_numpy())
     out.loc[has_ts, "watch"] = watch_t[pos]
     out.loc[has_ts, "high"] = high_t[pos]
@@ -83,11 +95,11 @@ def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = _L["q_wa
 
 
 def lrs_tier(lrs: pd.Series, thresholds) -> pd.Series:
-    """'Cao' / 'Chú ý' / 'Bình thường'; chuỗi rỗng khi chưa có điểm hoặc chưa có ngưỡng.
+    """'Cao' / 'Chú ý' / 'Bình thường'; 'Chưa đủ dữ liệu' khi chưa có điểm LRS hoặc chưa đủ điểm quá khứ để có ngưỡng.
 
     `thresholds` có watch/high là số (một ngưỡng chung) hoặc Series cùng index (ngưỡng riêng từng dòng).
     """
-    out = pd.Series("", index=lrs.index, dtype="object")
+    out = pd.Series(STATUS_NA, index=lrs.index, dtype="object")
     watch = pd.Series(thresholds["watch"], index=lrs.index, dtype=float)
     high = pd.Series(thresholds["high"], index=lrs.index, dtype=float)
     valid = lrs.notna() & watch.notna()

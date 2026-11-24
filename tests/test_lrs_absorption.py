@@ -42,13 +42,13 @@ def test_thresholds_are_empirical_quantiles():
 def test_thresholds_nan_when_too_little_data():
     thr = lrs_thresholds(pd.Series([1.0, 2.0, 3.0]))
     assert np.isnan(thr["watch"])
-    assert (lrs_tier(pd.Series([1.0, 2.0]), thr) == "").all()
+    assert (lrs_tier(pd.Series([1.0, 2.0]), thr) == "Chưa đủ dữ liệu").all()
 
 
 def test_tier_assignment():
     thr = {"watch": 1.0, "high": 2.0}
     tiers = lrs_tier(pd.Series([0.5, 1.0, 2.5, np.nan]), thr)
-    assert tiers.tolist() == ["Bình thường", "Chú ý", "Cao", ""]
+    assert tiers.tolist() == ["Bình thường", "Chú ý", "Cao", "Chưa đủ dữ liệu"]
 
 
 def test_lrs_flags_spike_end_to_end():
@@ -128,7 +128,7 @@ def test_past_thresholds_ignore_future_data():
 def test_tier_with_per_row_thresholds():
     lrs = pd.Series([0.5, 1.5, 3.0, 1.0])
     thr = pd.DataFrame({"watch": [1.0, 1.0, 1.0, np.nan], "high": [2.0, 2.0, 2.0, np.nan]})
-    assert lrs_tier(lrs, thr).tolist() == ["Bình thường", "Chú ý", "Cao", ""]
+    assert lrs_tier(lrs, thr).tolist() == ["Bình thường", "Chú ý", "Cao", "Chưa đủ dữ liệu"]
 
 
 def test_thin_no_trade_compares_with_same_time_of_day_not_yesterday_afternoon():

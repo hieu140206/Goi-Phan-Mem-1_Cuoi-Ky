@@ -36,6 +36,7 @@ min_periods = 20               # ít nhất chừng này lần chụp trong mố
 q_watch = 0.95                 # phân vị cho mức "Chú ý"
 q_high = 0.99                  # phân vị cho mức "Cao"
 min_obs_past = 300             # cần ít nhất chừng này điểm LRS có trước mới công bố ngưỡng
+max_sessions_past = 20         # ngưỡng chỉ lấy điểm LRS của tối đa chừng này phiên gần nhất (gồm phiên đang xét)
 min_obs_describe = 50          # riêng hàm mô tả lrs_thresholds (không dùng cho cảnh báo)
 
 [absorption]         # tỷ lệ hấp thụ và cờ "mỏng mà không khớp" (finance/absorption.py)
