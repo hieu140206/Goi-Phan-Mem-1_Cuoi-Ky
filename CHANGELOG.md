@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 25/11/2026: đổi hai ngưỡng theo kết quả kiểm chứng
+
+- `baseline.z_threshold` 3,0 thành **2,5** và `baseline.min_spread_ratio` 2,0 thành **2,5** (`config.toml`), theo `report/kiem-chung/KET_QUA.md`: z độ sâu thấp hơn giữ tín hiệu mà nhiều cảnh báo hơn; spread tối thiểu cao hơn cho tín hiệu mạnh hơn.
+- Tác động trên dữ liệu thật (NEO): đợt cảnh báo 452 xuống 431; cảnh báo có spread giảm (321 xuống 197), cảnh báo độ sâu tăng (131 lên 234). Các số cảnh báo, điểm LRS và nhãn cổng ở mọi trang thay đổi theo.
+- Căn cứ chỉ là bằng chứng sơ bộ: chọn trên 6 phiên, báo trên 5 phiên, ngưỡng chọn rất nhiễu (xem Giới hạn trong KET_QUA.md). Muốn quay lại: sửa hai số trong `config.toml`.
+- Cập nhật mô tả ở Radar và README cho khớp. 342 test qua.
+
 ## 24/11/2026: nâng cấp các phần mơ hồ và trường hợp biên của Radar thanh khoản và Bộ lọc
 
 Không đổi công thức cốt lõi (spread bps, spread theo bước giá, độ sâu 3 mức, lệch mua/bán, trọng số 40/40/20). Số test: 245 lên 328.

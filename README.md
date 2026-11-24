@@ -177,8 +177,8 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
 - Tỷ lệ hấp thụ = khối lượng khớp giữa hai lần chụp / độ sâu sổ lệnh. Cờ "mỏng, không khớp lệnh" chỉ là dấu hiệu, không kết luận thao túng.
 - Cảnh báo (`analytics/baseline.py`): so từng mã với CHÍNH NÓ ở cùng khung giờ (9:15-9:30 riêng, rồi các khung 30 phút) trong tối đa 10 phiên trước
   (cần ít nhất 5 phiên và 20 lần chụp; chưa đủ thì ghi "Chưa đủ dữ liệu"; đổi ở config.toml),
-  chỉ dùng dữ liệu trước phiên đang xét. Spread rộng: từ 2 bước giá trở lên, gấp ít nhất 2 lần trung vị và thuộc nhóm 5% rộng nhất của lịch sử; độ sâu mỏng:
-  z bền vững (trung vị và MAD) từ -3 trở xuống (ngưỡng chỉnh được ở thanh bên, mặc định 3) và độ sâu không quá 0,4 lần trung vị. Một cảnh báo phải kéo dài ít nhất 2 lần chụp hợp lệ kề nhau (cách nhau không quá 90 giây, cùng buổi); số liệu đếm theo đợt.
+  chỉ dùng dữ liệu trước phiên đang xét. Spread rộng: từ 2 bước giá trở lên, gấp ít nhất 2,5 lần trung vị và thuộc nhóm 5% rộng nhất của lịch sử; độ sâu mỏng:
+  z bền vững (trung vị và MAD) từ -2,5 trở xuống (ngưỡng chỉnh được ở thanh bên, mặc định 2,5) và độ sâu không quá 0,4 lần trung vị. Một cảnh báo phải kéo dài ít nhất 2 lần chụp hợp lệ kề nhau (cách nhau không quá 90 giây, cùng buổi); số liệu đếm theo đợt.
   Cổng của Bộ lọc có thêm nhãn "Chưa đánh giá" cho mã chưa có mốc nền; Radar thêm điểm thanh khoản 30 phút, thống kê chất lượng dữ liệu và ngày đặc biệt.
   Mọi thay đổi và số đo của đợt nâng cấp 24/11/2026 nằm ở CHANGELOG.md.
   Cách này thay cho cửa sổ trượt cũ (so với chiều hôm trước) để không gán nhầm dạng chữ U của thanh khoản trong ngày thành bất thường.

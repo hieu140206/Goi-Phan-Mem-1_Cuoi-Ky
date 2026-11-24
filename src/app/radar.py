@@ -574,7 +574,7 @@ chụp) nên MAD thường bằng 0. Cao hơn là rủi ro hơn. Ngưỡng "Chú
 ngưỡng thay đổi dần theo thời gian. Vì là phân vị nên về lâu dài khoảng 1% lần chụp ở mức "Cao" dù thị trường yên;
 mức này để theo dõi xu hướng, còn danh sách cảnh báo dựa trên điều kiện bên dưới.
 
-**Cảnh báo** khi (a) *spread mở rộng*: spread ≥ 2 bước giá, ≥ 2 lần trung vị baseline và chỉ ≤ 5% lần chụp cùng
+**Cảnh báo** khi (a) *spread mở rộng*: spread ≥ 2 bước giá, ≥ 2,5 lần trung vị baseline và chỉ ≤ 5% lần chụp cùng
 khung giờ trước đây rộng bằng hoặc hơn; hoặc (b) *độ sâu mỏng*: z độ sâu ≤ −ngưỡng và độ sâu ≤ 0,4 lần trung vị
 baseline. Điều kiện phải đúng ở ít nhất **2 lần chụp hợp lệ kề nhau** (cách nhau không quá 90 giây, cùng buổi, không vắt qua nghỉ trưa)
 mới thành một *đợt cảnh báo*;
