@@ -134,23 +134,33 @@ def intraday_factors(snap: pd.DataFrame, index_change: float | None = None) -> p
 
 
 # 4. Cổng thanh khoản
-def liquidity_gate(ranking: pd.DataFrame, alert_counts: pd.Series | None, min_score: float = section("gate")["min_score"]) -> pd.DataFrame:
-    """ranking: kết quả rank_symbols (symbol, score). alert_counts: số đợt cảnh báo theo mã (thiếu mã = 0 đợt).
-    Loại nếu score <= min_score (hoặc không có điểm); Chú ý nếu có >= 1 đợt cảnh báo; còn lại Đạt.
-    Dùng <= để khớp mốc "Yếu" của Radar (rank_symbols xếp điểm từ 33,3 trở xuống vào nhóm Yếu)."""
+def liquidity_gate(ranking: pd.DataFrame, alert_counts: pd.Series | None, min_score: float = section("gate")["min_score"],
+                   use_lrs: bool = section("gate")["use_lrs"]) -> pd.DataFrame:
+    """ranking: kết quả rank_symbols (symbol, score; có thêm lrs_tier nếu có). alert_counts: số đợt cảnh báo theo mã (thiếu = 0).
+    Loại nếu score <= min_score (hoặc không có điểm); Chú ý nếu có >= 1 ĐỢT CẢNH BÁO; còn lại Đạt.
+    Dùng <= để khớp mốc "Yếu" của Radar (rank_symbols xếp điểm từ 33,3 trở xuống vào nhóm Yếu).
+
+    Hai cơ chế song song: (1) ĐỢT CẢNH BÁO (>= 2 lần chụp liên tiếp thỏa điều kiện spread mở rộng hoặc độ sâu mỏng) quyết định nhãn
+    "Chú ý" của cổng; (2) LRS là thang mức độ đi kèm: >= P95 hiện "Chú ý", >= P99 hiện "Cao" ở cột lý do. LRS đơn lẻ KHÔNG tự đổi
+    nhãn cổng, trừ khi use_lrs = True (config.toml: gate.use_lrs, mặc định tắt). Cột lrs_tier là mức ở lần chụp cuối của khoảng đang xét."""
     out = ranking[["symbol", "score"]].copy()
     counts = alert_counts if alert_counts is not None else pd.Series(dtype=float)
     out["alerts"] = out["symbol"].map(counts).fillna(0).astype(int)
+    tiers = ranking["lrs_tier"].fillna("").tolist() if "lrs_tier" in ranking else [""] * len(out)
     gate, reason = [], []
-    for score, n in zip(out["score"], out["alerts"]):
+    for score, n, tier in zip(out["score"], out["alerts"], tiers):
+        lrs_hi = tier in (GATE_WATCH, "Cao")
+        note = f" · LRS lần chụp cuối: {tier}" if lrs_hi else ""
         if pd.isna(score):
-            gate.append(GATE_FAIL); reason.append("Chưa có điểm thanh khoản")
+            gate.append(GATE_FAIL); reason.append("Chưa có điểm thanh khoản" + note)
         elif score <= min_score:
-            gate.append(GATE_FAIL); reason.append(f"Điểm thanh khoản {_fmt(score, 1)} ≤ {_fmt(min_score, 1)}")
+            gate.append(GATE_FAIL); reason.append(f"Điểm thanh khoản {_fmt(score, 1)} ≤ {_fmt(min_score, 1)}" + note)
         elif n >= 1:
-            gate.append(GATE_WATCH); reason.append(f"{n} đợt cảnh báo thanh khoản")
+            gate.append(GATE_WATCH); reason.append(f"{n} đợt cảnh báo thanh khoản" + note)
+        elif use_lrs and lrs_hi:
+            gate.append(GATE_WATCH); reason.append(f"LRS ở mức {tier} (không có đợt cảnh báo)")
         else:
-            gate.append(GATE_PASS); reason.append("Thanh khoản đạt, không có cảnh báo")
+            gate.append(GATE_PASS); reason.append("Thanh khoản đạt, không có cảnh báo" + note)
     out["gate"], out["gate_reason"] = gate, reason
     return out.reset_index(drop=True)
 

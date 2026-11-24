@@ -47,6 +47,7 @@ quiet_ratio = 0.1
 
 [gate]               # cổng thanh khoản của Bộ lọc (analytics/screener.py)
 min_score = 33.3               # loại mã có điểm thanh khoản từ mức này trở xuống (mốc "Yếu")
+use_lrs = false                # false: chỉ ĐỢT CẢNH BÁO quyết định nhãn "Chú ý"; LRS chỉ hiện trong cột lý do. true: LRS ≥ P95 cũng đổi nhãn
 
 [screener]
 atc_done = "14:45"             # từ giờ này giá đã qua ATC, coi là giá đóng cửa chính thức
