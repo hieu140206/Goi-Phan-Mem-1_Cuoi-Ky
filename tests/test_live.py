@@ -112,7 +112,7 @@ def test_overview_and_radar_pages_render_on_real_fixtures(tmp_path, monkeypatch)
     assert [s.value for s in at.subheader] == ["Bảng giá", "Độ sâu thị trường (VN30)", "Độ rộng thị trường",
                                               "Thanh khoản thị trường"]
     html = " ".join(str(e.value) for e in at.get("html"))
-    assert "Tổng Quan Thị Trường" in html
+    assert "Tổng quan thị trường" in html
     assert "Mã CK" in html and "Giá 3" in html and "Khớp lệnh" in html  # bảng giá kiểu bảng điện
     assert all(n in html for n in ("VN-Index", "VN30", "HNX-Index", "UPCoM-Index"))
     assert "1.761,87" in html  # số thật của VNINDEX theo định dạng Việt Nam

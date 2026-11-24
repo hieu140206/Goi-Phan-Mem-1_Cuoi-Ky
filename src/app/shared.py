@@ -74,7 +74,7 @@ def source_version(source: str) -> float:
         return 0.0
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Đang đọc và làm sạch dữ liệu đã ghi (chỉ ở lần mở đầu tiên)...")
 def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True) -> tuple[pd.DataFrame, dict]:
     """Đọc, làm sạch, chỉ giữ phiên khớp lệnh liên tục (loại ATO/ATC/nghỉ trưa), tính chỉ số sổ lệnh.
 
@@ -125,7 +125,7 @@ def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True
     return add_liquidity_metrics(clean), report
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner="Đang tính cảnh báo và điểm thanh khoản cho mọi phiên đã ghi, lần đầu mất vài giây...")
 def analyze(source: str, db_path: str, version: float, max_sessions: int, threshold: float,
             w_spread: float, w_depth: float, w_imb: float, ssi_fill: bool = True, special_version: float = 0.0) -> pd.DataFrame:
     """Cảnh báo bất thường, tỷ lệ hấp thụ và điểm LRS. Tính trên toàn bộ lịch sử để đủ dữ liệu khởi động.

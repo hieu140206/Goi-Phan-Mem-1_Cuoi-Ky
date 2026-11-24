@@ -136,7 +136,7 @@ quotes = load_quotes_clean(str(db_path), version)
 days = [pd.Timestamp(d).date() for d in data_days(db_path)]
 
 if not days:
-    st.title("🏛️ Tổng Quan Thị Trường", anchor=False)
+    st.title("Tổng quan thị trường", anchor=False)
     st.info("Chưa có dữ liệu thị trường. Chạy `python scripts/run_live.py` trong giờ giao dịch (hoặc "
             "`python scripts/record_rest.py`) để bộ ghi lưu dữ liệu từ NEO. Bật công tắc Trực tiếp thì trang tự hiện "
             "khi bộ ghi ghi xong phút đầu tiên.")
@@ -165,7 +165,7 @@ def tone(x: float) -> str:
 def _chips_html(trade_day, data_ts, live: bool, fast: bool = False) -> str:
     """Chip đầu trang tính theo ĐỒNG HỒ THẬT mỗi lần vẽ: phiên hiện tại, giờ hiện tại, giờ của bản ghi cuối, kết nối."""
     now = pd.Timestamp.now(tz=TZ)
-    out = [f'<span class="chip">📅 Phiên {trade_day:%d/%m/%Y}</span>', f'<span class="chip">⏱ {now:%H:%M:%S}</span>']
+    out = [f'<span class="chip">Phiên {trade_day:%d/%m/%Y}</span>', f'<span class="chip">{now:%H:%M:%S}</span>']
     if data_ts is not None:
         when = f"{data_ts:%H:%M}" + ("" if data_ts.date() == now.date() else f" ngày {data_ts:%d/%m}")
         out.append(f'<span class="chip">Dữ liệu lúc {when}</span>')
@@ -190,7 +190,7 @@ def render_chips(trade_day, day, live: bool) -> None:
 trade_day = trading_date(pd.Timestamp.now(tz=TZ))
 with st.container(horizontal=True, vertical_alignment="top", gap="medium"):
     with st.container(width="stretch"):
-        st.html('<div class="ov-head"><h1>🏛️ Tổng Quan Thị Trường</h1></div>'
+        st.html('<div class="ov-head"><h1>Tổng quan thị trường</h1></div>'
                 '<div class="ov-sub">Toàn cảnh chứng khoán Việt Nam: chỉ số, bảng giá, độ sâu, độ rộng và thanh khoản. '
                 'Dành cho nhà đầu tư cá nhân và chuyên viên phân tích muốn nắm nhanh trạng thái thị trường trong phiên.</div>')
         render_chips(trade_day, day, bool(st.session_state.get("live")))
