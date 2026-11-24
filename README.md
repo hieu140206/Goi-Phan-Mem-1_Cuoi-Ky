@@ -47,8 +47,9 @@ chưa có chữ ký của pandas (xem nhật ký Code Integrity). Cách an toàn
 ## Chạy
 ```
 streamlit run src/app/app.py     # mở bảng điều khiển tại http://localhost:8501
-python -m pytest                 # chạy kiểm thử (237 bài, khoảng 1 phút)
+python -m pytest                 # chạy kiểm thử (245 bài, khoảng 1 phút)
 python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi mật khẩu) và mở bảng điều khiển
+python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
 python scripts/fetch_ssi_history.py --check   # đối chiếu số cuối ngày của SSI với NEO (không gọi mạng)
 python scripts/generate_sample_data.py   # tạo lại dữ liệu mô phỏng (tùy chọn)
 ```
@@ -114,6 +115,8 @@ Chạy mọi lệnh từ thư mục gốc dự án.
   thật; `--check` tách các dòng này ra (giá điều chỉnh có số lẻ) và cảnh báo không dùng giá SSI để tính lợi suất hay động lượng.
 - **Sổ lệnh SSI (dự phòng):** bảng `ssi_quotes` (thanh 5 giây của 30 mã VN30, giá và khối lượng 3 mức mua bán) do bộ ghi luồng SSI ghi
   (`wss://stream.ssi.com.vn/ws/v3`, chủ đề `quote.<mã>`; dùng `scripts/probe_ssi.py` để thử luồng). Giá mức 1 khớp NEO REST khoảng 99,8%.
+  Bộ ghi là `scripts/record_ssi.py` (mã ở `src/data/ssi_recorder.py`), chạy ở cửa sổ riêng song song với `run_live.py`; `run_live.py` không tự gọi nó
+  (xem mục Bộ ghi SSI bên dưới).
 - **Bù ngày NEO thiếu:** ngày NEO không có lần chụp nào trong phiên liên tục mà `ssi_quotes` có (hiện là 12/11) thì `shared.load_source` lấy sổ lệnh SSI,
   lấy mẫu mỗi phút (`ssi.load_ssi_minute_quotes`, cùng các phút với NEO; thanh cũ quá 60 giây thì bỏ, không điền). Ngày có NEO luôn dùng NEO. Quy tắc để số không đổi và không lẫn nguồn:
   - SSI không có giá khớp và tổng khối lượng khớp nên các cột đó để trống (giá hiện "–"), không tính tỷ lệ hấp thụ và cờ "không khớp".
@@ -139,8 +142,8 @@ src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng,
                 tỷ lệ hấp thụ, yếu tố nước ngoài và động lượng
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu (screener.py)
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          237 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
-scripts/        ghi dữ liệu (run_live, record_rest, record_ws), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
+tests/          245 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
+scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
                 dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn
 docs/, report/  tài liệu và báo cáo
@@ -191,7 +194,7 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
 - Phát lại theo phút (từ lần chụp REST), chưa phát theo từng thanh 5 giây của WebSocket dù đã ghi.
 - Phiên SSI (12/11) không có giá khớp, khối lượng khớp và nước ngoài, nên Chi tiết mã hiện "–" ở các ô đó, Bộ lọc không có ngày này và không tính tỷ lệ hấp thụ; đây là phép so chéo nguồn, không tính vào các phiên đủ để kiểm chứng bằng NEO.
 - Giá đóng cửa SSI có dấu hiệu là giá điều chỉnh cổ tức ở một số ngày (xem mục Nguồn phụ SSI); chưa dùng giá SSI để bù ngày không ghi.
-- Bộ ghi luồng SSI (nguồn của `ssi_quotes`) hiện chưa nằm trong kho mã này, nên chưa tái lập được bước ghi `ssi_quotes` chỉ từ mã nguồn của dự án.
+- Sổ lệnh SSI thời gian thực chỉ là nguồn dự phòng: bộ ghi `record_ssi.py` phải được chạy riêng (không nằm trong `run_live.py`), và ngày nào NEO đã có đủ lần chụp thì app luôn dùng NEO.
 
 ## Bộ ghi WebSocket thử nghiệm (chạy song song với REST)
 - Cách 1 (khuyên dùng, một đăng nhập): `python scripts/run_live.py --ws`
@@ -200,6 +203,13 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
 - Từ 2/11/2026 bộ ghi gửi "sync" để lấy schema Avro của máy chủ mỗi lần kết nối và giải mã mọi kênh bằng schema (không có schema thì quay về cách giải mã cũ cho sổ lệnh). Bộ ghi đăng ký thêm kênh `marketData`: từng lần khớp (giá, khối lượng, số thứ tự, giờ sàn tới giây, `lastColor` B/S) vào bảng `ws_trades`, bỏ qua lần khớp trùng.
 - Sau phiên: `python scripts/compare_ws_rest.py` để xem WebSocket khớp REST bao nhiêu phần trăm, và tổng khối lượng các lần khớp WebSocket có bằng phần tăng khối lượng của REST không (kiểm tra mất tin). Phiên 30/10 (cách giải mã cũ): giá mức 1 khớp 98,8%, khối lượng mức 1 khớp 88-92%.
 - REST vẫn là nguồn chính thức; WebSocket chỉ để đối chiếu (ghi vào bảng riêng `ws_quotes`, `ws_trades`).
+
+## Bộ ghi SSI (dự phòng, chạy song song)
+- Mục đích: nếu bộ ghi NEO mất kết nối hoặc dừng giữa phiên (như 12/11), vẫn còn sổ lệnh của ngày đó để app bù (ghi rõ nhãn "SSI"). Không thay thế NEO.
+- Cách chạy: mở THÊM một cửa sổ terminal (trước 9:15 là tốt nhất) trong thư mục dự án, song song với `python scripts/run_live.py --ws`, không cần tắt hay chạy lại bộ ghi NEO:
+  `python scripts/record_ssi.py`. Cần `SSI_API_KEY` và `SSI_API_SECRET` trong `.env`. Tự dừng lúc 15:02; Ctrl+C để dừng sớm.
+- Dữ liệu vào bảng `ssi_quotes` (thanh 5 giây, 3 mức giá, kèm `n_msgs`, `age_ms`, `src_ts`), tin thô ở `data/raw/<ngày>/ssi.jsonl.gz`, thống kê ở `ssi_stats.json`.
+- Chỉ ĐỌC dữ liệu, không dùng Private Key, không cài `ssi-sdk`. Hai bộ ghi dùng chung `market.db` nhưng ghi vào bảng khác nhau nên không đụng dữ liệu của nhau.
 
 ## Xuất sổ lệnh WebSocket ra Excel
 `python scripts/export_data.py --ws --excel --date 2026-10-30` (bỏ `--date` để xuất mọi ngày). File nằm ở `data/export/so_lenh_ws_<ngày>.csv` và `.xlsx`.

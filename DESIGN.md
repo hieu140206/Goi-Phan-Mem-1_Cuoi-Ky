@@ -15,15 +15,17 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
                                                            → bộ lọc → bảng điều khiển Streamlit → người dùng
 ```
 - **Bộ ghi và bảng điều khiển là hai phần riêng.** Bộ ghi giữ mật khẩu trong bộ nhớ và ghi dữ liệu; bảng điều khiển chỉ ĐỌC `market.db`.
+- **Bộ ghi SSI chạy song song, không nằm trong `run_live.py`:** `scripts/record_ssi.py` mở ở cửa sổ riêng để có sổ lệnh dự phòng khi NEO mất kết nối
+  hoặc dừng giữa phiên; ghi vào bảng `ssi_quotes`, không đụng bảng của NEO. `run_live.py` không có cờ `--ssi` (quyết định 24/11).
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), giới hạn tần suất, stream WebSocket (nhị phân Avro).
 - `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`), `schema.py` (cột chuẩn,
-  làm sạch), `storage.py` (SQLite), `rest_recorder.py` và `ws_recorder.py` (bộ ghi), `market_board.py` (bảng giá nhiều sàn, phái sinh),
+  làm sạch), `storage.py` (SQLite), `rest_recorder.py`, `ws_recorder.py` và `ssi_recorder.py` (bộ ghi), `market_board.py` (bảng giá nhiều sàn, phái sinh),
   `overview.py` (hàm dữ liệu trang Tổng quan), `backfill.py`, `market_day.py`, `simulator.py`.
 - `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng), `sessions.py` (lọc phiên khớp lệnh liên tục).
 - `src/analytics/`: `baseline.py` (cảnh báo theo khung giờ), `lrs.py` (điểm rủi ro), `screener.py` (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường), `anomaly.py` (cách cũ).
 - `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py`, `screen_page.py`, `radar.py`, `stock.py` (4 trang),
   `shared.py` (tải và phân tích dùng chung), `theme.py`, `charts.py`, `board.py`, `watchlist.py`, `flipgrid.py` (dữ liệu bản đồ nhiệt), `flipgrid_component.py` (vẽ).
-- `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `record_ws.py`, `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`,
+- `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `record_ws.py`, `record_ssi.py` (bộ ghi SSI dự phòng, cửa sổ riêng), `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`,
   `backfill_extra.py`, `fetch_day_index.py`, `fetch_ssi_history.py` (lịch sử theo ngày từ SSI; `--check` đối chiếu với NEO), `probe_ssi.py` (thử SSI: `rest`, `stream`),
   `probe_ssi_channels.py`, `probe_ws_schema.py`, `compare_ws_rest.py`, `inspect_ws_lunch.py`, `generate_sample_data.py`, `restore_session.py` (dựng lại MỘT phiên vào
   market.db từ `data/raw/<ngày>/`, không gọi mạng; `--only trades` lấy lại riêng các lần khớp WebSocket).
