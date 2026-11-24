@@ -149,10 +149,10 @@ def test_thin_no_trade_compares_with_same_time_of_day_not_yesterday_afternoon():
         return add_liquidity_metrics(pd.DataFrame(rows))
 
     df = pd.concat([day_frame(0), day_frame(1), day_frame(2)], ignore_index=True)
-    plain = add_absorption(df)                                  # cửa sổ trượt: sáng bị so với chiều hôm trước
+    plain = add_absorption(df, min_sessions=2)                  # cửa sổ trượt: sáng bị so với chiều hôm trước
     assert plain["thin_no_trade"].sum() > 0
     df["bucket"] = tod_bucket(df["ts"])
-    tod = add_absorption(df)                                    # so cùng khung giờ: sáng bình thường so với sáng
+    tod = add_absorption(df, min_sessions=2)                    # so cùng khung giờ: sáng bình thường so với sáng (3 phiên: đặt min 2)
     assert not tod["thin_no_trade"].any()
     # và vẫn bắt được một buổi sáng thật sự bất thường: ngày thứ 3, 9:20, độ sâu rút còn 10% và không có lệnh khớp
     d3 = df["ts"].dt.date == df["ts"].dt.date.max()
@@ -162,6 +162,6 @@ def test_thin_no_trade_compares_with_same_time_of_day_not_yesterday_afternoon():
     df.loc[sel, "total_vol"] = prev_vol                          # không khớp thêm cổ phiếu nào so với phút trước
     for k in (1, 2, 3):
         df.loc[sel, [f"bid_qty{k}", f"ask_qty{k}"]] = 100.0
-    flagged = add_absorption(add_liquidity_metrics(df))
+    flagged = add_absorption(add_liquidity_metrics(df), min_sessions=2)
     assert flagged.loc[flagged["ts"] == t_hit, "thin_no_trade"].iloc[0]
     assert flagged["thin_no_trade"].sum() == 1

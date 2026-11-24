@@ -13,8 +13,9 @@ tick_sizes = [10, 50, 100]     # bước giá (đồng)
 
 [baseline]           # mốc so sánh cùng mã, cùng khung giờ (analytics/baseline.py)
 bucket_minutes = 30
+first_bucket_minutes = 15      # khung đầu 9:15-9:30 tách riêng (sổ lệnh lúc mở cửa rất mỏng), các khung sau 30 phút
 max_sessions = 10              # tối đa bao nhiêu phiên trước làm mốc
-min_baseline_sessions = 2      # ít nhất bao nhiêu phiên trước mới đánh giá
+min_baseline_sessions = 5      # ít nhất bao nhiêu phiên trước mới đánh giá (hạ xuống 2 thì kết quả nhiễu, phải ghi trong báo cáo)
 min_obs_per_bucket = 20        # ít nhất bao nhiêu lần chụp hợp lệ trong mốc của một khung giờ
 z_threshold = 3.0              # z độ sâu từ -3 trở xuống là mỏng (Leys và cộng sự 2013 gợi ý 2,5; 3 thận trọng hơn)
 z_high_extra = 1.5             # mức "Cao": z độ sâu thấp hơn ngưỡng thêm chừng này
@@ -25,6 +26,9 @@ spread_tail = 0.05             # và chỉ chừng này tỷ lệ lần chụp l
 max_depth_ratio = 0.4          # độ sâu mỏng: không quá chừng này lần trung vị mốc
 persist = 2                    # số lần chụp liên tiếp để thành một đợt cảnh báo
 mad_scale = 1.4826             # đổi MAD sang độ lệch chuẩn (bằng 1 / 0,6745)
+baseline_stat = "robust"        # "robust": z = (x - trung vị) / (1,4826 x MAD); "std": z = (x - trung bình) / độ lệch chuẩn
+z_clip = 10.0                  # khi MAD = 0 thì dùng độ lệch chuẩn thay, và kẹp z trong khoảng ± chừng này
+first_bucket_depth_warn = 2.0  # ghi log nếu độ sâu khung 9:15-9:30 lệch quá chừng này lần so với khung kế (chỉ log)
 
 [lrs]                # điểm rủi ro LRS và ngưỡng theo quá khứ (analytics/lrs.py)
 weights = { spread = 0.4, depth = 0.4, imbalance = 0.2 }

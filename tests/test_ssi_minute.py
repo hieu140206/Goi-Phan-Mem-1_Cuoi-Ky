@@ -63,10 +63,10 @@ def test_excluded_day_is_not_baseline_and_empty_exclusion_changes_nothing():
     days = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]
     depth = {"2026-11-02": 1000, "2026-11-03": 2000, "2026-11-04": 9000, "2026-11-05": 1000}
     df = _frame(days, depth)
-    plain = detect_anomalies_tod(df)
-    same = detect_anomalies_tod(df, no_baseline_days=set())
+    plain = detect_anomalies_tod(df, min_sessions=2)      # 4 phiên: đặt min 2 để kiểm cơ chế loại ngày (mặc định là 5)
+    same = detect_anomalies_tod(df, min_sessions=2, no_baseline_days=set())
     pd.testing.assert_frame_equal(plain, same, check_exact=True)                 # rỗng: y hệt trước đây
-    excl = detect_anomalies_tod(df, no_baseline_days={pd.Timestamp("2026-11-04").date()})
+    excl = detect_anomalies_tod(df, min_sessions=2, no_baseline_days={pd.Timestamp("2026-11-04").date()})
     d5 = lambda x: x[x["ts"].dt.date == pd.Timestamp("2026-11-05").date()]       # noqa: E731
     assert d5(plain)["n_base_sessions"].dropna().iloc[0] == 3
     assert d5(excl)["n_base_sessions"].dropna().iloc[0] == 2                      # ngày loại không làm mốc

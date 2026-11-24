@@ -2,10 +2,18 @@ import numpy as np
 import pandas as pd
 
 from analytics.anomaly import detect_anomalies
-from analytics.baseline import bucket_label, detect_anomalies_tod, tod_bucket
+from analytics.baseline import bucket_label, tod_bucket
+from analytics.baseline import detect_anomalies_tod as _detect
 from finance.liquidity import add_liquidity_metrics
 
 TZ = "Asia/Ho_Chi_Minh"
+
+
+def detect_anomalies_tod(df, **kw):
+    """4 phiên của DAYS chỉ đủ cho mốc 2 phiên, nên các test cơ chế dưới đây đặt min_sessions=2 rõ ràng
+    (mặc định hiện tại là 5, xem config.toml và tests/test_baseline_status.py)."""
+    kw.setdefault("min_sessions", 2)
+    return _detect(df, **kw)
 DAYS = ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"]
 
 
@@ -44,8 +52,12 @@ def build(days=DAYS, seed=0, edit=None):
 def test_buckets_start_at_each_continuous_session():
     ts = pd.Series(pd.to_datetime(["2026-10-30 09:15", "2026-10-30 09:44", "2026-10-30 09:45", "2026-10-30 11:29",
                                    "2026-10-30 13:00", "2026-10-30 14:29"]).tz_localize(TZ))
-    assert tod_bucket(ts).tolist() == [0, 0, 1, 4, 100, 102]
-    assert bucket_label(1) == "09:45" and bucket_label(101) == "13:30"
+    # Mặc định mới: 9:15-9:30 là khung riêng 15 phút, các khung sau 30 phút (9:30-10:00 ...).
+    assert tod_bucket(ts).tolist() == [0, 1, 1, 4, 100, 102]
+    assert bucket_label(0) == "09:15" and bucket_label(1) == "09:30" and bucket_label(101) == "13:30"
+    # Cách chia cũ (khung đầu cũng 30 phút) vẫn tái hiện được bằng first_minutes=30.
+    assert tod_bucket(ts, first_minutes=30).tolist() == [0, 0, 1, 4, 100, 102]
+    assert bucket_label(1, first_minutes=30) == "09:45"
 
 
 def test_no_baseline_until_enough_prior_sessions():

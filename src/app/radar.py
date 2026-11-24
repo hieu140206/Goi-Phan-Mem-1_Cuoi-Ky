@@ -29,11 +29,15 @@ from analytics.lrs import MIN_OBS_PAST  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
 from flipgrid import grid_state, tile_weights, treemap_layout  # noqa: E402
 from flipgrid_component import flip_treemap  # noqa: E402
+from model_config import section  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from shared import (SRC_SAMPLE, analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
                     params, source_version)
 
 SPEEDS = {"1x": 1, "2x": 2, "4x": 4}   # số lần chụp (phút) nhảy qua mỗi nhịp phát
+_BASE = section("baseline")
+MIN_BASELINE = int(_BASE["min_baseline_sessions"])   # từ config.toml
+MIN_OBS_BUCKET = int(_BASE["min_obs_per_bucket"])
 MODE_SUMMARY = "Tổng hợp theo kỳ"
 MODE_REPLAY = "Phát lại một phiên"
 SCOPE_ALL, SCOPE_PICK = "Tất cả mã", "Chọn từng mã"
@@ -145,9 +149,10 @@ with st.sidebar:
     threshold = st.slider("Ngưỡng z-score độ sâu", 2.0, 5.0, float(p0["threshold"]), 0.5,
                           help="Độ sâu lệch bao nhiêu so với mức thường lệ của chính mã đó ở cùng khung giờ "
                                "(z bền vững tính bằng trung vị và MAD). Leys và cộng sự (2013) gợi ý 2,5; 3 thận trọng hơn.")
-    max_sessions = st.slider("Số phiên trước làm mốc (tối đa)", 2, 20, int(p0["max_sessions"]), 1,
+    max_sessions = st.slider("Số phiên trước làm mốc (tối đa)", MIN_BASELINE, 20, max(MIN_BASELINE, int(p0["max_sessions"])), 1,
                              help="Mức thường lệ của một mã ở khung 30 phút = các lần chụp cùng khung giờ trong tối đa "
-                                  "chừng này phiên gần nhất TRƯỚC phiên đang xét. Cần ít nhất 2 phiên trước mới đánh giá.")
+                                  f"chừng này phiên gần nhất TRƯỚC phiên đang xét. Cần ít nhất {MIN_BASELINE} phiên trước mới đánh giá "
+                                  "(đặt ở config.toml).")
     with st.expander("Trọng số điểm rủi ro LRS"):
         raw_w = [
             st.slider("Spread", 0.0, 1.0, float(p0["w_spread"]), 0.05),
@@ -280,11 +285,12 @@ if view_ssi:
             "phiên SSI được so với mốc là các phiên NEO trước đó. Đối chiếu ngày 11/11 (có cả hai nguồn): giá 3 mức khớp NEO 99,8%, "
             "khối lượng 3 mức khớp 96 đến 99%.</div>")
 
-# Phiên chưa có baseline (chưa đủ 2 phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
+# Phiên chưa có baseline (chưa đủ phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
 no_base_days = sorted(d for d, g in view.groupby(view["ts"].dt.date) if g["n_hist"].isna().all())
 if no_base_days:
     st.html('<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
-            + " chưa đủ lịch sử để so cùng khung giờ (cần ít nhất 2 phiên trước và 20 lần chụp cùng khung 30 phút) nên chưa có cảnh báo và điểm LRS. "
+            + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
+            "(đặt ở config.toml), nên chưa có cảnh báo và điểm LRS. "
             "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>")
 
 # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
@@ -482,7 +488,7 @@ with st.container(border=True, key="panel_detail"):
 # ---------- phương pháp và giới hạn ----------
 with st.expander("Phương pháp tính và giới hạn", icon=":material/menu_book:"):
     st.markdown(
-        """
+        f"""
 **Dữ liệu đầu vào.** Chỉ dùng các lần chụp trong phiên khớp lệnh liên tục (09:15-11:30 và 13:00-14:30). Các phiên
 ATO, ATC và nghỉ trưa bị loại vì sổ lệnh lúc đó không phản ánh thanh khoản liên tục.
 
@@ -502,8 +508,9 @@ vẫn chỉ tốn ~8 bps (trung vị ~4 bps), còn mã giá thấp (SHB ~10.700�
 cho biết mua bán *tốn kém* đến đâu, không cho biết sổ lệnh có "căng" hay không. Cảnh báo bên dưới vẫn dùng số bước giá
 vì mỗi mã chỉ so với chính nó.
 
-**Mức thường lệ (baseline)** của một mã ở một khung 30 phút (9:15, 9:45, ... 13:00, 13:30, ...) là mọi lần chụp của
-chính mã đó trong cùng khung giờ ở tối đa 10 phiên *trước* phiên đang xét (cần ít nhất 2 phiên). Sáng chỉ so với
+**Mức thường lệ (baseline)** của một mã ở một khung giờ (9:15-9:30 là khung riêng, rồi 9:30, 10:00, ... và 13:00, 13:30, ...
+mỗi khung 30 phút) là mọi lần chụp của chính mã đó trong cùng khung giờ ở tối đa 10 phiên *trước* phiên đang xét
+(cần ít nhất {MIN_BASELINE} phiên và {MIN_OBS_BUCKET} lần chụp hợp lệ, nếu không thì ghi "Chưa đủ dữ liệu"). Sáng chỉ so với
 sáng, vì thanh khoản có nhịp lặp lại trong ngày: trên dữ liệu VN30 thật, độ sâu đầu phiên chỉ bằng khoảng 1/3 cuối
 phiên. Phiên hiện tại và tương lai không được dùng.
 
@@ -526,7 +533,7 @@ khối lượng khớp; đây chỉ là dấu hiệu, không chứng minh có h�
 điểm đang xem.
 
 **Giới hạn**
-- Hai phiên đầu tiên chưa có baseline nên không có cảnh báo và điểm LRS. Khi mới có vài phiên, MAD chủ yếu phản ánh
+- Các phiên đầu (chưa đủ {MIN_BASELINE} phiên trước) chưa có baseline nên ghi "Chưa đủ dữ liệu", không có cảnh báo và điểm LRS. Khi mới có vài phiên, MAD chủ yếu phản ánh
   dao động *trong* phiên, chưa phản ánh dao động *giữa các* phiên, nên cảnh báo có thể nhiều hơn; sẽ ổn định dần khi
   ghi thêm phiên.
 - Ngưỡng và trọng số mặc định chưa được hiệu chỉnh trên dữ liệu thật.

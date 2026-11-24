@@ -27,6 +27,7 @@ Mọi tham số là mặc định có lý do nêu trên, cần hiệu chỉnh kh
 """
 from __future__ import annotations
 
+import logging
 from statistics import NormalDist
 
 import numpy as np
@@ -39,28 +40,50 @@ MAD_TO_SD = _B["mad_scale"]  # hệ số đổi MAD sang độ lệch chuẩn kh
 MORNING_START = 9 * 60 + 15
 AFTERNOON_START = 13 * 60
 _NORM = NormalDist()
+log = logging.getLogger(__name__)
+STATUS_OK, STATUS_NA = "Đủ dữ liệu", "Chưa đủ dữ liệu"
 
 
-def tod_bucket(ts: pd.Series, minutes: int = 30) -> pd.Series:
-    """Số thứ tự khung giờ trong ngày: buổi sáng 0, 1, 2... tính từ 9:15; buổi chiều 100, 101... tính từ 13:00."""
+def tod_bucket(ts: pd.Series, minutes: int = _B["bucket_minutes"], first_minutes: int = _B["first_bucket_minutes"]) -> pd.Series:
+    """Số thứ tự khung giờ trong ngày. Buổi sáng: khung 0 = 9:15 đến hết `first_minutes` (mặc định 9:15-9:30), rồi mỗi khung
+    `minutes` phút (1 = 9:30-10:00, 2 = 10:00-10:30...). Buổi chiều 100, 101... tính từ 13:00. first_minutes = minutes thì
+    khung đầu cũng dài như các khung khác (cách chia trước 24/11/2026)."""
     m = ts.dt.hour * 60 + ts.dt.minute
     morning = m < 12 * 60
-    return pd.Series(np.where(morning, (m - MORNING_START) // minutes, 100 + (m - AFTERNOON_START) // minutes),
-                     index=ts.index).astype(int)
+    first_end = MORNING_START + first_minutes
+    am = np.where(m < first_end, 0, 1 + (m - first_end) // minutes)
+    return pd.Series(np.where(morning, am, 100 + (m - AFTERNOON_START) // minutes), index=ts.index).astype(int)
 
 
-def bucket_label(bucket: int, minutes: int = 30) -> str:
-    start = (MORNING_START + bucket * minutes) if bucket < 100 else (AFTERNOON_START + (bucket - 100) * minutes)
+def bucket_label(bucket: int, minutes: int = _B["bucket_minutes"], first_minutes: int = _B["first_bucket_minutes"]) -> str:
+    if bucket >= 100:
+        start = AFTERNOON_START + (bucket - 100) * minutes
+    elif bucket == 0:
+        start = MORNING_START
+    else:
+        start = MORNING_START + first_minutes + (bucket - 1) * minutes
     return f"{start // 60:02d}:{start % 60:02d}"
 
 
-def _robust_z(x: np.ndarray, base: np.ndarray) -> np.ndarray:
+def _robust_z(x: np.ndarray, base: np.ndarray, stat: str = _B["baseline_stat"],
+              clip: float = _B["z_clip"]) -> tuple[np.ndarray, np.ndarray]:
+    """Trả (z, dùng_phương_án_dự_phòng). Mặc định stat="robust": z = (x - trung vị) / (1,4826 x MAD), cùng công thức với
+    0,6745 x (x - trung vị) / MAD. MAD = 0 (mốc gần như toàn giá trị giống nhau) thì chia cho độ lệch chuẩn và kẹp trong
+    ± clip; độ lệch chuẩn cũng 0 thì z = 0. Cả hai trường hợp đều đánh cờ dự phòng. stat="std": z = (x - trung bình) / độ lệch chuẩn."""
     base = base[np.isfinite(base)]
+    fin = np.isfinite(x)
     if len(base) == 0:
-        return np.full(len(x), np.nan)
+        return np.full(len(x), np.nan), np.zeros(len(x), dtype=bool)
+    sd = float(np.std(base))
+    if stat == "std":
+        z = (x - np.mean(base)) / sd if sd > 0 else np.where(fin, 0.0, np.nan)
+        return z, (np.full(len(x), sd == 0) & fin)
     med = np.median(base)
     mad = np.median(np.abs(base - med)) * MAD_TO_SD
-    return (x - med) / mad if mad > 0 else np.full(len(x), np.nan)
+    if mad > 0:
+        return (x - med) / mad, np.zeros(len(x), dtype=bool)
+    z = np.clip((x - med) / sd, -clip, clip) if sd > 0 else np.where(fin, 0.0, np.nan)
+    return z, fin
 
 
 def _midrank_pct(x: np.ndarray, base_sorted: np.ndarray) -> np.ndarray:
@@ -69,6 +92,23 @@ def _midrank_pct(x: np.ndarray, base_sorted: np.ndarray) -> np.ndarray:
     below = np.searchsorted(base_sorted, x, side="left")
     equal = np.searchsorted(base_sorted, x, side="right") - below
     return np.clip((below + 0.5 * equal) / n, 0.5 / n, 1 - 0.5 / n)
+
+
+def _log_first_bucket(df: pd.DataFrame, minutes: int, first_minutes: int) -> None:
+    """CHỈ GHI LOG, không đổi kết quả: nếu độ sâu trung vị khung 9:15-9:30 lệch lớn so với khung kế tiếp thì nói ra.
+    Đây là nhịp trong ngày đã biết (sổ lệnh mở cửa mỏng), tách khung riêng chính là để không so khung này với khung khác."""
+    if first_minutes >= minutes or df.empty:
+        return
+    d = df.assign(_day=df["ts"].dt.date)
+    med = d[d["bucket"].isin([0, 1])].groupby(["_day", "bucket"])["depth_value"].median().unstack()
+    if 0 not in med.columns or 1 not in med.columns:
+        return
+    ratio = (med[0] / med[1]).replace([np.inf, -np.inf], np.nan).dropna()
+    warn = _B["first_bucket_depth_warn"]
+    far = ratio[(ratio > warn) | (ratio < 1 / warn)]
+    if len(far):
+        log.warning("Khung 9:15-9:30: độ sâu trung vị lệch hơn %.1f lần so với khung 9:30-10:00 ở %d/%d phiên (tỷ lệ trung vị %.2f). "
+                    "Đã tách khung riêng nên không so lẫn; chỉ ghi log để xem xét.", warn, len(far), len(ratio), float(ratio.median()))
 
 
 def detect_anomalies_tod(
@@ -85,6 +125,9 @@ def detect_anomalies_tod(
     min_spread_ticks: float = _B["min_spread_ticks"],
     high_z_extra: float = _B["z_high_extra"],
     high_spread_ratio: float = _B["high_spread_ratio"],
+    first_bucket_minutes: int = _B["first_bucket_minutes"],
+    baseline_stat: str = _B["baseline_stat"],
+    z_clip: float = _B["z_clip"],
     no_baseline_days: frozenset | set | None = None,
 ) -> pd.DataFrame:
     """Thêm các cột baseline, z_spread, z_depth, z_imb, n_hist, alert_type, severity, is_alert.
@@ -97,7 +140,8 @@ def detect_anomalies_tod(
     excl = set(no_baseline_days or ())
     out = df.sort_values(["symbol", "ts"]).reset_index(drop=True).copy()
     out["day"] = out["ts"].dt.date
-    out["bucket"] = tod_bucket(out["ts"], bucket_minutes)
+    out["bucket"] = tod_bucket(out["ts"], bucket_minutes, first_bucket_minutes)
+    _log_first_bucket(out, bucket_minutes, first_bucket_minutes)
     log_depth = np.log(out["depth_value"].where(out["depth_value"] > 0)).to_numpy(dtype=float)
     abs_imb = out["imbalance"].abs().to_numpy(dtype=float)
     ticks = out["spread_ticks"].to_numpy(dtype=float)
@@ -105,18 +149,21 @@ def detect_anomalies_tod(
 
     cols = {c: np.full(len(out), np.nan) for c in
             ("n_hist", "n_base_sessions", "base_spread_ticks", "base_depth", "spread_ratio", "spread_tail_share",
-             "depth_ratio", "z_spread", "z_depth", "z_imb")}
+             "depth_ratio", "z_spread", "z_depth", "z_imb", "base_sessions_avail", "base_obs_avail")}
+    z_fallback = np.zeros(len(out), dtype=bool)
 
     for _, idx in out.groupby(["symbol", "bucket"]).indices.items():
         days = out["day"].to_numpy()[idx]
         uniq = sorted(set(days))
         for k, d in enumerate(uniq):
             prior = [x for x in uniq[:k] if x not in excl][-max_sessions:]
+            cur = idx[days == d]
+            cols["base_sessions_avail"][cur] = len(prior)
             if len(prior) < min_sessions:
                 continue
             base = idx[np.isin(days, prior)]
-            cur = idx[days == d]
             b_ticks = ticks[base][np.isfinite(ticks[base])]
+            cols["base_obs_avail"][cur] = len(b_ticks)
             if len(b_ticks) < min_obs:
                 continue
             b_sorted = np.sort(b_ticks)
@@ -132,13 +179,23 @@ def detect_anomalies_tod(
             cols["depth_ratio"][cur] = depth[cur] / med_depth if med_depth > 0 else np.nan
             pct = _midrank_pct(ticks[cur], b_sorted)
             cols["z_spread"][cur] = [_NORM.inv_cdf(p) if np.isfinite(t) else np.nan for p, t in zip(pct, ticks[cur])]
-            cols["z_depth"][cur] = _robust_z(log_depth[cur], log_depth[base])
-            cols["z_imb"][cur] = _robust_z(abs_imb[cur], abs_imb[base])
+            cols["z_depth"][cur], fb_d = _robust_z(log_depth[cur], log_depth[base], baseline_stat, z_clip)
+            cols["z_imb"][cur], fb_i = _robust_z(abs_imb[cur], abs_imb[base], baseline_stat, z_clip)
+            z_fallback[cur] = fb_d | fb_i
 
     for c, v in cols.items():
         out[c] = v
+    out["z_fallback"] = z_fallback
     # Chỗ nào chưa có baseline thì z cũng để trống (không tính được, không phải "bình thường").
     has_base = out["n_hist"].notna()
+    # Trạng thái bằng chữ, kèm lý do: chưa có mốc thì ghi "Chưa đủ dữ liệu" chứ không để trống (không phải "bình thường").
+    sess = out["base_sessions_avail"].fillna(0).astype(int)
+    obs = out["base_obs_avail"].fillna(0).astype(int)
+    out["baseline_status"] = np.where(has_base, STATUS_OK, STATUS_NA)
+    out["baseline_reason"] = np.select(
+        [has_base, sess < min_sessions],
+        ["", "cần ≥" + str(min_sessions) + " phiên trước cùng khung giờ (hiện có " + sess.astype(str) + ")"],
+        default="cần ≥" + str(min_obs) + " lần chụp hợp lệ trong khung giờ (hiện có " + obs.astype(str) + ")")
 
     flag_spread = (has_base & (out["spread_ticks"] >= min_spread_ticks) & (out["spread_ratio"] >= min_spread_ratio)
                    & (out["spread_tail_share"] <= spread_tail))
