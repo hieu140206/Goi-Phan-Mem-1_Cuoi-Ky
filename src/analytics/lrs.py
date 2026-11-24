@@ -64,14 +64,18 @@ def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = 0.95, q_
     order = np.argsort(key[valid].to_numpy(), kind="stable")
     past_key = key[valid].to_numpy()[order]
     past_val = lrs[valid].to_numpy(dtype=float)[order]
-    for t in np.unique(key[has_ts].to_numpy()):
+    # Tính ngưỡng một lần cho mỗi thời điểm khác nhau, rồi gán gộp cho mọi dòng (nhanh hơn ghi từng nhóm dòng bằng .loc).
+    uniq = np.unique(key[has_ts].to_numpy())
+    watch_t = np.full(len(uniq), np.nan)
+    high_t = np.full(len(uniq), np.nan)
+    for i, t in enumerate(uniq):
         n_past = int(np.searchsorted(past_key, t, side="left"))  # số điểm có thời điểm < t
         if n_past < min_obs:
             continue
-        w, h = np.quantile(past_val[:n_past], [q_watch, q_high])
-        rows = (key == t) & has_ts
-        out.loc[rows, "watch"] = w
-        out.loc[rows, "high"] = h
+        watch_t[i], high_t[i] = np.quantile(past_val[:n_past], [q_watch, q_high])
+    pos = np.searchsorted(uniq, key[has_ts].to_numpy())
+    out.loc[has_ts, "watch"] = watch_t[pos]
+    out.loc[has_ts, "high"] = high_t[pos]
     return out
 
 
