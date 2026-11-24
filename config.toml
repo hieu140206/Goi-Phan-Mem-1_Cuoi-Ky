@@ -42,6 +42,11 @@ min_obs_past = 300             # cần ít nhất chừng này điểm LRS có t
 max_sessions_past = 20         # ngưỡng chỉ lấy điểm LRS của tối đa chừng này phiên gần nhất (gồm phiên đang xét)
 min_obs_describe = 50          # riêng hàm mô tả lrs_thresholds (không dùng cho cảnh báo)
 
+[quality]            # chất lượng chuỗi chụp (finance/quality.py, analytics/baseline.py)
+max_gap_seconds = 90           # hai lần chụp "liên tiếp" cách nhau không quá chừng này giây; lớn hơn là có lần chụp bị thiếu
+stale_run_snapshots = 10       # sổ lệnh không đổi qua chừng này lần chụp liên tiếp thì nghi dữ liệu cũ (lựa chọn ban đầu)
+stale_peer_share = 0.5         # ... nhưng chỉ khi từ chừng này tỷ lệ mã khác vẫn đổi cùng lúc (lựa chọn ban đầu)
+
 [absorption]         # tỷ lệ hấp thụ và cờ "mỏng mà không khớp" (finance/absorption.py)
 window = 60                    # cửa sổ trượt khi không có khung giờ
 min_periods = 20

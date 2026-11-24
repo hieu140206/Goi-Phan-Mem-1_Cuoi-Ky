@@ -37,6 +37,7 @@ from model_config import section
 from status import STATUS_NA, STATUS_OK  # noqa: F401  (xuất lại cho nơi khác nhập từ đây)
 
 _B = section("baseline")
+_Q = section("quality")
 MAD_TO_SD = _B["mad_scale"]  # hệ số đổi MAD sang độ lệch chuẩn khi phân phối chuẩn (config.toml)
 MORNING_START = 9 * 60 + 15
 AFTERNOON_START = 13 * 60
@@ -125,6 +126,7 @@ def detect_anomalies_tod(
     min_spread_ticks: float = _B["min_spread_ticks"],
     high_z_extra: float = _B["z_high_extra"],
     high_spread_ratio: float = _B["high_spread_ratio"],
+    max_gap_seconds: float | None = _Q["max_gap_seconds"],
     first_bucket_minutes: int = _B["first_bucket_minutes"],
     baseline_stat: str = _B["baseline_stat"],
     z_clip: float = _B["z_clip"],
@@ -205,7 +207,12 @@ def detect_anomalies_tod(
 
     # Đếm số lần chụp liên tiếp đang thỏa điều kiện, trong cùng mã, cùng ngày, cùng buổi.
     half = out["ts"].dt.hour < 12
-    run_id = (raw != raw.groupby([out["symbol"], out["day"], half]).shift(fill_value=False)).cumsum()
+    grp = [out["symbol"], out["day"], half]
+    # "Liên tiếp" nghĩa là hai lần chụp hợp lệ KỀ NHAU cách không quá max_gap_seconds (mặc định 90 giây) trong cùng buổi: có lần
+    # chụp bị thiếu ở giữa thì chuỗi đứt và đếm lại từ đầu; không bao giờ vắt qua nghỉ trưa.
+    gap = out.groupby(grp)["ts"].diff().dt.total_seconds()
+    broken = (gap > max_gap_seconds).fillna(False) if max_gap_seconds else pd.Series(False, index=out.index)
+    run_id = ((raw != raw.groupby(grp).shift(fill_value=False)) | broken).cumsum()
     run_len = raw.groupby(run_id).cumsum().where(raw, 0)
     out["is_alert"] = run_len >= persist
     out["alert_start"] = run_len == persist  # lần chụp mở đầu một đợt cảnh báo (để đếm số đợt)

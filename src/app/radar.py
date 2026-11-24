@@ -307,6 +307,33 @@ if not locked.empty:
     st.html('<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
             "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>")
 
+# Chất lượng dữ liệu theo mã: lần chụp không dùng được cho spread (đã loại) và lần chụp đáng ngờ (đã đánh cờ, vẫn dùng).
+qt = report["quality"]
+qt = qt[qt["symbol"].isin(picked)]
+with st.expander("Chất lượng dữ liệu theo mã", icon=":material/fact_check:"):
+    if qt.empty:
+        st.caption("Chưa có thống kê chất lượng cho các mã đã chọn.")
+    else:
+        st.caption(
+            f"Toàn bộ dữ liệu đã ghi. Không hợp lệ cho spread: {vn(qt['invalid'].sum())} trong {vn(qt['rows'].sum())} lần chụp "
+            f"({vn(qt['invalid'].sum() / max(qt['rows'].sum(), 1) * 100, 2)}%), đã loại khỏi xếp hạng, cảnh báo và mốc nền. Lần chụp đứng sau khoảng "
+            f"trống > 90 giây: {vn(qt['gaps'].sum())}; nghi dữ liệu cũ: {vn(qt['stale'].sum())} (chỉ đánh cờ, vẫn dùng).")
+        st.dataframe(
+            qt.sort_values("invalid_rate", ascending=False)[["symbol", "rows", "invalid_rate", "locked", "touch", "other", "gaps", "stale"]],
+            hide_index=True, height=260, alt="Bảng chất lượng dữ liệu theo mã",
+            column_config={
+                "symbol": st.column_config.TextColumn("Mã", width=56, pinned=True),
+                "rows": st.column_config.NumberColumn("Lần chụp", format="%d", width=80, help="Dòng ghi được trong phiên khớp lệnh liên tục"),
+                "invalid_rate": st.column_config.NumberColumn("Không hợp lệ %", format="%.2f", width=100,
+                                                              help="Tỷ lệ lần chụp không dùng được cho spread"),
+                "locked": st.column_config.NumberColumn("Khóa trần/sàn", format="%d", width=100, help="Một bên sổ lệnh trống"),
+                "touch": st.column_config.NumberColumn("Chạm trần/sàn", format="%d", width=100, help="Giá tốt nhất bằng trần hoặc sàn, còn đủ hai bên"),
+                "other": st.column_config.NumberColumn("Lỗi khác", format="%d", width=80, help="Sổ chéo, giá lỗi, trùng..."),
+                "gaps": st.column_config.NumberColumn("Sau khoảng trống", format="%d", width=110, help="Lần chụp đứng sau khoảng cách > 90 giây"),
+                "stale": st.column_config.NumberColumn("Nghi dữ liệu cũ", format="%d", width=110,
+                                                       help="Sổ lệnh không đổi nhiều lần chụp liền trong khi các mã khác vẫn đổi"),
+            })
+
 alert_sub = (f'{vn(n_alerts)} lần chụp · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
              if n_events else "không có mã nào vượt ngưỡng")
 st.html(

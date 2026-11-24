@@ -6,6 +6,7 @@ Mọi trang gọi CÙNG các hàm có cache ở đây với CÙNG tham số, nê
 """
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -28,11 +29,13 @@ from data.storage import (board_days, count_rows, load_board, load_futures, load
                           load_quotes)
 from finance.absorption import add_absorption  # noqa: E402
 from finance.liquidity import add_liquidity_metrics, add_window_stats, rank_symbols, window_scores  # noqa: E402
+from finance.quality import add_quality_flags, limit_touch_side, quality_table  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from model_config import section  # noqa: E402
 from status import STATUS_NA, STATUS_OK  # noqa: E402
 from neo_api.config import get_settings  # noqa: E402
 
+log = logging.getLogger(__name__)
 SAMPLE_CSV = ROOT / "data_sample" / "sample_quotes.csv"
 SRC_SAMPLE = "Dữ liệu mô phỏng (tệp mẫu)"
 SRC_DB = "Dữ liệu NEO đã ghi (SQLite)"
@@ -87,6 +90,19 @@ def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True
     report["dropped_session"] = dropped
     locked, _ = filter_continuous(report["limit_locked"])
     report["limit_locked"] = locked.assign(side=limit_lock_side(locked))[["ts", "symbol", "side"]]
+    # B1: giá tốt nhất chạm trần/sàn dù còn đủ hai bên cũng không phản ánh thanh khoản: bỏ khỏi khung phân tích như dòng khóa, nhưng báo riêng.
+    touch_side = limit_touch_side(clean)
+    hit = touch_side != ""
+    report["limit_touch"] = clean[hit].assign(side=touch_side[hit])[["ts", "symbol", "side"]]
+    clean = add_quality_flags(clean[~hit])   # B5: khoảng trống và dữ liệu cũ: đánh cờ và ghi log, không loại
+    report["quality"] = quality_table(raw, clean, report["limit_locked"], report["limit_touch"])
+    for key, label in (("dropped_crossed_book", "sổ lệnh chéo (bán tốt nhất <= mua tốt nhất)"),
+                       ("dropped_invalid_price", "giá mua hoặc bán tốt nhất <= 0"), ("dropped_duplicate", "trùng (thời gian, mã)"),
+                       ("dropped_missing", "thiếu thời gian, mã hoặc giá tốt nhất")):
+        if report.get(key):
+            log.warning("Đã loại %d dòng %s: lỗi dữ liệu.", report[key], label)
+    if len(report["limit_touch"]):
+        log.info("Đã loại %d lần chụp có giá tốt nhất chạm trần/sàn (còn đủ hai bên): không dùng được cho spread.", len(report["limit_touch"]))
     report["ssi_days"] = []
     if source == SRC_DB and ssi_fill:
         neo_days = {d.strftime("%Y-%m-%d") for d in clean["ts"].dt.date.unique()} if not clean.empty else set()
@@ -95,6 +111,7 @@ def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True
             s_raw = load_ssi_minute_quotes(Path(db_path), todo)
             s_clean, s_rep = normalize_quotes(s_raw)
             s_clean, s_drop = filter_continuous(s_clean)
+            s_clean = add_quality_flags(s_clean)
             report["ssi_days"] = sorted(s_clean["ts"].dt.date.unique()) if not s_clean.empty else []
             report["ssi_rows"] = len(s_clean)
             report["dropped_session"] += s_drop
