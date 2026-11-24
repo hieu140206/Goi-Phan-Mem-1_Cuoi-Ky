@@ -29,6 +29,7 @@ from analytics.lrs import MIN_OBS_PAST  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
 from flipgrid import grid_state, tile_weights, treemap_layout  # noqa: E402
 from flipgrid_component import flip_treemap  # noqa: E402
+from limits import limits_markdown  # noqa: E402
 from data.special_days import describe  # noqa: E402
 from model_config import section  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
@@ -528,6 +529,10 @@ with st.container(border=True, key="panel_detail"):
             st.caption(f"Chưa đủ dữ liệu để tính ngưỡng LRS (cần ít nhất {MIN_OBS_PAST} điểm LRS trước thời điểm xét).")
 
 # ---------- phương pháp và giới hạn ----------
+_neo = analyzed[analyzed["src"] == "NEO"]
+_n_neo = int(_neo["ts"].dt.date.nunique())
+_n_early = int(sum(1 for _, g in _neo.groupby(_neo["ts"].dt.date) if g["n_hist"].isna().all()))
+LIMITS_MD = limits_markdown(_n_neo, MIN_BASELINE, int(_BASE["max_sessions"]), _n_early)
 with st.expander("Phương pháp tính và giới hạn", icon=":material/menu_book:"):
     st.markdown(
         f"""
@@ -550,6 +555,10 @@ vẫn chỉ tốn ~8 bps (trung vị ~4 bps), còn mã giá thấp (SHB ~10.700�
 cho biết mua bán *tốn kém* đến đâu, không cho biết sổ lệnh có "căng" hay không. Cảnh báo bên dưới vẫn dùng số bước giá
 vì mỗi mã chỉ so với chính nó.
 
+**Điểm 30 phút** (cột riêng ở bảng xếp hạng) dùng cùng công thức và trọng số nhưng chỉ trên 30 lần chụp gần nhất của chính mã đó
+(đến lần chụp đang xem, không vắt qua nghỉ trưa: buổi chiều bắt đầu lại). Mã có dưới một nửa số lần chụp hợp lệ trong cửa sổ ghi
+"Chưa đủ dữ liệu": không chấm điểm và không làm lệch thứ hạng của mã khác. Cổng của Bộ lọc vẫn dùng điểm cả kỳ.
+
 **Mức thường lệ (baseline)** của một mã ở một khung giờ (9:15-9:30 là khung riêng, rồi 9:30, 10:00, ... và 13:00, 13:30, ...
 mỗi khung 30 phút) là mọi lần chụp của chính mã đó trong cùng khung giờ ở tối đa 10 phiên *trước* phiên đang xét
 (cần ít nhất {MIN_BASELINE} phiên và {MIN_OBS_BUCKET} lần chụp hợp lệ, nếu không thì ghi "Chưa đủ dữ liệu"). Sáng chỉ so với
@@ -557,31 +566,31 @@ sáng, vì thanh khoản có nhịp lặp lại trong ngày: trên dữ liệu V
 phiên. Phiên hiện tại và tương lai không được dùng.
 
 **Điểm rủi ro LRS** = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), so với baseline cùng khung giờ. Z của độ sâu
-(logarit) và của |lệch mua/bán| là z bền vững = (x − trung vị) / (1,4826 × MAD) (Leys và cộng sự, 2013). Z của spread
+(logarit) và của |lệch mua/bán| là z bền vững = (x − trung vị) / (1,4826 × MAD) (Leys và cộng sự, 2013; cùng công thức với 0,6745 × (x − trung vị) / MAD;
+nếu MAD = 0 thì chia cho độ lệch chuẩn, kẹp trong ±10 và đánh cờ). Z của spread
 lấy từ thứ hạng phần trăm của spread (theo bước giá) trong baseline, vì spread phần lớn đúng 1 bước giá (khoảng 85% lần
 chụp) nên MAD thường bằng 0. Cao hơn là rủi ro hơn. Ngưỡng "Chú ý" và "Cao" tại mỗi thời điểm là phân vị
-95% và 99% của mọi điểm LRS có *trước* thời điểm đó (cần ít nhất 300 điểm), nên không dùng dữ liệu tương lai và
+95% và 99% của mọi điểm LRS có *trước* thời điểm đó (cần ít nhất 300 điểm, lấy tối đa 20 phiên gần nhất), nên không dùng dữ liệu tương lai và
 ngưỡng thay đổi dần theo thời gian. Vì là phân vị nên về lâu dài khoảng 1% lần chụp ở mức "Cao" dù thị trường yên;
 mức này để theo dõi xu hướng, còn danh sách cảnh báo dựa trên điều kiện bên dưới.
 
 **Cảnh báo** khi (a) *spread mở rộng*: spread ≥ 2 bước giá, ≥ 2 lần trung vị baseline và chỉ ≤ 5% lần chụp cùng
 khung giờ trước đây rộng bằng hoặc hơn; hoặc (b) *độ sâu mỏng*: z độ sâu ≤ −ngưỡng và độ sâu ≤ 0,4 lần trung vị
-baseline. Điều kiện phải đúng ở ít nhất **2 lần chụp liên tiếp** trong cùng buổi mới thành một *đợt cảnh báo*;
+baseline. Điều kiện phải đúng ở ít nhất **2 lần chụp hợp lệ kề nhau** (cách nhau không quá 90 giây, cùng buổi, không vắt qua nghỉ trưa)
+mới thành một *đợt cảnh báo*;
 cảnh báo được gắn từ lần chụp thứ hai nên vẫn không nhìn trước tương lai. Mức "Cao": z độ sâu ≤ −(ngưỡng + 1,5)
 hoặc spread ≥ 3 lần mức thường lệ. Ghi chú "Mỏng, không khớp" nghĩa là độ sâu rút mỏng trong khi gần như không có
 khối lượng khớp; đây chỉ là dấu hiệu, không chứng minh có hủy lệnh ảo hay thao túng.
 
+**Chất lượng dữ liệu và ngày đặc biệt.** Dòng không dùng được cho spread (khóa trần/sàn, giá tốt nhất chạm trần/sàn, sổ chéo, giá lỗi) bị loại khỏi
+xếp hạng, cảnh báo và mốc nền; tỷ lệ theo mã ở mục "Chất lượng dữ liệu theo mã". Lần chụp đứng sau khoảng trống > 90 giây hoặc nghi dữ liệu
+cũ chỉ bị đánh cờ. Ngày đặc biệt (data/special_days.csv) vẫn được tính nhưng không làm mốc nền cho ngày khác.
+
 **Phát lại** dựng lại một phiên đã ghi từng bước. Mọi phép tính, kể cả ngưỡng LRS, chỉ dùng dữ liệu đến thời
 điểm đang xem.
 
-**Giới hạn**
-- Các phiên đầu (chưa đủ {MIN_BASELINE} phiên trước) chưa có baseline nên ghi "Chưa đủ dữ liệu", không có cảnh báo và điểm LRS. Khi mới có vài phiên, MAD chủ yếu phản ánh
-  dao động *trong* phiên, chưa phản ánh dao động *giữa các* phiên, nên cảnh báo có thể nhiều hơn; sẽ ổn định dần khi
-  ghi thêm phiên.
-- Ngưỡng và trọng số mặc định chưa được hiệu chỉnh trên dữ liệu thật.
-- Lúc mã khóa trần hoặc sàn, một bên sổ lệnh trống nên không tính được spread: các lần chụp đó không vào xếp hạng
-  và cảnh báo mà được liệt kê riêng ở đầu trang.
-- Cảnh báo là tín hiệu để xem xét thêm, không giải thích nguyên nhân và không dự báo giá.
+**Giới hạn cần nói thật**
+{LIMITS_MD}
         """
     )
 

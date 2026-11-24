@@ -194,7 +194,10 @@ Mã thiếu một yếu tố được tính trên yếu tố còn lại.
 - Chưa kiểm chứng điểm cao có đi kèm lợi suất ngày sau tốt hơn hay không: cần nhiều phiên hơn. Đây là công cụ so sánh,
   không dự báo giá, không phải khuyến nghị mua bán.
 - Điểm thanh khoản là xếp hạng *tương đối* giữa 30 mã, nên luôn có mã bị Loại kể cả khi cả thị trường thanh khoản tốt
-  (với ngưỡng 33,3, trên dữ liệu 28/10 đến 11/11 thường 4 đến 6 trong 30 mã bị Loại). Cổng trả lời "mã nào kém nhất trong VN30", chưa phải "mã nào kém tuyệt đối".
+  (với ngưỡng 33,3, trên dữ liệu 28/10 đến 20/11/2026 mỗi phiên loại từ 1 đến 6 trong 30 mã, thường khoảng 4: không cố định 10 mã vì điểm là tổng có trọng số
+  của ba thứ hạng). Cổng trả lời "mã nào kém nhất trong VN30", chưa phải "mã nào kém tuyệt đối".
+- Nhãn *Chú ý* khá rộng: từ 5/11 trở đi thường 7 đến 19 trong 30 mã mỗi phiên có ít nhất một đợt cảnh báo, nên nhãn này chưa phân biệt mã tốt.
+- Điểm thanh khoản đo chi phí chứ không đo độ "căng" của sổ lệnh, spread đo là spread chào, mốc nền còn ít phiên: xem mục Giới hạn ở trang Radar.
 - Bảng giá chụp trước 14:45 chưa gồm phiên ATC; trang ghi rõ giờ chụp.
 - Dòng tiền nước ngoài và giá trị giao dịch là số lũy kế NEO trả tại thời điểm chụp.
         """
