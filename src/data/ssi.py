@@ -27,9 +27,12 @@ import requests
 from neo_api import config as _config  # noqa: F401  (nạp .env)
 from neo_api.config import TZ
 
+from .schema import ASK_PX, ASK_QTY, BID_PX, BID_QTY
+
 log = logging.getLogger(__name__)
 
 API = "https://api.ssi.com.vn"
+STREAM_URL = "wss://stream.ssi.com.vn/ws/v3"   # luồng dữ liệu; token trong header Authorization
 TOKEN_MARGIN = 60        # làm mới token khi còn dưới 60 giây (token sống 15 phút)
 RATE_PAUSE = 10          # giây nghỉ khi API sắp hết lượt gọi
 BACKOFF_429 = 30         # giây chờ tối thiểu khi bị 429
@@ -46,6 +49,9 @@ SSI_INDEX_COLUMNS = [
     "foreign_buy_vol", "foreign_buy_val", "foreign_sell_vol", "foreign_sell_val", "foreign_net_vol", "foreign_net_val",
     "fetched_at",
 ]
+# Sổ lệnh 3 mức theo thanh từ luồng trực tiếp (bộ ghi: ssi_recorder.py). src_ts = giờ trong tin của SSI.
+SSI_QUOTE_COLUMNS = ["ts", "symbol", *BID_PX, *BID_QTY, *ASK_PX, *ASK_QTY, "n_msgs", "age_ms", "src_ts"]
+SSI_QUOTE_TEXT = ("ts", "symbol", "src_ts")
 SSI_DAILY_TEXT = ("day", "symbol", "fetched_at")
 SSI_INDEX_TEXT = ("day", "index_code", "fetched_at")
 
