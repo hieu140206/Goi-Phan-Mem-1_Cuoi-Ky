@@ -49,13 +49,9 @@ DEFAULT_PARAMS = {"threshold": _BASE["z_threshold"], "max_sessions": _BASE["max_
 
 
 def available_sources() -> list[str]:
-    """Nguồn dữ liệu có thể dùng, nguồn NEO đứng đầu khi có."""
-    sources = []
-    if SAMPLE_CSV.exists():
-        sources.append(SRC_SAMPLE)
-    if count_rows(get_settings().db_path) > 0:
-        sources.insert(0, SRC_DB)
-    return sources
+    """Nguồn dữ liệu dùng được trên giao diện: chỉ NEO đã ghi (SSI tự bù các ngày NEO thiếu, xem load_source). Tệp mô phỏng KHÔNG còn là
+    lựa chọn (quyết định 25/11/2026): mã SRC_SAMPLE vẫn giữ để kiểm thử, nhưng máy không có dữ liệu thật thì trả danh sách rỗng và trang báo rõ."""
+    return [SRC_DB] if count_rows(get_settings().db_path) > 0 else []
 
 
 def current_source() -> str | None:

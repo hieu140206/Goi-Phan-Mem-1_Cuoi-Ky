@@ -18,7 +18,7 @@ import streamlit as st  # noqa: E402
 
 from charts import intraday_caption, intraday_figure  # noqa: E402
 from data.overview import board_view, price_board  # noqa: E402
-from shared import (SRC_DB, SRC_SAMPLE, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
+from shared import (SRC_DB, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
                     current_source, liquidity_ranking, screen_for_day)
 from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, vn  # noqa: E402
 from watchlist import load_watchlist, toggle  # noqa: E402
@@ -55,7 +55,7 @@ def signed(v, d: int = 2, suffix: str = "") -> str:
 source = current_source()
 if source is None:
     st.title("Chi tiết mã", anchor=False)
-    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py` hoặc tạo dữ liệu mô phỏng.",
+    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py`.",
              title="Chưa có dữ liệu")
     st.stop()
 
@@ -121,8 +121,7 @@ in_watch = sym in watch
 with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
     with st.container(width="stretch"):
         st.title(sym, anchor=False)
-        st.caption(f"Cổ phiếu VN30 · phiên {day:%d/%m/%Y}" + (f" · {snap_note}" if snap_note else "")
-                   + (" · dữ liệu mô phỏng" if source == SRC_SAMPLE else ""))
+        st.caption(f"Cổ phiếu VN30 · phiên {day:%d/%m/%Y}" + (f" · {snap_note}" if snap_note else ""))
     st.button("Bỏ theo dõi" if in_watch else "Theo dõi mã này", icon=":material/star:" if in_watch else ":material/star_border:",
               on_click=toggle, args=(WATCHLIST_PATH, sym), key="watch_btn")
     st.page_link("screen_page.py", label="Bộ lọc", icon=":material/filter_alt:")

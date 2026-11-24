@@ -33,7 +33,7 @@ from limits import limits_markdown  # noqa: E402
 from data.special_days import describe  # noqa: E402
 from model_config import section  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
-from shared import (SRC_SAMPLE, analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
+from shared import (analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
                     params, source_version)
 
 SPEEDS = {"1x": 1, "2x": 2, "4x": 4}   # số lần chụp (phút) nhảy qua mỗi nhịp phát
@@ -86,21 +86,16 @@ sources = available_sources()
 
 with st.sidebar:
     group("Dữ liệu")
-    if not sources:
-        source = None
-    elif len(sources) == 1:
-        source = sources[0]
-        st.markdown(f"Nguồn: **{'tệp mẫu mô phỏng' if source == SRC_SAMPLE else 'dữ liệu NEO đã ghi'}**")
-    else:
-        prev_src = st.session_state.get("source")
-        source = st.radio("Nguồn dữ liệu", sources, index=sources.index(prev_src) if prev_src in sources else 0)
+    source = sources[0] if sources else None
+    if source is not None:
+        st.markdown("Nguồn: **NEO (chính) + SSI (bù ngày NEO thiếu)**")
+        st.caption("SSI chỉ thay các ngày bộ ghi NEO không ghi được; phiên lấy từ SSI luôn có nhãn \"SSI\".")
     st.session_state["source"] = source  # các trang khác (Bộ lọc, Chi tiết mã) dùng cùng nguồn
 
 if source is None:
     st.title("Radar thanh khoản VN30", anchor=False)
     st.error(
-        "Chưa tìm thấy dữ liệu. Chạy `python scripts/generate_sample_data.py` để tạo dữ liệu mô phỏng, "
-        "hoặc ghi dữ liệu NEO bằng `python scripts/record_rest.py` (hoặc `python scripts/run_live.py`). "
+        "Chưa tìm thấy dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py` (hoặc `python scripts/record_rest.py`). "
         "Đang bật chế độ Trực tiếp thì trang tự hiện dữ liệu khi bộ ghi ghi xong phút đầu tiên.",
         title="Chưa có dữ liệu",
     )
@@ -233,7 +228,6 @@ top_alert_ratio = (alerts.loc[(alerts["symbol"] == top_alert_sym) & alerts["aler
                               "spread_ratio"].max() if n_alerts else np.nan)
 
 # ---------- đầu trang ----------
-is_sim = source == SRC_SAMPLE
 last_ts = cut_ts if cut_ts is not None else all_df["ts"].max()
 
 if n_events:
@@ -247,8 +241,6 @@ finding += f" Thanh khoản yếu nhất nhóm: {weakest['symbol']}."
 
 if mode == MODE_REPLAY:
     stamp = f"Đang phát lại {replay_day:%d/%m/%Y}<br>đến {last_ts:%H:%M} (UTC+7)"
-elif is_sim:
-    stamp = f"Bản ghi cuối {last_ts:%d/%m/%Y %H:%M} (UTC+7)<br>Đọc từ tệp, không có luồng trực tiếp"
 else:
     age_min = max((pd.Timestamp.now(tz=TZ) - all_df["ts"].max()).total_seconds() / 60, 0)  # lệch đồng hồ không ra số âm
     link = f"đang nhận dữ liệu, cách {age_min:.0f} phút" if age_min <= 5 else "không có dữ liệu mới"
@@ -266,16 +258,11 @@ with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
                   help="Đọc lại tệp hoặc cơ sở dữ liệu để lấy các bản ghi mới nhất.")
 
 notes = []
-if is_sim:
-    notes.append("<b>Dữ liệu mô phỏng, không phải giá thị trường.</b> Mọi con số chỉ minh họa cách công cụ hoạt động.")
 notes.append(f"{vn(len(view))} lần chụp sổ lệnh của {view['symbol'].nunique()} mã")
 dropped_session = report.get("dropped_session", 0)
 if dropped_session:
     notes.append(f"đã loại {vn(dropped_session)} lần chụp ngoài phiên khớp lệnh liên tục")
-if is_sim:
-    st.html(f'<div class="notice">{notes[0]} {"; ".join(notes[1:]).capitalize()}.</div>')
-else:
-    st.caption("; ".join(notes).capitalize() + ".")
+st.caption("; ".join(notes).capitalize() + ".")
 
 # Phiên lấy từ SSI: nói rõ nguồn, vì khác NEO ở mấy điểm (xem shared.load_source).
 view_ssi = sorted(d for d in view["ts"].dt.date.unique() if d in ssi_days)

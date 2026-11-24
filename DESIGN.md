@@ -82,9 +82,9 @@ Không thêm màu mới ngoài bảng dưới đây khi chưa hỏi.
 - Biểu đồ: Plotly với `CHART_CONFIG` và `base_layout` trong `theme.py`; ẩn giờ nghỉ trưa bằng `hide_lunch`.
 - **Màu bảng giá:** tím = trần, xanh dương = sàn, vàng = tham chiếu, xanh lá = tăng, đỏ = giảm; ô vừa đổi được tô nền theo màu mức giá.
 - **Trạng thái dữ liệu phải minh bạch** ở mọi trang: thời điểm dữ liệu gần nhất, trạng thái kết nối (đang nhận / không có dữ liệu mới), nguồn dữ liệu
-  (NEO, SSI, mô phỏng). Thiếu dữ liệu hoặc lỗi thì hiện thông báo rõ (`st.error`/`st.info` hoặc `.notice`), ứng dụng không được treo hay hiện số gây hiểu nhầm.
+  (NEO, SSI). Thiếu dữ liệu hoặc lỗi thì hiện thông báo rõ (`st.error`/`st.info` hoặc `.notice`), ứng dụng không được treo hay hiện số gây hiểu nhầm.
   Thông báo nguồn SSI dùng `.notice` (nền trắng, vạch xanh bên trái).
-- Mỗi trang có dòng "công cụ phân tích học thuật, không phải khuyến nghị đầu tư"; Radar và Bộ lọc có thêm khối "Phương pháp tính và giới hạn". Dữ liệu mô phỏng luôn ghi rõ là mô phỏng.
+- Mỗi trang có dòng "công cụ phân tích học thuật, không phải khuyến nghị đầu tư"; Radar và Bộ lọc có thêm khối "Phương pháp tính và giới hạn". Giao diện không còn lựa chọn dữ liệu mô phỏng (quyết định 25/11/2026): nguồn là NEO (chính) cộng SSI (bù ngày NEO thiếu); mã mô phỏng chỉ còn để kiểm thử.
 - Ứng dụng không giữ mật khẩu hay token; không có nút nào gửi lệnh.
 
 ## 5. Bản đồ nhiệt thẻ lật (Radar, chế độ Phát lại phiên)

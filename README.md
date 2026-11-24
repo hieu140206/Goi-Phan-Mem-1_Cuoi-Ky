@@ -25,7 +25,8 @@ Danh sách theo dõi ở thanh bên (mọi trang) lưu trong `data/watchlist.jso
 - Chạy trên **dữ liệu NEO thật** do bộ ghi lưu vào `data/market.db` (các phiên từ 28/10/2026; đến 13/11/2026 có 8 phiên đủ 225 lần
   chụp sổ lệnh mỗi phiên: 28/10, 29/10, 3/11, 4/11, 9/11, 10/11, 11/11, 13/11; phiên 30/10 có 221 lần; 2/11, 5/11, 6/11 dở dang).
   Phiên 12/11 bộ ghi NEO bị dừng sớm nên ứng dụng dùng sổ lệnh SSI cho ngày đó, có nhãn "SSI" (xem mục Nguồn phụ SSI).
-  Dữ liệu mô phỏng (`data_sample/`) vẫn có để chạy thử khi chưa có dữ liệu thật; giao diện ghi rõ khi đang dùng nguồn mô phỏng.
+  Giao diện chỉ dùng dữ liệu thật: NEO là nguồn chính, SSI bù các ngày NEO không ghi được (có nhãn "SSI"). Dữ liệu mô phỏng (`data_sample/`) KHÔNG còn là lựa chọn trên
+  giao diện (25/11/2026), chỉ còn trong mã để kiểm thử; máy chưa có dữ liệu thật thì các trang báo rõ "Chưa có dữ liệu".
 - REST đã xác nhận bằng dữ liệu thật: 4.3, 4.4, 4.5, 4.6, 4.7 (30 mã VN30 một lần gọi), 4.9. REST là nguồn chính thức.
 - WebSocket đã kết nối thật qua `wss://`, nhận schema Avro bằng bước "sync" và giải mã được mọi kênh (2/11/2026).
   Bộ ghi WebSocket chạy song song để đối chiếu với REST (xem mục cuối).
@@ -52,7 +53,7 @@ python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi
 python scripts/validate_alerts.py   # kiểm chứng cảnh báo (chữ U, event study, độ nhạy ngưỡng), ghi vào report/kiem-chung/ (chỉ đọc market.db)
 python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
 python scripts/fetch_ssi_history.py --check   # đối chiếu số cuối ngày của SSI với NEO (không gọi mạng)
-python scripts/generate_sample_data.py   # tạo lại dữ liệu mô phỏng (tùy chọn)
+python scripts/generate_sample_data.py   # tạo lại dữ liệu mô phỏng (chỉ để kiểm thử, giao diện không dùng)
 ```
 Chạy mọi lệnh từ thư mục gốc dự án.
 

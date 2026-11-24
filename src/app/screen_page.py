@@ -18,7 +18,7 @@ import streamlit as st  # noqa: E402
 
 from analytics.screener import sample_warning  # noqa: E402
 from data.special_days import describe  # noqa: E402
-from shared import GATE_MIN_SCORE, SRC_SAMPLE, analyzed_data, current_source, screen_for_day  # noqa: E402
+from shared import GATE_MIN_SCORE, analyzed_data, current_source, screen_for_day  # noqa: E402
 from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, base_layout, vn  # noqa: E402
 
 GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Chưa đánh giá": MUTED, "Loại": "#b5bac1"}
@@ -28,7 +28,7 @@ st.title("Bộ lọc cổ phiếu VN30", anchor=False)
 st.caption("Dành cho nhà đầu tư cá nhân: lọc ra mã VN30 mua bán dễ (cổng thanh khoản lấy từ Radar), rồi xếp theo dòng tiền "
            "nước ngoài và động lượng giá so với VN30. Công cụ sàng lọc để so sánh, không dự báo giá.")
 if source is None:
-    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py` hoặc tạo dữ liệu mô phỏng.",
+    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py`.",
              title="Chưa có dữ liệu")
     st.stop()
 
@@ -99,7 +99,7 @@ snap_note = (f"Giá và dòng tiền lấy từ bảng giá lúc {res['snap_ts']
                 else " (trước phiên ATC)")
              if res["snap_kind"] == "board" else
              f"Giá và dòng tiền lấy từ lần chụp sổ lệnh cuối lúc {res['snap_ts']:%H:%M} (chưa gồm phiên ATC)")
-st.caption(snap_note + "." + (" Dữ liệu mô phỏng, không phải giá thị trường." if source == SRC_SAMPLE else ""))
+st.caption(snap_note + ".")
 
 # ---------- bảng xếp hạng ----------
 left, right = st.columns([7, 5], gap="small")
