@@ -14,10 +14,12 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 ## Luật làm việc, thiết kế (đọc và tuân thủ, nguồn gốc duy nhất)
 - **Luật làm việc, phạm vi sửa, vòng test và commit, giao thức câu hỏi:** @AGENT.md
 - **Thiết kế, kiến trúc, quy ước giao diện và quy tắc dữ liệu:** @DESIGN.md
-- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **328 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
+- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **342 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
 - Ba tệp mâu thuẫn nhau thì luật an toàn và dữ liệu trong AGENT.md thắng; còn lại hỏi sinh viên.
 - **24/11/2026: nâng cấp phần mơ hồ và trường hợp biên** (A1 đến A5, B1 đến B7), xem `CHANGELOG.md`: mọi hằng số ở `config.toml`; mốc nền cần **5 phiên** (5 phiên đầu: "Chưa đủ dữ liệu"),
   khung 9:15-9:30 riêng, cổng có nhãn "Chưa đánh giá", Radar có điểm 30 phút và thống kê chất lượng dữ liệu, ngày đặc biệt ở `data/special_days.csv`. Việc còn mở và lỗi logic đã thấy nằm cuối CHANGELOG.
+- **25/11/2026: kiểm chứng cảnh báo** (`report/kiem-chung/KET_QUA.md`, `scripts/validate_alerts.py`): độ sâu tăng dần trong ngày (0,48 lúc 9:15 lên 1,18 lúc 14:00), spread gần phẳng (chữ U rất yếu);
+  cảnh báo độ sâu mỏng kéo dài >= 30 phút, cảnh báo spread chủ yếu thoáng qua; từ đó đổi z độ sâu 3 thành 2,5 và spread tối thiểu 2 thành 2,5. Bằng chứng sơ bộ (6 phiên train, 5 test).
 
 ## Điều đã xác nhận bằng dữ liệu thật vs chưa
 - Đã xác nhận: 4.7 (30 mã VN30 một lần gọi), 4.3 (cả 4 chỉ số), 4.4, 4.9 (4 hợp đồng VN30, mã `41I1GB000`..., tên ở `otherName` VN30F1M/F2M/F1Q/F2Q), 4.5 (đếm mã), 4.6 trả ít dòng hơn số mã xin (10/11 và 11/11: HOSE 408/413, HNX 299/301, UPCoM 810/846, ETF và chứng quyền đủ). 4.3 có dòng `FU` lặp lại đúng số của VN30 (đã bỏ khi lưu).

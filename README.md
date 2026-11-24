@@ -47,8 +47,9 @@ chưa có chữ ký của pandas (xem nhật ký Code Integrity). Cách an toàn
 ## Chạy
 ```
 streamlit run src/app/app.py     # mở bảng điều khiển tại http://localhost:8501
-python -m pytest                 # chạy kiểm thử (328 bài, khoảng 1 phút)
+python -m pytest                 # chạy kiểm thử (342 bài, khoảng 1 phút)
 python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi mật khẩu) và mở bảng điều khiển
+python scripts/validate_alerts.py   # kiểm chứng cảnh báo (chữ U, event study, độ nhạy ngưỡng), ghi vào report/kiem-chung/ (chỉ đọc market.db)
 python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
 python scripts/fetch_ssi_history.py --check   # đối chiếu số cuối ngày của SSI với NEO (không gọi mạng)
 python scripts/generate_sample_data.py   # tạo lại dữ liệu mô phỏng (tùy chọn)
@@ -143,7 +144,7 @@ src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng,
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu (screener.py)
 config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          328 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
+tests/          342 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
 scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
                 dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn
@@ -180,7 +181,8 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
   chỉ dùng dữ liệu trước phiên đang xét. Spread rộng: từ 2 bước giá trở lên, gấp ít nhất 2,5 lần trung vị và thuộc nhóm 5% rộng nhất của lịch sử; độ sâu mỏng:
   z bền vững (trung vị và MAD) từ -2,5 trở xuống (ngưỡng chỉnh được ở thanh bên, mặc định 2,5) và độ sâu không quá 0,4 lần trung vị. Một cảnh báo phải kéo dài ít nhất 2 lần chụp hợp lệ kề nhau (cách nhau không quá 90 giây, cùng buổi); số liệu đếm theo đợt.
   Cổng của Bộ lọc có thêm nhãn "Chưa đánh giá" cho mã chưa có mốc nền; Radar thêm điểm thanh khoản 30 phút, thống kê chất lượng dữ liệu và ngày đặc biệt.
-  Mọi thay đổi và số đo của đợt nâng cấp 24/11/2026 nằm ở CHANGELOG.md.
+  Mọi thay đổi và số đo của đợt nâng cấp 24/11/2026 nằm ở CHANGELOG.md. Kiểm chứng cảnh báo (chữ U, event study, độ nhạy ngưỡng) và kết luận ở
+  report/kiem-chung/KET_QUA.md; từ 25/11 z độ sâu mặc định 2,5 và spread tối thiểu 2,5 lần trung vị theo kiểm chứng đó.
   Cách này thay cho cửa sổ trượt cũ (so với chiều hôm trước) để không gán nhầm dạng chữ U của thanh khoản trong ngày thành bất thường.
 
 ## Giới hạn đã biết

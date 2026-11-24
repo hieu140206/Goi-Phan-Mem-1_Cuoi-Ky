@@ -23,6 +23,8 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
   `overview.py` (hàm dữ liệu trang Tổng quan), `backfill.py`, `market_day.py`, `simulator.py`.
 - `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng, điểm cửa sổ trượt 30 lần chụp), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng),
   `sessions.py` (lọc phiên khớp lệnh liên tục), `quality.py` (dòng không hợp lệ cho spread, khoảng trống, dữ liệu cũ, kiểm đơn vị giá).
+- `src/analytics/validation.py` (kiểm chứng cảnh báo: chữ U, event study, độ nhạy ngưỡng; chỉ đọc, không đổi số ứng dụng) chạy bởi `scripts/validate_alerts.py`, kết quả ở `report/kiem-chung/`.
+  Cách tách train/test theo thời gian và nhóm đối chứng không nhìn tương lai là quy ước của phần này: đổi ngưỡng ở `config.toml` thì chạy lại script.
 - `src/model_config.py` đọc `config.toml`: nơi DUY NHẤT chứa hằng số và ngưỡng của phần phân tích; `src/status.py` chứa chuỗi trạng thái "Đủ dữ liệu" / "Chưa đủ dữ liệu";
   `src/data/special_days.py` đọc `data/special_days.csv` (ngày đặc biệt); `src/app/limits.py` dựng khối "Giới hạn cần nói thật" (số phiên đếm từ dữ liệu).
 - `src/analytics/`: `baseline.py` (cảnh báo theo khung giờ), `lrs.py` (điểm rủi ro), `screener.py` (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường), `anomaly.py` (cách cũ).
