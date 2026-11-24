@@ -17,7 +17,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from analytics.baseline import STATUS_NA, STATUS_OK, detect_anomalies_tod  # noqa: E402
+from analytics.baseline import detect_anomalies_tod  # noqa: E402
 from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
 from data.schema import limit_lock_side, normalize_quotes
 from data.ssi import load_ssi_daily, load_ssi_minute_quotes, ssi_quote_days  # noqa: E402
@@ -27,9 +27,10 @@ from data.overview import (breadth_frame, futures_view, index_cards, load_market
 from data.storage import (board_days, count_rows, load_board, load_futures, load_market_index,  # noqa: E402
                           load_quotes)
 from finance.absorption import add_absorption  # noqa: E402
-from finance.liquidity import add_liquidity_metrics, rank_symbols  # noqa: E402
+from finance.liquidity import add_liquidity_metrics, add_window_stats, rank_symbols, window_scores  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from model_config import section  # noqa: E402
+from status import STATUS_NA, STATUS_OK  # noqa: E402
 from neo_api.config import get_settings  # noqa: E402
 
 SAMPLE_CSV = ROOT / "data_sample" / "sample_quotes.csv"
@@ -125,7 +126,7 @@ def analyze(source: str, db_path: str, version: float, max_sessions: int, thresh
     thr = lrs_thresholds_past(out["lrs"].where(~is_ssi), out["ts"])
     out["lrs_watch"], out["lrs_high"] = thr["watch"], thr["high"]
     out["lrs_tier"] = lrs_tier(out["lrs"], thr)
-    return out
+    return add_window_stats(out)   # thống kê cửa sổ trượt 30 lần chụp cho điểm 30 phút ở Radar
 
 
 def analyzed_data(source: str) -> pd.DataFrame:
@@ -267,4 +268,8 @@ def liquidity_ranking(view: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
     ranking["baseline_ok"] = ranking["symbol"].map(has_base).fillna(False).astype(bool)
     ranking["baseline_reason"] = ranking["symbol"].map(last_per_sym["baseline_reason"]).fillna("")
     ranking["base_status"] = np.where(ranking["baseline_ok"], STATUS_OK, STATUS_NA)
+    # Điểm theo cửa sổ trượt 30 lần chụp, tại lần chụp cuối của từng mã trong khoảng đang xem (mã thiếu dữ liệu: không chấm).
+    ws = window_scores(last_per_sym.reset_index())
+    ranking["score_w"] = ranking["symbol"].map(ws["score_w"])
+    ranking["score_w_status"] = ranking["symbol"].map(ws["score_w_status"]).fillna(STATUS_NA)
     return ranking, alerts, alert_counts

@@ -352,7 +352,7 @@ with left, st.container(border=True, key="panel_rank"):
                       "độ sâu lớn (40%), ít lệch mua/bán (20%). LRS là điểm rủi ro ở lần chụp mới nhất của từng mã.")
     st.caption("Mã yếu nhất ở trên cùng. Chọn ô đầu dòng để xem diễn biến của mã đó bên dưới.")
     table = ranking.assign(depth_m=ranking["depth_value"] / 1e6)[
-        ["symbol", "score", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts", "base_status"]
+        ["symbol", "score", "score_w", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts", "base_status"]
     ].reset_index(drop=True)
     rank_syms = table["symbol"].tolist()
     # Khóa bảng đổi theo thứ tự xếp hạng, để dấu chọn không nằm nhầm dòng khi thứ hạng thay đổi.
@@ -369,8 +369,13 @@ with left, st.container(border=True, key="panel_rank"):
         alt="Bảng xếp hạng thanh khoản các mã VN30",
         column_config={
             "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
-            "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f",
-                                                     color="#8a8a8a", width=64),
+            "score": st.column_config.ProgressColumn("Điểm cả kỳ", min_value=0, max_value=100, format="%.0f",
+                                                     color="#8a8a8a", width=84,
+                                                     help="Điểm thanh khoản tính trên cả khoảng đang xem (cổng của Bộ lọc dùng điểm này)."),
+            "score_w": st.column_config.ProgressColumn("Điểm 30 phút", min_value=0, max_value=100, format="%.0f",
+                                                       color="#1d5fbf", width=96,
+                                                       help="Cùng công thức nhưng chỉ trên 30 lần chụp gần nhất của chính mã đó tính đến lần chụp cuối "
+                                                            "(không vắt qua nghỉ trưa). Ô trống = Chưa đủ dữ liệu: dưới một nửa số lần chụp hợp lệ."),
             "spread_bps_mean": st.column_config.NumberColumn(
                 "Spread bps", width=76,
                 help="Spread tương đối trung bình: chi phí mua rồi bán ngay (1 bps = 0,01%). Dùng để chấm điểm. "

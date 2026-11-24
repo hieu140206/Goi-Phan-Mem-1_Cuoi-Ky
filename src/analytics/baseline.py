@@ -34,6 +34,7 @@ import numpy as np
 import pandas as pd
 
 from model_config import section
+from status import STATUS_NA, STATUS_OK  # noqa: F401  (xuất lại cho nơi khác nhập từ đây)
 
 _B = section("baseline")
 MAD_TO_SD = _B["mad_scale"]  # hệ số đổi MAD sang độ lệch chuẩn khi phân phối chuẩn (config.toml)
@@ -41,7 +42,6 @@ MORNING_START = 9 * 60 + 15
 AFTERNOON_START = 13 * 60
 _NORM = NormalDist()
 log = logging.getLogger(__name__)
-STATUS_OK, STATUS_NA = "Đủ dữ liệu", "Chưa đủ dữ liệu"
 
 
 def tod_bucket(ts: pd.Series, minutes: int = _B["bucket_minutes"], first_minutes: int = _B["first_bucket_minutes"]) -> pd.Series:

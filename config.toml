@@ -5,6 +5,9 @@
 [scoring]            # điểm thanh khoản 0-100 (finance/liquidity.py)
 weights = { spread = 0.4, depth = 0.4, imbalance = 0.2 }   # giả định ban đầu 40/40/20
 tier_weak = 33.3     # điểm từ mức này trở xuống là nhóm "Yếu"
+window_snapshots = 30          # Radar: thêm điểm tính trên cửa sổ trượt chừng này lần chụp gần nhất (30 phút), reset sau nghỉ trưa
+snapshot_seconds = 60          # một lần chụp cách nhau chừng này giây (để đổi số lần chụp thành độ dài cửa sổ)
+min_valid_share = 0.5          # cửa sổ có dưới chừng này tỷ lệ lần chụp hợp lệ thì mã đó "Chưa đủ dữ liệu", không chấm điểm
 tier_strong = 66.7   # điểm trên mức này là nhóm "Tốt"
 
 [market]             # luật của sàn HOSE (không phải tham số mô hình)
