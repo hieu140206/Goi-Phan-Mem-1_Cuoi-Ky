@@ -30,7 +30,8 @@ from data.storage import (data_days, latest_ts, load_board, load_depth_market, l
 from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
-from theme import BORDER, CHART_CONFIG, FAINT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, naive_vn, vn  # noqa: E402
+from theme import (BORDER, CHART_CONFIG, FAINT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, how_to_read,  # noqa: E402
+                   naive_vn, vn)
 
 def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
     """Chèn dòng trống vào chỗ dữ liệu đứt quãng (nghỉ trưa) để biểu đồ không nối thẳng qua khoảng nghỉ."""
@@ -197,6 +198,12 @@ with st.container(horizontal=True, vertical_alignment="top", gap="medium"):
     st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
               help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
     st.page_link("screen_page.py", label="Lọc cổ phiếu VN30", icon=":material/filter_alt:")
+how_to_read(
+    "**Bốn thẻ chỉ số** (VN-Index, VN30, HNX-Index, UPCoM-Index): giá trị, mức thay đổi và đường diễn biến trong phiên.",
+    "**Bảng giá** theo nhóm. Màu giá: tím là trần, xanh dương là sàn, vàng là tham chiếu, xanh lá là tăng, đỏ là giảm; mũi tên ▲▼ cạnh con số cho người "
+    "không phân biệt được màu. Bấm một mã để mở trang Chi tiết mã.",
+    "**Độ sâu, độ rộng, thanh khoản**: thị trường đang dày hay mỏng, bao nhiêu mã tăng và giảm.",
+    "Số lấy từ lần ghi gần nhất. Bật **Trực tiếp** ở thanh bên để trang tự cập nhật khi bộ ghi đang chạy.")
 if day != trade_day:
     msg = (f"Chưa có dữ liệu phiên {trade_day:%d/%m/%Y}. Đang hiển thị phiên {day:%d/%m/%Y} đã ghi." if trade_day not in days
            else f"Đang xem phiên {day:%d/%m/%Y} đã ghi, không phải phiên hiện tại.")

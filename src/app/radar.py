@@ -45,7 +45,7 @@ MODE_REPLAY = "Phát lại một phiên"
 SCOPE_ALL, SCOPE_PICK = "Tất cả mã", "Chọn từng mã"
 ALERT_SHORT = {"Spread mở rộng": "Spread rộng", "Độ sâu mỏng": "Sổ mỏng", "Spread rộng, độ sâu mỏng": "Spread rộng, sổ mỏng"}
 
-from theme import CHART_CONFIG, INK, MUTED, NEG, WARN, badge_style, base_layout, group, vn  # noqa: E402
+from theme import CHART_CONFIG, INK, MUTED, NEG, WARN, badge_style, base_layout, group, how_to_read, vn  # noqa: E402
 
 
 # ---------- tiện ích ----------
@@ -256,6 +256,14 @@ with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
         st.html(f'<div class="stamp">{stamp}</div>', width="content")
         st.button("Tải lại", icon=":material/refresh:",
                   help="Đọc lại tệp hoặc cơ sở dữ liệu để lấy các bản ghi mới nhất.")
+
+how_to_read(
+    "Đọc từ trên xuống: **bốn chỉ số chính**, **bảng xếp hạng thanh khoản** (điểm cả kỳ, điểm 30 phút gần nhất, điểm rủi ro LRS), "
+    "**cảnh báo gần nhất**, **chi phí giao dịch theo giờ** và biểu đồ diễn biến của từng mã.",
+    "**Đợt cảnh báo**: spread mở rộng hoặc độ sâu mỏng bất thường so với chính mã đó ở cùng khung giờ, kéo dài ít nhất hai lần chụp liên tiếp. "
+    "Mức **Chú ý** và **Cao** là mức nghiêm trọng (của đợt cảnh báo, hoặc của điểm LRS so với ngưỡng theo quá khứ).",
+    "**Phát lại phiên** (thanh bên) tua từng bước trong một ngày đã ghi, kèm bản đồ nhiệt thẻ lật.",
+    "Mục **Chi tiết ghi chú** ở dưới các chỉ số cho biết nguồn dữ liệu (NEO hay SSI), phiên nào chưa đủ dữ liệu và chất lượng dữ liệu.")
 
 notes = []
 notes.append(f"{vn(len(view))} lần chụp sổ lệnh của {view['symbol'].nunique()} mã")

@@ -85,6 +85,7 @@ Không thêm màu mới ngoài bảng dưới đây khi chưa hỏi.
   (NEO, SSI). Thiếu dữ liệu hoặc lỗi thì hiện thông báo rõ (`st.error`/`st.info` hoặc `.notice`), ứng dụng không được treo hay hiện số gây hiểu nhầm.
   Thông báo nguồn SSI dùng `.notice` (nền trắng, vạch xanh bên trái).
 - Mỗi trang có dòng "công cụ phân tích học thuật, không phải khuyến nghị đầu tư"; Radar và Bộ lọc có thêm khối "Phương pháp tính và giới hạn". Giao diện không còn lựa chọn dữ liệu mô phỏng (quyết định 25/11/2026): nguồn là NEO (chính) cộng SSI (bù ngày NEO thiếu); mã mô phỏng chỉ còn để kiểm thử.
+- **Trạng thái và dễ đọc (25/11/2026):** nhãn trạng thái ở bảng (cổng Đạt/Chú ý/Chưa đánh giá/Loại, mức Cao/Chú ý) dùng huy hiệu `badge_style` trong `theme.py`: chữ theo màu của bảng màu, nền là bản nhạt của chính màu đó, KHÔNG thêm màu mới. Tăng giảm có mũi tên ▲ ▼ cạnh màu để người không phân biệt màu vẫn đọc được. Số dùng `tabular-nums` toàn trang. Lần tính nặng đầu tiên có khung chờ (`show_spinner`). Mỗi trang có mục thu gọn "Cách đọc trang này" (`how_to_read`). Ghi chú dữ liệu ở Radar gom thành dòng tóm tắt cộng mục thu gọn, chỉ số chính đứng trên cùng.
 - Ứng dụng không giữ mật khẩu hay token; không có nút nào gửi lệnh.
 
 ## 5. Bản đồ nhiệt thẻ lật (Radar, chế độ Phát lại phiên)

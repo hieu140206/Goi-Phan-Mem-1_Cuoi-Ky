@@ -36,6 +36,12 @@ def sign_color(v: float) -> str:
     return f"color: {POS}" if v > 0 else f"color: {NEG}" if v < 0 else ""
 
 
+def how_to_read(*lines: str) -> None:
+    """Mục thu gọn 'Cách đọc trang này' ở đầu trang: vài gạch đầu dòng ngắn cho người mới. Mặc định đóng để không chiếm chỗ."""
+    with st.expander("Cách đọc trang này", icon=":material/help:"):
+        st.markdown("\n".join(f"- {line}" for line in lines))
+
+
 def inject_css() -> None:
     st.html(
         f"""

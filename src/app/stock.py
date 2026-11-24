@@ -20,7 +20,7 @@ from charts import intraday_caption, intraday_figure  # noqa: E402
 from data.overview import board_view, price_board  # noqa: E402
 from shared import (SRC_DB, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
                     current_source, liquidity_ranking, screen_for_day)
-from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, how_to_read, vn  # noqa: E402
 from watchlist import load_watchlist, toggle  # noqa: E402
 
 POS = "#2e7d32"
@@ -126,6 +126,11 @@ with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
               on_click=toggle, args=(WATCHLIST_PATH, sym), key="watch_btn")
     st.page_link("screen_page.py", label="Bộ lọc", icon=":material/filter_alt:")
     st.page_link("radar.py", label="Radar", icon=":material/radar:")
+how_to_read(
+    "Chọn **mã** và **phiên** ở đầu trang. Bấm **Theo dõi mã này** để đưa mã vào danh sách theo dõi ở thanh bên.",
+    "**Sổ lệnh 3 mức giá**: giá và khối lượng đang chờ mua và chờ bán gần nhất.",
+    "**Thanh khoản trong phiên**: điểm, spread, độ sâu, điểm LRS và số đợt cảnh báo của riêng mã này, cùng số với Radar.",
+    "**Diễn biến trong phiên** và **dòng tiền nước ngoài theo ngày** cho thấy giá, spread, độ sâu theo giờ và khối ngoại mua bán ròng.")
 
 if snap is None:
     st.info("Không có giá cho mã này trong phiên đã chọn.")
