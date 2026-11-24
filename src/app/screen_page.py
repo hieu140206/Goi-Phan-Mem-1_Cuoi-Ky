@@ -16,6 +16,7 @@ import pandas as pd  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from analytics.screener import sample_warning  # noqa: E402
 from shared import GATE_MIN_SCORE, SRC_SAMPLE, analyzed_data, current_source, screen_for_day  # noqa: E402
 from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, base_layout, vn  # noqa: E402
 
@@ -85,6 +86,9 @@ st.html(
     + "</div><div class=\"s\">cộng 30 mã, lũy kế trong ngày</div></div>"
     "</div>"
 )
+_warn = sample_warning(r)
+if _warn:
+    st.html(f'<div class="notice">{_warn}</div>')
 snap_note = (f"Giá và dòng tiền lấy từ bảng giá lúc {res['snap_ts']:%H:%M}"
              + ("" if res["snap_kind"] != "board" or res["snap_ts"].time() >= pd.Timestamp("14:45").time()
                 else " (trước phiên ATC)")
@@ -101,7 +105,8 @@ with left, st.container(border=True, key="panel_screen"):
     st.caption("Chọn một dòng để mở hồ sơ chi tiết của mã. Mã Chưa đánh giá, rồi mã bị Loại, nằm cuối bảng, kèm lý do.")
     rank_mom = f"rank_{mom_col}"
     table = pd.DataFrame({
-        "symbol": r["symbol"], "gate": r["gate"], "score": r["screen_score"],
+        "symbol": r["symbol"], "flag": r["gate"].map(lambda g: "⚠" if g == "Chú ý" else ""), "gate": r["gate"],
+        "score": r["screen_score"],
         "f_rank": r.get("rank_foreign_ratio"), "f_ratio": r["foreign_ratio"] * 100,
         "m_rank": r.get(rank_mom), "m_val": r[mom_col] * 100,
         "liq": r["liq_score"], "alerts": r["alerts"], "reason": r["gate_reason"],
@@ -114,6 +119,7 @@ with left, st.container(border=True, key="panel_screen"):
         selection_mode="single-row", alt="Bảng xếp hạng bộ lọc cổ phiếu VN30",
         column_config={
             "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
+            "flag": st.column_config.TextColumn("", width=28, help="⚠ = có đợt cảnh báo thanh khoản (nhãn Chú ý); vẫn được xếp hạng cùng mã Đạt"),
             "gate": st.column_config.TextColumn("Cổng", width=100),
             "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f", width=70,
                                                      color="#1d5fbf"),
@@ -165,7 +171,10 @@ with st.expander("Phương pháp và giới hạn", icon=":material/menu_book:")
         f"""
 **1. Cổng thanh khoản** (lấy từ Radar, cùng số): *Loại* nếu điểm thanh khoản trong phiên từ {vn(min_score, 1)} trở xuống
 (mặc định 33,3 là mốc "Yếu" của Radar); *Chưa đánh giá* nếu mã chưa có mốc nền (chưa đủ phiên trước cùng khung giờ, xem lý do ở bảng),
-xếp sau mã qua cổng và trước mã Loại, không có điểm; *Chú ý* nếu có ít nhất một đợt cảnh báo thanh khoản trong phiên; còn lại *Đạt*.
+xếp sau mã qua cổng và trước mã Loại, không có điểm; *Chú ý* nếu có ít nhất một đợt cảnh báo thanh khoản trong phiên (có dấu ⚠); còn lại *Đạt*.
+Mã *Chú ý* VẪN được chấm điểm và xếp hạng cùng mã *Đạt*; chỉ đợt cảnh báo mới quyết định nhãn Chú ý, còn điểm LRS chỉ hiện ở cột lý do
+(bật `gate.use_lrs` ở config.toml thì LRS cũng đổi nhãn). Thứ hạng phần trăm của hai yếu tố chỉ tính trong tập mã qua cổng; tập dưới
+10 mã thì trang cảnh báo mẫu nhỏ.
 Lý do: mã khó mua bán thì chi phí vào/ra lệnh cao, dù các yếu tố khác tốt.
 
 **2. Yếu tố xếp hạng** (chỉ tính cho mã qua cổng):

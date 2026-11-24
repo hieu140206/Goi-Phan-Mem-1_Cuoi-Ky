@@ -215,6 +215,15 @@ def screen(factors: pd.DataFrame, gate: pd.DataFrame, columns: list[str] | None 
 
 
 # 6. Bối cảnh thị trường
+def sample_warning(result: pd.DataFrame, min_n: int = section("gate")["min_sample_warning"]) -> str | None:
+    """Cảnh báo khi tập mã qua cổng (Đạt và Chú ý) nhỏ hơn min_n: thứ hạng phần trăm trong tập nhỏ dao động mạnh, mã nhích một
+    bậc là điểm đổi nhiều. Trả None nếu đủ lớn."""
+    n = int(result["gate"].isin([GATE_PASS, GATE_WATCH]).sum())
+    if n >= min_n:
+        return None
+    return f"Mẫu xếp hạng nhỏ: chỉ {n} mã qua cổng (dưới {min_n}), nên điểm bộ lọc kém ổn định; một mã nhích hạng là điểm đổi nhiều."
+
+
 def market_context(cards: pd.DataFrame | None, breadth: pd.DataFrame | None, fut_view: pd.DataFrame | None,
                    vn30_snap: pd.DataFrame | None) -> dict:
     """Sự kiện thị trường từ index_cards, breadth_frame, futures_view và ảnh chụp VN30; phần thiếu dữ liệu là None.
