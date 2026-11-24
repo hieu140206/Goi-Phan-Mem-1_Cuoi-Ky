@@ -63,7 +63,7 @@ ctx = res["context"]
 _sp = _an.loc[_an["ts"].dt.date == day, "special_day"]
 if len(_sp) and _sp.iloc[0]:
     st.html(f'<div class="notice">Phiên {day:%d/%m} là ngày đặc biệt ({describe(_sp.iloc[0])}): chỉ số và cảnh báo vẫn tính như thường, '
-            "nhưng thanh khoản hôm đó có thể khác thường nên cần đọc kết quả thận trọng hơn.</div>')
+            "nhưng thanh khoản hôm đó có thể khác thường nên cần đọc kết quả thận trọng hơn.</div>")
 
 # ---------- bối cảnh thị trường ----------
 st.html(f'<div class="notice"><b>Bối cảnh thị trường.</b> {ctx["summary"]}</div>')
