@@ -21,7 +21,10 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`), `schema.py` (cột chuẩn,
   làm sạch), `storage.py` (SQLite), `rest_recorder.py`, `ws_recorder.py` và `ssi_recorder.py` (bộ ghi), `market_board.py` (bảng giá nhiều sàn, phái sinh),
   `overview.py` (hàm dữ liệu trang Tổng quan), `backfill.py`, `market_day.py`, `simulator.py`.
-- `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng), `sessions.py` (lọc phiên khớp lệnh liên tục).
+- `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng, điểm cửa sổ trượt 30 lần chụp), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng),
+  `sessions.py` (lọc phiên khớp lệnh liên tục), `quality.py` (dòng không hợp lệ cho spread, khoảng trống, dữ liệu cũ, kiểm đơn vị giá).
+- `src/model_config.py` đọc `config.toml`: nơi DUY NHẤT chứa hằng số và ngưỡng của phần phân tích; `src/status.py` chứa chuỗi trạng thái "Đủ dữ liệu" / "Chưa đủ dữ liệu";
+  `src/data/special_days.py` đọc `data/special_days.csv` (ngày đặc biệt); `src/app/limits.py` dựng khối "Giới hạn cần nói thật" (số phiên đếm từ dữ liệu).
 - `src/analytics/`: `baseline.py` (cảnh báo theo khung giờ), `lrs.py` (điểm rủi ro), `screener.py` (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường), `anomaly.py` (cách cũ).
 - `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py`, `screen_page.py`, `radar.py`, `stock.py` (4 trang),
   `shared.py` (tải và phân tích dùng chung), `theme.py`, `charts.py`, `board.py`, `watchlist.py`, `flipgrid.py` (dữ liệu bản đồ nhiệt), `flipgrid_component.py` (vẽ).
@@ -41,11 +44,17 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - **Đơn vị:** giá lưu bằng đồng, hiển thị bằng nghìn đồng; khối lượng bằng cổ phiếu; số kiểu Việt (dấu chấm nghìn, dấu phẩy thập phân) qua `vn()` trong `theme.py`.
 - **Nguồn:** NEO là nguồn chính; SSI là phụ. Ngày NEO không có lần chụp nào trong phiên liên tục mà SSI có sổ lệnh thì dùng SSI (lấy mẫu mỗi phút,
   cùng các phút với NEO) và **dán nhãn "SSI"**. Ngày có NEO luôn dùng NEO. Không trộn hai nguồn thành một số mà không có nhãn.
+- **Mốc nền cần đủ phiên:** cảnh báo, LRS và tỷ lệ hấp thụ chỉ có khi mã có ít nhất `min_baseline_sessions` (hiện 5, config.toml) phiên trước cùng khung giờ; chưa đủ thì ghi
+  "Chưa đủ dữ liệu" kèm lý do (không để trống, không coi là bình thường). Ở cổng của Bộ lọc, mã chưa có mốc nền là "Chưa đánh giá" (sau Đạt/Chú ý, trước Loại, không có điểm),
+  không bao giờ mặc định "Đạt". Khung đầu 9:15-9:30 tách riêng. "Hai lần chụp liên tiếp" của đợt cảnh báo là hai lần chụp hợp lệ kề nhau cách không quá 90 giây.
+- **Dòng không hợp lệ cho spread bị loại khỏi khung phân tích** (khóa trần/sàn, giá tốt nhất chạm trần/sàn, sổ chéo, giá lỗi) và báo riêng; lần chụp sau khoảng trống hoặc nghi
+  dữ liệu cũ chỉ bị đánh cờ. Việc này làm ở lớp phân tích (`shared.load_source`), KHÔNG đổi `normalize_quotes` vì bộ ghi dùng hàm đó để quyết định lưu gì.
+- **Ngày đặc biệt** (`data/special_days.csv`) vẫn được tính nhưng gắn cờ và không làm mốc nền (và nền ngưỡng LRS) cho ngày khác (`special_days.exclude_from_baseline`).
 - **Phiên SSI không làm mốc cho phiên NEO** và không vào nền tính ngưỡng LRS, nên số của các phiên NEO không đổi khi thêm phiên SSI (đã so từng số).
   Phiên SSI không có giá khớp và tổng khối lượng nên các cột đó để trống, không tính tỷ lệ hấp thụ; trang Bộ lọc không dùng ngày SSI.
 - **Giá đóng cửa SSI có dấu hiệu là giá điều chỉnh cổ tức:** không dùng giá SSI để tính lợi suất hay động lượng khi chưa xử lý.
 - **Không nhìn trước:** cảnh báo và ngưỡng LRS tại một thời điểm chỉ dùng dữ liệu trước thời điểm đó. Cảnh báo so mỗi mã với chính nó, cùng khung 30 phút,
-  tối đa 10 phiên trước (cần ít nhất 2 phiên và 20 lần chụp). Ngưỡng không đặt tùy ý: lấy từ phân vị của dữ liệu, tài liệu, hay lý luận có nêu nguồn.
+  tối đa 10 phiên trước (cần ít nhất 5 phiên và 20 lần chụp; ngưỡng LRS lấy tối đa 20 phiên gần nhất). Ngưỡng không đặt tùy ý: lấy từ phân vị của dữ liệu, tài liệu, hay lý luận có nêu nguồn.
 - **Đối chiếu trước khi tin:** nguồn hoặc cách giải mã mới phải được đối chiếu với nguồn đã biết (ví dụ WebSocket với REST, SSI với NEO) và ghi tỷ lệ khớp.
 
 ## 4. Giao diện

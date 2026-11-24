@@ -47,7 +47,7 @@ chưa có chữ ký của pandas (xem nhật ký Code Integrity). Cách an toàn
 ## Chạy
 ```
 streamlit run src/app/app.py     # mở bảng điều khiển tại http://localhost:8501
-python -m pytest                 # chạy kiểm thử (245 bài, khoảng 1 phút)
+python -m pytest                 # chạy kiểm thử (328 bài, khoảng 1 phút)
 python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi mật khẩu) và mở bảng điều khiển
 python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
 python scripts/fetch_ssi_history.py --check   # đối chiếu số cuối ngày của SSI với NEO (không gọi mạng)
@@ -141,8 +141,9 @@ src/data/       cột chuẩn và làm sạch (schema), lưu trữ SQLite (stora
 src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng, điểm xếp hạng), lọc phiên khớp lệnh liên tục,
                 tỷ lệ hấp thụ, yếu tố nước ngoài và động lượng
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu (screener.py)
+config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          245 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
+tests/          328 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
 scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
                 dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn
@@ -174,9 +175,12 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
 - Điểm rủi ro LRS = w₁·Z(spread) − w₂·Z(độ sâu) + w₃·Z(|lệch mua/bán|), trọng số mặc định 0,4/0,4/0,2 (giả định, chỉnh được).
   Ngưỡng "Chú ý" và "Cao" là phân vị 95% và 99% của các điểm LRS CÓ TRƯỚC thời điểm xét (không nhìn trước), không đặt cố định.
 - Tỷ lệ hấp thụ = khối lượng khớp giữa hai lần chụp / độ sâu sổ lệnh. Cờ "mỏng, không khớp lệnh" chỉ là dấu hiệu, không kết luận thao túng.
-- Cảnh báo (`analytics/baseline.py`): so từng mã với CHÍNH NÓ ở cùng khung 30 phút trong tối đa 10 phiên trước (cần ít nhất 2 phiên và 20 lần chụp),
+- Cảnh báo (`analytics/baseline.py`): so từng mã với CHÍNH NÓ ở cùng khung giờ (9:15-9:30 riêng, rồi các khung 30 phút) trong tối đa 10 phiên trước
+  (cần ít nhất 5 phiên và 20 lần chụp; chưa đủ thì ghi "Chưa đủ dữ liệu"; đổi ở config.toml),
   chỉ dùng dữ liệu trước phiên đang xét. Spread rộng: từ 2 bước giá trở lên, gấp ít nhất 2 lần trung vị và thuộc nhóm 5% rộng nhất của lịch sử; độ sâu mỏng:
-  z bền vững (trung vị và MAD) từ -3 trở xuống (ngưỡng chỉnh được ở thanh bên, mặc định 3) và độ sâu không quá 0,4 lần trung vị. Một cảnh báo phải kéo dài ít nhất 2 lần chụp liên tiếp; số liệu đếm theo đợt.
+  z bền vững (trung vị và MAD) từ -3 trở xuống (ngưỡng chỉnh được ở thanh bên, mặc định 3) và độ sâu không quá 0,4 lần trung vị. Một cảnh báo phải kéo dài ít nhất 2 lần chụp hợp lệ kề nhau (cách nhau không quá 90 giây, cùng buổi); số liệu đếm theo đợt.
+  Cổng của Bộ lọc có thêm nhãn "Chưa đánh giá" cho mã chưa có mốc nền; Radar thêm điểm thanh khoản 30 phút, thống kê chất lượng dữ liệu và ngày đặc biệt.
+  Mọi thay đổi và số đo của đợt nâng cấp 24/11/2026 nằm ở CHANGELOG.md.
   Cách này thay cho cửa sổ trượt cũ (so với chiều hôm trước) để không gán nhầm dạng chữ U của thanh khoản trong ngày thành bất thường.
 
 ## Giới hạn đã biết
