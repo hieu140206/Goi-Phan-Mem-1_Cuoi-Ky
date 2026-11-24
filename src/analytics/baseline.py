@@ -32,7 +32,10 @@ from statistics import NormalDist
 import numpy as np
 import pandas as pd
 
-MAD_TO_SD = 1.4826  # hệ số đổi MAD sang độ lệch chuẩn khi phân phối chuẩn
+from model_config import section
+
+_B = section("baseline")
+MAD_TO_SD = _B["mad_scale"]  # hệ số đổi MAD sang độ lệch chuẩn khi phân phối chuẩn (config.toml)
 MORNING_START = 9 * 60 + 15
 AFTERNOON_START = 13 * 60
 _NORM = NormalDist()
@@ -70,15 +73,18 @@ def _midrank_pct(x: np.ndarray, base_sorted: np.ndarray) -> np.ndarray:
 
 def detect_anomalies_tod(
     df: pd.DataFrame,
-    threshold: float = 3.0,
-    bucket_minutes: int = 30,
-    max_sessions: int = 10,
-    min_sessions: int = 2,
-    min_obs: int = 20,
-    min_spread_ratio: float = 2.0,
-    spread_tail: float = 0.05,
-    max_depth_ratio: float = 0.4,
-    persist: int = 2,
+    threshold: float = _B["z_threshold"],
+    bucket_minutes: int = _B["bucket_minutes"],
+    max_sessions: int = _B["max_sessions"],
+    min_sessions: int = _B["min_baseline_sessions"],
+    min_obs: int = _B["min_obs_per_bucket"],
+    min_spread_ratio: float = _B["min_spread_ratio"],
+    spread_tail: float = _B["spread_tail"],
+    max_depth_ratio: float = _B["max_depth_ratio"],
+    persist: int = _B["persist"],
+    min_spread_ticks: float = _B["min_spread_ticks"],
+    high_z_extra: float = _B["z_high_extra"],
+    high_spread_ratio: float = _B["high_spread_ratio"],
     no_baseline_days: frozenset | set | None = None,
 ) -> pd.DataFrame:
     """Thêm các cột baseline, z_spread, z_depth, z_imb, n_hist, alert_type, severity, is_alert.
@@ -134,7 +140,7 @@ def detect_anomalies_tod(
     # Chỗ nào chưa có baseline thì z cũng để trống (không tính được, không phải "bình thường").
     has_base = out["n_hist"].notna()
 
-    flag_spread = (has_base & (out["spread_ticks"] >= 2) & (out["spread_ratio"] >= min_spread_ratio)
+    flag_spread = (has_base & (out["spread_ticks"] >= min_spread_ticks) & (out["spread_ratio"] >= min_spread_ratio)
                    & (out["spread_tail_share"] <= spread_tail))
     flag_depth = has_base & (out["z_depth"] <= -threshold) & (out["depth_ratio"] <= max_depth_ratio)
     raw = flag_spread | flag_depth
@@ -150,6 +156,6 @@ def detect_anomalies_tod(
     out["alert_type"] = np.select(
         [out["is_alert"] & flag_spread & flag_depth, out["is_alert"] & flag_spread, out["is_alert"] & flag_depth],
         ["Spread rộng, độ sâu mỏng", "Spread mở rộng", "Độ sâu mỏng"], default="")
-    high = (flag_depth & (out["z_depth"] <= -(threshold + 1.5))) | (flag_spread & (out["spread_ratio"] >= 3))
+    high = (flag_depth & (out["z_depth"] <= -(threshold + high_z_extra))) | (flag_spread & (out["spread_ratio"] >= high_spread_ratio))
     out["severity"] = np.where(out["is_alert"], np.where(high, "Cao", "Chú ý"), "")
     return out.drop(columns=["day"])

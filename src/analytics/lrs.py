@@ -20,14 +20,17 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-DEFAULT_WEIGHTS = {"spread": 0.4, "depth": 0.4, "imbalance": 0.2}
-MIN_OBS_FOR_THRESHOLD = 50
+from model_config import section
+
+_L = section("lrs")
+DEFAULT_WEIGHTS = dict(_L["weights"])
+MIN_OBS_FOR_THRESHOLD = _L["min_obs_describe"]
 # Ngưỡng theo quá khứ cần ít nhất 300 điểm: với phân vị 99% còn khoảng 3 điểm nằm trên ngưỡng, ít hơn thì ngưỡng
 # gần như chỉ là giá trị lớn nhất và rất dao động. 30 mã VN30 đủ 300 điểm sau khoảng 10 lần chụp có lịch sử.
-MIN_OBS_PAST = 300
+MIN_OBS_PAST = _L["min_obs_past"]
 
 
-def compute_lrs(df: pd.DataFrame, weights: dict[str, float] | None = None, min_periods: int = 20) -> pd.Series:
+def compute_lrs(df: pd.DataFrame, weights: dict[str, float] | None = None, min_periods: int = _L["min_periods"]) -> pd.Series:
     """Tính LRS từ các cột z_spread, z_depth, z_imb và n_hist (do detect_anomalies tạo).
 
     Thành phần z bị thiếu vì độ lệch chuẩn bằng 0 (mã đứng yên) coi như không lệch (0).
@@ -41,7 +44,7 @@ def compute_lrs(df: pd.DataFrame, weights: dict[str, float] | None = None, min_p
     return lrs.where(df["n_hist"] >= min_periods)
 
 
-def lrs_thresholds(lrs: pd.Series, q_watch: float = 0.95, q_high: float = 0.99) -> dict[str, float]:
+def lrs_thresholds(lrs: pd.Series, q_watch: float = _L["q_watch"], q_high: float = _L["q_high"]) -> dict[str, float]:
     """Ngưỡng 'Chú ý' và 'Cao' = phân vị thực nghiệm của LRS. Trả NaN nếu quá ít dữ liệu."""
     s = lrs.dropna()
     if len(s) < MIN_OBS_FOR_THRESHOLD:
@@ -49,7 +52,7 @@ def lrs_thresholds(lrs: pd.Series, q_watch: float = 0.95, q_high: float = 0.99) 
     return {"watch": float(s.quantile(q_watch)), "high": float(s.quantile(q_high))}
 
 
-def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = 0.95, q_high: float = 0.99,
+def lrs_thresholds_past(lrs: pd.Series, ts: pd.Series, q_watch: float = _L["q_watch"], q_high: float = _L["q_high"],
                         min_obs: int = MIN_OBS_PAST) -> pd.DataFrame:
     """Ngưỡng tại mỗi dòng = phân vị của mọi điểm LRS có thời điểm TRƯỚC thời điểm của dòng đó (không nhìn trước).
 

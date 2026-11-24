@@ -29,6 +29,7 @@ from data.storage import (board_days, count_rows, load_board, load_futures, load
 from finance.absorption import add_absorption  # noqa: E402
 from finance.liquidity import add_liquidity_metrics, rank_symbols  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
+from model_config import section  # noqa: E402
 from neo_api.config import get_settings  # noqa: E402
 
 SAMPLE_CSV = ROOT / "data_sample" / "sample_quotes.csv"
@@ -36,7 +37,8 @@ SRC_SAMPLE = "Dữ liệu mô phỏng (tệp mẫu)"
 SRC_DB = "Dữ liệu NEO đã ghi (SQLite)"
 
 # Tham số mặc định của phần phân tích (giống thanh trượt ở Radar).
-DEFAULT_PARAMS = {"threshold": 3.0, "max_sessions": 10, "w_spread": DEFAULT_WEIGHTS["spread"],
+_BASE = section("baseline")
+DEFAULT_PARAMS = {"threshold": _BASE["z_threshold"], "max_sessions": _BASE["max_sessions"], "w_spread": DEFAULT_WEIGHTS["spread"],
                   "w_depth": DEFAULT_WEIGHTS["depth"], "w_imb": DEFAULT_WEIGHTS["imbalance"]}
 
 
@@ -134,7 +136,7 @@ def analyzed_data(source: str) -> pd.DataFrame:
 
 
 WATCHLIST_PATH = ROOT / "data" / "watchlist.json"
-GATE_MIN_SCORE = 33.3   # trùng mốc "Yếu" của điểm thanh khoản ở Radar
+GATE_MIN_SCORE = section("gate")["min_score"]   # trùng mốc "Yếu" của điểm thanh khoản ở Radar (config.toml)
 
 
 def db_version() -> float:

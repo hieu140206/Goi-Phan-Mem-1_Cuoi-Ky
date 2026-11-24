@@ -1,0 +1,47 @@
+# Tham số của Radar thanh khoản và Bộ lọc cổ phiếu VN30. MỌI hằng số và ngưỡng của phần phân tích nằm ở đây.
+# Đọc bằng src/model_config.py (thư viện có sẵn của Python, không cần cài thêm). Sửa số rồi chạy lại ứng dụng.
+# Các số dưới đây là GIẢ ĐỊNH ban đầu, chưa hiệu chỉnh trên dữ liệu thật; mỗi dòng ghi lý do ngắn.
+
+[scoring]            # điểm thanh khoản 0-100 (finance/liquidity.py)
+weights = { spread = 0.4, depth = 0.4, imbalance = 0.2 }   # giả định ban đầu 40/40/20
+tier_weak = 33.3     # điểm từ mức này trở xuống là nhóm "Yếu"
+tier_strong = 66.7   # điểm trên mức này là nhóm "Tốt"
+
+[market]             # luật của sàn HOSE (không phải tham số mô hình)
+tick_breaks = [10000, 50000]   # giá < 10.000đ: bước giá thứ 1; < 50.000đ: thứ 2; còn lại: thứ 3
+tick_sizes = [10, 50, 100]     # bước giá (đồng)
+
+[baseline]           # mốc so sánh cùng mã, cùng khung giờ (analytics/baseline.py)
+bucket_minutes = 30
+max_sessions = 10              # tối đa bao nhiêu phiên trước làm mốc
+min_baseline_sessions = 2      # ít nhất bao nhiêu phiên trước mới đánh giá
+min_obs_per_bucket = 20        # ít nhất bao nhiêu lần chụp hợp lệ trong mốc của một khung giờ
+z_threshold = 3.0              # z độ sâu từ -3 trở xuống là mỏng (Leys và cộng sự 2013 gợi ý 2,5; 3 thận trọng hơn)
+z_high_extra = 1.5             # mức "Cao": z độ sâu thấp hơn ngưỡng thêm chừng này
+min_spread_ticks = 2           # spread mở rộng phải từ chừng này bước giá
+min_spread_ratio = 2.0         # và từ chừng này lần trung vị mốc
+high_spread_ratio = 3.0        # mức "Cao": spread từ chừng này lần mức thường lệ
+spread_tail = 0.05             # và chỉ chừng này tỷ lệ lần chụp lịch sử rộng bằng hoặc hơn
+max_depth_ratio = 0.4          # độ sâu mỏng: không quá chừng này lần trung vị mốc
+persist = 2                    # số lần chụp liên tiếp để thành một đợt cảnh báo
+mad_scale = 1.4826             # đổi MAD sang độ lệch chuẩn (bằng 1 / 0,6745)
+
+[lrs]                # điểm rủi ro LRS và ngưỡng theo quá khứ (analytics/lrs.py)
+weights = { spread = 0.4, depth = 0.4, imbalance = 0.2 }
+min_periods = 20               # ít nhất chừng này lần chụp trong mốc mới có LRS
+q_watch = 0.95                 # phân vị cho mức "Chú ý"
+q_high = 0.99                  # phân vị cho mức "Cao"
+min_obs_past = 300             # cần ít nhất chừng này điểm LRS có trước mới công bố ngưỡng
+min_obs_describe = 50          # riêng hàm mô tả lrs_thresholds (không dùng cho cảnh báo)
+
+[absorption]         # tỷ lệ hấp thụ và cờ "mỏng mà không khớp" (finance/absorption.py)
+window = 60                    # cửa sổ trượt khi không có khung giờ
+min_periods = 20
+depth_ratio_max = 0.4
+quiet_ratio = 0.1
+
+[gate]               # cổng thanh khoản của Bộ lọc (analytics/screener.py)
+min_score = 33.3               # loại mã có điểm thanh khoản từ mức này trở xuống (mốc "Yếu")
+
+[screener]
+atc_done = "14:45"             # từ giờ này giá đã qua ATC, coi là giá đóng cửa chính thức

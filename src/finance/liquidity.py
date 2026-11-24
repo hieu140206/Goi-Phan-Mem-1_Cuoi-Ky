@@ -22,9 +22,11 @@ import numpy as np
 import pandas as pd
 
 from data.schema import ASK_PX, ASK_QTY, BID_PX, BID_QTY
+from model_config import section
 
-# Trọng số điểm thanh khoản: GIẢ ĐỊNH ban đầu, cần giải thích/hiệu chỉnh trong báo cáo.
-DEFAULT_WEIGHTS = {"spread": 0.4, "depth": 0.4, "imbalance": 0.2}
+_S, _M = section("scoring"), section("market")
+# Trọng số điểm thanh khoản: GIẢ ĐỊNH ban đầu (config.toml), cần giải thích/hiệu chỉnh trong báo cáo.
+DEFAULT_WEIGHTS = dict(_S["weights"])
 
 
 def tick_size(price: pd.Series) -> pd.Series:
@@ -34,7 +36,8 @@ def tick_size(price: pd.Series) -> pd.Series:
     Giá thiếu hoặc <= 0 trả NaN.
     """
     p = pd.to_numeric(price, errors="coerce")
-    tick = pd.Series(np.select([p < 10_000, p < 50_000], [10.0, 50.0], default=100.0), index=p.index)
+    b, t = _M["tick_breaks"], _M["tick_sizes"]
+    tick = pd.Series(np.select([p < b[0], p < b[1]], [float(t[0]), float(t[1])], default=float(t[2])), index=p.index)
     return tick.where(p > 0)
 
 
@@ -97,6 +100,6 @@ def rank_symbols(df: pd.DataFrame, weights: dict[str, float] | None = None) -> p
     )
     agg["score"] = score.round(1)
     agg["tier"] = pd.cut(
-        agg["score"], bins=[-0.1, 33.3, 66.7, 100.1], labels=["Yếu", "Trung bình", "Tốt"]
+        agg["score"], bins=[-0.1, _S["tier_weak"], _S["tier_strong"], 100.1], labels=["Yếu", "Trung bình", "Tốt"]
     ).astype(str)
     return agg.sort_values("score").reset_index()

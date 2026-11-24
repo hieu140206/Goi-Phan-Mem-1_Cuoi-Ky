@@ -16,9 +16,10 @@ import numpy as np
 import pandas as pd
 
 from finance.factors import add_factors
+from model_config import section
 from neo_api.config import TZ
 
-ATC_DONE = dt.time(14, 45)          # từ giờ này giá đã qua ATC, coi là giá đóng cửa chính thức
+ATC_DONE = dt.time.fromisoformat(section("screener")["atc_done"])   # từ giờ này giá đã qua ATC, coi là giá đóng cửa chính thức
 DEFAULT_FACTORS = ["foreign_ratio", "mom_rel"]
 GATE_FAIL, GATE_WATCH, GATE_PASS = "Loại", "Chú ý", "Đạt"
 
@@ -133,7 +134,7 @@ def intraday_factors(snap: pd.DataFrame, index_change: float | None = None) -> p
 
 
 # 4. Cổng thanh khoản
-def liquidity_gate(ranking: pd.DataFrame, alert_counts: pd.Series | None, min_score: float = 33.3) -> pd.DataFrame:
+def liquidity_gate(ranking: pd.DataFrame, alert_counts: pd.Series | None, min_score: float = section("gate")["min_score"]) -> pd.DataFrame:
     """ranking: kết quả rank_symbols (symbol, score). alert_counts: số đợt cảnh báo theo mã (thiếu mã = 0 đợt).
     Loại nếu score <= min_score (hoặc không có điểm); Chú ý nếu có >= 1 đợt cảnh báo; còn lại Đạt.
     Dùng <= để khớp mốc "Yếu" của Radar (rank_symbols xếp điểm từ 33,3 trở xuống vào nhóm Yếu)."""

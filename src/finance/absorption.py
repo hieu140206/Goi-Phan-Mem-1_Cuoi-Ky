@@ -20,6 +20,10 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from model_config import section
+
+_A, _B = section("absorption"), section("baseline")
+
 
 def _tod_median(df: pd.DataFrame, col: str, max_sessions: int, min_sessions: int, min_obs: int,
                 excl: set | None = None) -> pd.Series:
@@ -45,12 +49,12 @@ def _tod_median(df: pd.DataFrame, col: str, max_sessions: int, min_sessions: int
 
 def add_absorption(
     df: pd.DataFrame,
-    window: int = 60,
-    min_periods: int = 20,
-    depth_ratio_max: float = 0.4,
-    quiet_ratio: float = 0.1,
-    max_sessions: int = 10,
-    min_sessions: int = 2,
+    window: int = _A["window"],
+    min_periods: int = _A["min_periods"],
+    depth_ratio_max: float = _A["depth_ratio_max"],
+    quiet_ratio: float = _A["quiet_ratio"],
+    max_sessions: int = _B["max_sessions"],
+    min_sessions: int = _B["min_baseline_sessions"],
     no_baseline_days: frozenset | set | None = None,
 ) -> pd.DataFrame:
     out = df.sort_values(["symbol", "ts"]).reset_index(drop=True).copy()
