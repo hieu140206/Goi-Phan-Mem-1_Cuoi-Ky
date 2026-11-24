@@ -112,6 +112,50 @@ def _log_first_bucket(df: pd.DataFrame, minutes: int, first_minutes: int) -> Non
                     "Đã tách khung riêng nên không so lẫn; chỉ ghi log để xem xét.", warn, len(far), len(ratio), float(ratio.median()))
 
 
+def apply_alert_rules(
+    out: pd.DataFrame,
+    threshold: float = _B["z_threshold"],
+    min_spread_ticks: float = _B["min_spread_ticks"],
+    min_spread_ratio: float = _B["min_spread_ratio"],
+    spread_tail: float = _B["spread_tail"],
+    max_depth_ratio: float = _B["max_depth_ratio"],
+    persist: int = _B["persist"],
+    max_gap_seconds: float | None = _Q["max_gap_seconds"],
+    high_z_extra: float = _B["z_high_extra"],
+    high_spread_ratio: float = _B["high_spread_ratio"],
+) -> pd.DataFrame:
+    """Luật cảnh báo trên các cột mốc nền ĐÃ TÍNH (n_hist, spread_ticks, spread_ratio, spread_tail_share, z_depth, depth_ratio). Thêm
+    raw_flag, is_alert, alert_start, alert_type, severity. Tách riêng để kiểm chứng ngưỡng (analytics/validation.py) chạy lại với ngưỡng
+    khác mà không tính lại mốc nền (các cột mốc không phụ thuộc ngưỡng). Yêu cầu `out` đã sắp theo (symbol, ts)."""
+    out = out.copy()
+    day = out["ts"].dt.date
+    has_base = out["n_hist"].notna()
+    flag_spread = (has_base & (out["spread_ticks"] >= min_spread_ticks) & (out["spread_ratio"] >= min_spread_ratio)
+                   & (out["spread_tail_share"] <= spread_tail))
+    flag_depth = has_base & (out["z_depth"] <= -threshold) & (out["depth_ratio"] <= max_depth_ratio)
+    raw = flag_spread | flag_depth
+    out["raw_flag"] = raw
+
+    # Đếm số lần chụp liên tiếp đang thỏa điều kiện, trong cùng mã, cùng ngày, cùng buổi.
+    half = out["ts"].dt.hour < 12
+    grp = [out["symbol"], day, half]
+    # "Liên tiếp" nghĩa là hai lần chụp hợp lệ KỀ NHAU cách không quá max_gap_seconds (mặc định 90 giây) trong cùng buổi: có lần
+    # chụp bị thiếu ở giữa thì chuỗi đứt và đếm lại từ đầu; không bao giờ vắt qua nghỉ trưa.
+    gap = out.groupby(grp)["ts"].diff().dt.total_seconds()
+    broken = (gap > max_gap_seconds).fillna(False) if max_gap_seconds else pd.Series(False, index=out.index)
+    run_id = ((raw != raw.groupby(grp).shift(fill_value=False)) | broken).cumsum()
+    run_len = raw.groupby(run_id).cumsum().where(raw, 0)
+    out["is_alert"] = run_len >= persist
+    out["alert_start"] = run_len == persist  # lần chụp mở đầu một đợt cảnh báo (để đếm số đợt)
+
+    out["alert_type"] = np.select(
+        [out["is_alert"] & flag_spread & flag_depth, out["is_alert"] & flag_spread, out["is_alert"] & flag_depth],
+        ["Spread rộng, độ sâu mỏng", "Spread mở rộng", "Độ sâu mỏng"], default="")
+    high = (flag_depth & (out["z_depth"] <= -(threshold + high_z_extra))) | (flag_spread & (out["spread_ratio"] >= high_spread_ratio))
+    out["severity"] = np.where(out["is_alert"], np.where(high, "Cao", "Chú ý"), "")
+    return out
+
+
 def detect_anomalies_tod(
     df: pd.DataFrame,
     threshold: float = _B["z_threshold"],
@@ -199,27 +243,7 @@ def detect_anomalies_tod(
         ["", "cần ≥" + str(min_sessions) + " phiên trước cùng khung giờ (hiện có " + sess.astype(str) + ")"],
         default="cần ≥" + str(min_obs) + " lần chụp hợp lệ trong khung giờ (hiện có " + obs.astype(str) + ")")
 
-    flag_spread = (has_base & (out["spread_ticks"] >= min_spread_ticks) & (out["spread_ratio"] >= min_spread_ratio)
-                   & (out["spread_tail_share"] <= spread_tail))
-    flag_depth = has_base & (out["z_depth"] <= -threshold) & (out["depth_ratio"] <= max_depth_ratio)
-    raw = flag_spread | flag_depth
-    out["raw_flag"] = raw
-
-    # Đếm số lần chụp liên tiếp đang thỏa điều kiện, trong cùng mã, cùng ngày, cùng buổi.
-    half = out["ts"].dt.hour < 12
-    grp = [out["symbol"], out["day"], half]
-    # "Liên tiếp" nghĩa là hai lần chụp hợp lệ KỀ NHAU cách không quá max_gap_seconds (mặc định 90 giây) trong cùng buổi: có lần
-    # chụp bị thiếu ở giữa thì chuỗi đứt và đếm lại từ đầu; không bao giờ vắt qua nghỉ trưa.
-    gap = out.groupby(grp)["ts"].diff().dt.total_seconds()
-    broken = (gap > max_gap_seconds).fillna(False) if max_gap_seconds else pd.Series(False, index=out.index)
-    run_id = ((raw != raw.groupby(grp).shift(fill_value=False)) | broken).cumsum()
-    run_len = raw.groupby(run_id).cumsum().where(raw, 0)
-    out["is_alert"] = run_len >= persist
-    out["alert_start"] = run_len == persist  # lần chụp mở đầu một đợt cảnh báo (để đếm số đợt)
-
-    out["alert_type"] = np.select(
-        [out["is_alert"] & flag_spread & flag_depth, out["is_alert"] & flag_spread, out["is_alert"] & flag_depth],
-        ["Spread rộng, độ sâu mỏng", "Spread mở rộng", "Độ sâu mỏng"], default="")
-    high = (flag_depth & (out["z_depth"] <= -(threshold + high_z_extra))) | (flag_spread & (out["spread_ratio"] >= high_spread_ratio))
-    out["severity"] = np.where(out["is_alert"], np.where(high, "Cao", "Chú ý"), "")
+    out = apply_alert_rules(out, threshold=threshold, min_spread_ticks=min_spread_ticks, min_spread_ratio=min_spread_ratio,
+                            spread_tail=spread_tail, max_depth_ratio=max_depth_ratio, persist=persist,
+                            max_gap_seconds=max_gap_seconds, high_z_extra=high_z_extra, high_spread_ratio=high_spread_ratio)
     return out.drop(columns=["day"])
