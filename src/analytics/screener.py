@@ -22,6 +22,7 @@ from neo_api.config import TZ
 ATC_DONE = dt.time.fromisoformat(section("screener")["atc_done"])   # từ giờ này giá đã qua ATC, coi là giá đóng cửa chính thức
 DEFAULT_FACTORS = ["foreign_ratio", "mom_rel"]
 GATE_FAIL, GATE_WATCH, GATE_PASS = "Loại", "Chú ý", "Đạt"
+GATE_UNRATED = "Chưa đánh giá"   # mã chưa có mốc nền: không Loại, không Đạt; xếp sau mã qua cổng, trước mã Loại
 
 
 def _pos(s: pd.Series) -> pd.Series:
@@ -137,7 +138,8 @@ def intraday_factors(snap: pd.DataFrame, index_change: float | None = None) -> p
 def liquidity_gate(ranking: pd.DataFrame, alert_counts: pd.Series | None, min_score: float = section("gate")["min_score"],
                    use_lrs: bool = section("gate")["use_lrs"]) -> pd.DataFrame:
     """ranking: kết quả rank_symbols (symbol, score; có thêm lrs_tier nếu có). alert_counts: số đợt cảnh báo theo mã (thiếu = 0).
-    Loại nếu score <= min_score (hoặc không có điểm); Chú ý nếu có >= 1 ĐỢT CẢNH BÁO; còn lại Đạt.
+    Thứ tự ưu tiên: Loại (điểm <= min_score hoặc không có điểm) > Chưa đánh giá (mã chưa có mốc nền ở lần chụp nào, cột baseline_ok
+    = False; lý do lấy từ baseline_reason) > Chú ý (>= 1 ĐỢT CẢNH BÁO) > Đạt. Không có cột baseline_ok thì coi mọi mã đã có mốc.
     Dùng <= để khớp mốc "Yếu" của Radar (rank_symbols xếp điểm từ 33,3 trở xuống vào nhóm Yếu).
 
     Hai cơ chế song song: (1) ĐỢT CẢNH BÁO (>= 2 lần chụp liên tiếp thỏa điều kiện spread mở rộng hoặc độ sâu mỏng) quyết định nhãn
@@ -147,14 +149,18 @@ def liquidity_gate(ranking: pd.DataFrame, alert_counts: pd.Series | None, min_sc
     counts = alert_counts if alert_counts is not None else pd.Series(dtype=float)
     out["alerts"] = out["symbol"].map(counts).fillna(0).astype(int)
     tiers = ranking["lrs_tier"].fillna("").tolist() if "lrs_tier" in ranking else [""] * len(out)
+    rated = ranking["baseline_ok"].fillna(False).astype(bool).tolist() if "baseline_ok" in ranking else [True] * len(out)
+    why = ranking["baseline_reason"].fillna("").tolist() if "baseline_reason" in ranking else [""] * len(out)
     gate, reason = [], []
-    for score, n, tier in zip(out["score"], out["alerts"], tiers):
+    for score, n, tier, ok, w in zip(out["score"], out["alerts"], tiers, rated, why):
         lrs_hi = tier in (GATE_WATCH, "Cao")
         note = f" · LRS lần chụp cuối: {tier}" if lrs_hi else ""
         if pd.isna(score):
             gate.append(GATE_FAIL); reason.append("Chưa có điểm thanh khoản" + note)
         elif score <= min_score:
             gate.append(GATE_FAIL); reason.append(f"Điểm thanh khoản {_fmt(score, 1)} ≤ {_fmt(min_score, 1)}" + note)
+        elif not ok:
+            gate.append(GATE_UNRATED); reason.append("Chưa đánh giá: " + (w or "chưa đủ dữ liệu mốc nền"))
         elif n >= 1:
             gate.append(GATE_WATCH); reason.append(f"{n} đợt cảnh báo thanh khoản" + note)
         elif use_lrs and lrs_hi:
@@ -177,9 +183,10 @@ def _pct_rank(s: pd.Series) -> pd.Series:
 
 
 def screen(factors: pd.DataFrame, gate: pd.DataFrame, columns: list[str] | None = None) -> pd.DataFrame:
-    """Điểm 0-100 = trung bình (trọng số bằng nhau) thứ hạng phần trăm các yếu tố, CHỈ xếp trong nhóm gate != Loại.
+    """Điểm 0-100 = trung bình (trọng số bằng nhau) thứ hạng phần trăm các yếu tố, CHỈ xếp trong nhóm qua cổng (Đạt và Chú ý).
     Mặc định foreign_ratio và mom_rel; mom_rel toàn NaN (chưa có % VN30) thì dùng mom_intraday.
-    Mã thiếu một yếu tố: trung bình trên các yếu tố có; thiếu hết: NaN. Mã Loại (hoặc không có trong cổng): NaN, xếp cuối.
+    Mã thiếu một yếu tố: trung bình trên các yếu tố có; thiếu hết: NaN. Mã Chưa đánh giá và mã Loại (hoặc không có trong cổng):
+    không có điểm; thứ tự: mã qua cổng, rồi Chưa đánh giá, rồi Loại. Hai nhóm sau không làm đổi thứ hạng phần trăm của mã khác.
     Cột yếu tố đã dùng nằm ở out.attrs["factors"]."""
     df = factors.merge(gate[["symbol", "score", "alerts", "gate", "gate_reason"]]
                        .rename(columns={"score": "liq_score"}), on="symbol", how="outer")
@@ -190,7 +197,7 @@ def screen(factors: pd.DataFrame, gate: pd.DataFrame, columns: list[str] | None 
         columns = list(DEFAULT_FACTORS)
         if "mom_rel" not in df or df["mom_rel"].isna().all():
             columns = ["foreign_ratio", "mom_intraday"]
-    passed = df["gate"] != GATE_FAIL
+    passed = df["gate"].isin([GATE_PASS, GATE_WATCH])
     rank_cols = []
     for c in columns:
         rc = f"rank_{c}"
@@ -200,7 +207,7 @@ def screen(factors: pd.DataFrame, gate: pd.DataFrame, columns: list[str] | None 
         rank_cols.append(rc)
     df["screen_score"] = df[rank_cols].mean(axis=1, skipna=True).round(1)
     df.loc[~passed, "screen_score"] = np.nan
-    df["_order"] = np.where(passed, 0, 1)
+    df["_order"] = np.select([passed, df["gate"] == GATE_UNRATED], [0, 1], default=2)
     df = df.sort_values(["_order", "screen_score", "symbol"], ascending=[True, False, True], na_position="last")
     out = df.drop(columns="_order").reset_index(drop=True)
     out.attrs["factors"] = columns

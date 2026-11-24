@@ -17,7 +17,7 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from analytics.baseline import detect_anomalies_tod  # noqa: E402
+from analytics.baseline import STATUS_NA, STATUS_OK, detect_anomalies_tod  # noqa: E402
 from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
 from data.schema import limit_lock_side, normalize_quotes
 from data.ssi import load_ssi_daily, load_ssi_minute_quotes, ssi_quote_days  # noqa: E402
@@ -262,4 +262,9 @@ def liquidity_ranking(view: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, p
     last_per_sym = view.sort_values("ts").groupby("symbol").tail(1).set_index("symbol")
     ranking["lrs"] = ranking["symbol"].map(last_per_sym["lrs"])
     ranking["lrs_tier"] = ranking["symbol"].map(last_per_sym["lrs_tier"]).fillna("")
+    # Mã chưa có mốc nền ở lần chụp nào trong khoảng đang xem thì chưa đánh giá được: đó không phải "không có cảnh báo".
+    has_base = view.groupby("symbol")["n_hist"].apply(lambda s: bool(s.notna().any()))
+    ranking["baseline_ok"] = ranking["symbol"].map(has_base).fillna(False).astype(bool)
+    ranking["baseline_reason"] = ranking["symbol"].map(last_per_sym["baseline_reason"]).fillna("")
+    ranking["base_status"] = np.where(ranking["baseline_ok"], STATUS_OK, STATUS_NA)
     return ranking, alerts, alert_counts

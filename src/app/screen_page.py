@@ -19,7 +19,7 @@ import streamlit as st  # noqa: E402
 from shared import GATE_MIN_SCORE, SRC_SAMPLE, analyzed_data, current_source, screen_for_day  # noqa: E402
 from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, base_layout, vn  # noqa: E402
 
-GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Loại": "#b5bac1"}
+GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Chưa đánh giá": MUTED, "Loại": "#b5bac1"}
 
 source = current_source()
 st.title("Bộ lọc cổ phiếu VN30", anchor=False)
@@ -72,7 +72,7 @@ st.html(
     '<div class="kpis">'
     f'<div class="kpi lead"><div class="l">Qua cổng thanh khoản</div><div class="v">{n_gate.get("Đạt", 0) + n_gate.get("Chú ý", 0)}'
     f'<small>/{len(r)} mã</small></div><div class="s">{n_gate.get("Đạt", 0)} Đạt · {n_gate.get("Chú ý", 0)} Chú ý · '
-    f'{n_gate.get("Loại", 0)} Loại</div></div>'
+    f'{n_gate.get("Chưa đánh giá", 0)} Chưa đánh giá · {n_gate.get("Loại", 0)} Loại</div></div>'
     f'<div class="kpi"><div class="l">Điểm bộ lọc cao nhất</div><div class="v">'
     + (f'{top["symbol"].iloc[0]}<small>{vn(top["screen_score"].iloc[0], 0)}/100</small>' if not top.empty else "–")
     + '</div><div class="s">trong các mã qua cổng</div></div>'
@@ -98,7 +98,7 @@ with left, st.container(border=True, key="panel_screen"):
     st.subheader("Xếp hạng bộ lọc", anchor=False,
                  help="Điểm = trung bình thứ hạng phần trăm (0-100) của dòng tiền nước ngoài và động lượng, chỉ xếp trong "
                       "các mã qua cổng thanh khoản. Trọng số bằng nhau.")
-    st.caption("Chọn một dòng để mở hồ sơ chi tiết của mã. Mã bị Loại nằm cuối bảng, kèm lý do.")
+    st.caption("Chọn một dòng để mở hồ sơ chi tiết của mã. Mã Chưa đánh giá, rồi mã bị Loại, nằm cuối bảng, kèm lý do.")
     rank_mom = f"rank_{mom_col}"
     table = pd.DataFrame({
         "symbol": r["symbol"], "gate": r["gate"], "score": r["screen_score"],
@@ -114,7 +114,7 @@ with left, st.container(border=True, key="panel_screen"):
         selection_mode="single-row", alt="Bảng xếp hạng bộ lọc cổ phiếu VN30",
         column_config={
             "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
-            "gate": st.column_config.TextColumn("Cổng", width=64),
+            "gate": st.column_config.TextColumn("Cổng", width=100),
             "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f", width=70,
                                                      color="#1d5fbf"),
             "f_rank": st.column_config.NumberColumn("Hạng NN", width=64, help="Thứ hạng phần trăm của dòng tiền nước ngoài trong nhóm qua cổng"),
@@ -138,13 +138,13 @@ with right, st.container(border=True, key="panel_map"):
         st.caption("Chưa đủ dữ liệu để vẽ.")
     else:
         fig = go.Figure()
-        for g in ("Loại", "Chú ý", "Đạt"):
+        for g in ("Loại", "Chưa đánh giá", "Chú ý", "Đạt"):
             d = pts[pts["gate"] == g]
             if d.empty:
                 continue
             fig.add_trace(go.Scatter(
                 x=d["m_val"], y=d["f_ratio"], mode="markers+text", text=d["symbol"], textposition="top center",
-                textfont=dict(size=10, color=MUTED if g == "Loại" else INK), name=g,
+                textfont=dict(size=10, color=MUTED if g in ("Loại", "Chưa đánh giá") else INK), name=g,
                 marker=dict(size=9, color=GATE_COLOR[g], line=dict(color="#ffffff", width=1)),
                 hovertemplate="%{text}<br>Động lượng %{x:+.2f}%<br>NN ròng/GTGD %{y:+.1f}%<extra>" + g + "</extra>"))
         fig.add_hline(y=0, line=dict(color=BORDER, width=1))
@@ -164,7 +164,8 @@ with st.expander("Phương pháp và giới hạn", icon=":material/menu_book:")
     st.markdown(
         f"""
 **1. Cổng thanh khoản** (lấy từ Radar, cùng số): *Loại* nếu điểm thanh khoản trong phiên từ {vn(min_score, 1)} trở xuống
-(mặc định 33,3 là mốc "Yếu" của Radar); *Chú ý* nếu có ít nhất một đợt cảnh báo thanh khoản trong phiên; còn lại *Đạt*.
+(mặc định 33,3 là mốc "Yếu" của Radar); *Chưa đánh giá* nếu mã chưa có mốc nền (chưa đủ phiên trước cùng khung giờ, xem lý do ở bảng),
+xếp sau mã qua cổng và trước mã Loại, không có điểm; *Chú ý* nếu có ít nhất một đợt cảnh báo thanh khoản trong phiên; còn lại *Đạt*.
 Lý do: mã khó mua bán thì chi phí vào/ra lệnh cao, dù các yếu tố khác tốt.
 
 **2. Yếu tố xếp hạng** (chỉ tính cho mã qua cổng):

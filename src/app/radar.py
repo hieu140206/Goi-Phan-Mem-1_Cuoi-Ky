@@ -352,7 +352,7 @@ with left, st.container(border=True, key="panel_rank"):
                       "độ sâu lớn (40%), ít lệch mua/bán (20%). LRS là điểm rủi ro ở lần chụp mới nhất của từng mã.")
     st.caption("Mã yếu nhất ở trên cùng. Chọn ô đầu dòng để xem diễn biến của mã đó bên dưới.")
     table = ranking.assign(depth_m=ranking["depth_value"] / 1e6)[
-        ["symbol", "score", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts"]
+        ["symbol", "score", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts", "base_status"]
     ].reset_index(drop=True)
     rank_syms = table["symbol"].tolist()
     # Khóa bảng đổi theo thứ tự xếp hạng, để dấu chọn không nằm nhầm dòng khi thứ hạng thay đổi.
@@ -384,6 +384,8 @@ with left, st.container(border=True, key="panel_rank"):
                                                  help="Điểm rủi ro thanh khoản ở lần chụp mới nhất. Cao hơn là rủi ro hơn."),
             "lrs_tier": st.column_config.TextColumn("Mức", width=112),
             "alerts": st.column_config.NumberColumn("Đợt CB", format="%d", width=60, help="Số đợt cảnh báo trong kỳ"),
+            "base_status": st.column_config.TextColumn("Dữ liệu mốc", width=112,
+                                                        help="Chưa đủ dữ liệu: mã chưa có mốc nền cùng khung giờ nên 0 đợt cảnh báo là chưa đánh giá được, không phải bình thường."),
         },
     )
 with right, st.container(border=True, key="panel_alerts"):
