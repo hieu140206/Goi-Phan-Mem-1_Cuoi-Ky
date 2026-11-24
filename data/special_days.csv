@@ -1,0 +1,4 @@
+date,type,note
+2026-10-15,derivative_expiry,"Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"
+2026-11-19,derivative_expiry,"Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"
+2026-12-17,derivative_expiry,"Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"

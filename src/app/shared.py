@@ -21,6 +21,8 @@ import streamlit as st  # noqa: E402
 from analytics.baseline import detect_anomalies_tod  # noqa: E402
 from analytics.lrs import DEFAULT_WEIGHTS, compute_lrs, lrs_thresholds_past, lrs_tier  # noqa: E402
 from data.schema import limit_lock_side, normalize_quotes
+from data.special_days import (exclude_from_baseline, load_special_days, special_day_map,  # noqa: E402
+                               special_days_path)
 from data.ssi import load_ssi_daily, load_ssi_minute_quotes, ssi_quote_days  # noqa: E402
 from analytics.screener import (ATC_DONE, daily_closes_from_board, intraday_factors, liquidity_gate,  # noqa: E402
                                 market_context, momentum, screen)
@@ -125,32 +127,47 @@ def load_source(source: str, db_path: str, version: float, ssi_fill: bool = True
 
 @st.cache_data(show_spinner=False)
 def analyze(source: str, db_path: str, version: float, max_sessions: int, threshold: float,
-            w_spread: float, w_depth: float, w_imb: float, ssi_fill: bool = True) -> pd.DataFrame:
+            w_spread: float, w_depth: float, w_imb: float, ssi_fill: bool = True, special_version: float = 0.0) -> pd.DataFrame:
     """Cảnh báo bất thường, tỷ lệ hấp thụ và điểm LRS. Tính trên toàn bộ lịch sử để đủ dữ liệu khởi động.
 
     Các ngày lấy từ SSI (cột `src` = "SSI") KHÔNG được dùng làm mốc hay làm nền tính ngưỡng cho ngày NEO, nên số của
     các ngày NEO không đổi dù có thêm ngày SSI; bản thân ngày SSI được so với mốc là các phiên NEO trước đó."""
     df, report = load_source(source, db_path, version, ssi_fill)
     ssi_days = frozenset(report.get("ssi_days", []))
+    # Ngày đặc biệt (data/special_days.csv): vẫn tính bình thường nhưng gắn cờ, và (config) không làm mốc nền cho ngày khác.
+    # special_version (thời điểm sửa tệp) chỉ để cache đọc lại khi bạn sửa tệp ngày đặc biệt.
+    sp_map = special_day_map(load_special_days())
+    data_days = set(df["ts"].dt.date.unique()) if not df.empty else set()
+    sp_days = frozenset(d for d in sp_map if d in data_days)
+    no_base = ssi_days | sp_days if exclude_from_baseline() else ssi_days
     # Cảnh báo so với cùng khung giờ ở các phiên trước (analytics/baseline.py), không dùng cửa sổ trượt.
     out = add_absorption(detect_anomalies_tod(df, threshold=threshold, max_sessions=max_sessions,
-                                              no_baseline_days=ssi_days),
-                         no_baseline_days=ssi_days)
+                                              no_baseline_days=no_base),
+                         no_baseline_days=no_base)
+    out["special_day"] = out["ts"].dt.date.map(sp_map).fillna("")
     out["src"] = np.where(out["ts"].dt.date.isin(ssi_days), "SSI", "NEO")
     is_ssi = out["src"] == "SSI"
     out["lrs"] = compute_lrs(out, {"spread": w_spread, "depth": w_depth, "imbalance": w_imb})
     # Ngưỡng Chú ý/Cao tại mỗi thời điểm chỉ dùng điểm LRS có trước thời điểm đó (không nhìn trước), không gồm điểm SSI.
-    thr = lrs_thresholds_past(out["lrs"].where(~is_ssi), out["ts"])
+    pool_excl = is_ssi | out["ts"].dt.date.isin(sp_days) if exclude_from_baseline() else is_ssi
+    thr = lrs_thresholds_past(out["lrs"].where(~pool_excl), out["ts"])
     out["lrs_watch"], out["lrs_high"] = thr["watch"], thr["high"]
     out["lrs_tier"] = lrs_tier(out["lrs"], thr)
     return add_window_stats(out)   # thống kê cửa sổ trượt 30 lần chụp cho điểm 30 phút ở Radar
+
+
+def special_days_version() -> float:
+    try:
+        return special_days_path().stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 def analyzed_data(source: str) -> pd.DataFrame:
     """Kết quả phân tích với tham số hiện hành (cùng cache với Radar)."""
     p = params()
     return analyze(source, str(get_settings().db_path), source_version(source), int(p["max_sessions"]),
-                   float(p["threshold"]), p["w_spread"], p["w_depth"], p["w_imb"])
+                   float(p["threshold"]), p["w_spread"], p["w_depth"], p["w_imb"], special_version=special_days_version())
 
 
 WATCHLIST_PATH = ROOT / "data" / "watchlist.json"

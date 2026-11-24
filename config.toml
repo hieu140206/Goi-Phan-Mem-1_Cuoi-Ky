@@ -47,6 +47,10 @@ max_gap_seconds = 90           # hai lần chụp "liên tiếp" cách nhau khô
 stale_run_snapshots = 10       # sổ lệnh không đổi qua chừng này lần chụp liên tiếp thì nghi dữ liệu cũ (lựa chọn ban đầu)
 stale_peer_share = 0.5         # ... nhưng chỉ khi từ chừng này tỷ lệ mã khác vẫn đổi cùng lúc (lựa chọn ban đầu)
 
+[special_days]       # ngày đặc biệt (data/special_days.csv, src/data/special_days.py)
+path = "data/special_days.csv"   # cột date (YYYY-MM-DD), type, note
+exclude_from_baseline = true   # ngày đặc biệt vẫn được tính, nhưng KHÔNG dùng làm mốc so sánh nền (và nền ngưỡng LRS) cho ngày khác
+
 [absorption]         # tỷ lệ hấp thụ và cờ "mỏng mà không khớp" (finance/absorption.py)
 window = 60                    # cửa sổ trượt khi không có khung giờ
 min_periods = 20

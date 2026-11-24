@@ -29,6 +29,7 @@ from analytics.lrs import MIN_OBS_PAST  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
 from flipgrid import grid_state, tile_weights, treemap_layout  # noqa: E402
 from flipgrid_component import flip_treemap  # noqa: E402
+from data.special_days import describe  # noqa: E402
 from model_config import section  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from shared import (SRC_SAMPLE, analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
@@ -292,6 +293,13 @@ if no_base_days:
             + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
             "(đặt ở config.toml), nên chưa có cảnh báo và điểm LRS. "
             "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>")
+
+# Ngày đặc biệt (đáo hạn phái sinh, cơ cấu ETF...): vẫn tính bình thường nhưng nói rõ và không dùng làm mốc nền.
+sp_in_view = view[view["special_day"] != ""].groupby(view["ts"].dt.date)["special_day"].first()
+if len(sp_in_view):
+    st.html('<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
+            + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
+            "cho các ngày khác (config.toml, special_days.exclude_from_baseline).</div>")
 
 # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
 locked = report["limit_locked"]

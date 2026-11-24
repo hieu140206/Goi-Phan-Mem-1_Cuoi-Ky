@@ -17,6 +17,7 @@ import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from analytics.screener import sample_warning  # noqa: E402
+from data.special_days import describe  # noqa: E402
 from shared import GATE_MIN_SCORE, SRC_SAMPLE, analyzed_data, current_source, screen_for_day  # noqa: E402
 from theme import BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, base_layout, vn  # noqa: E402
 
@@ -59,6 +60,10 @@ if horizon == "5d" and not probe["mom5_ok"]:
 res = screen_for_day(source, day, min_score, horizon) if horizon != "intraday" else probe
 r = res["result"]
 ctx = res["context"]
+_sp = _an.loc[_an["ts"].dt.date == day, "special_day"]
+if len(_sp) and _sp.iloc[0]:
+    st.html(f'<div class="notice">Phiên {day:%d/%m} là ngày đặc biệt ({describe(_sp.iloc[0])}): chỉ số và cảnh báo vẫn tính như thường, '
+            "nhưng thanh khoản hôm đó có thể khác thường nên cần đọc kết quả thận trọng hơn.</div>')
 
 # ---------- bối cảnh thị trường ----------
 st.html(f'<div class="notice"><b>Bối cảnh thị trường.</b> {ctx["summary"]}</div>')
