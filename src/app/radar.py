@@ -262,32 +262,40 @@ notes.append(f"{vn(len(view))} lần chụp sổ lệnh của {view['symbol'].nu
 dropped_session = report.get("dropped_session", 0)
 if dropped_session:
     notes.append(f"đã loại {vn(dropped_session)} lần chụp ngoài phiên khớp lệnh liên tục")
-st.caption("; ".join(notes).capitalize() + ".")
+
+# Các ghi chú về dữ liệu gom lại: nhãn ngắn hiện ngay dưới các chỉ số chính, nội dung đầy đủ nằm trong một mục thu gọn.
+data_notes: list[tuple[str, str]] = []
 
 # Phiên lấy từ SSI: nói rõ nguồn, vì khác NEO ở mấy điểm (xem shared.load_source).
 view_ssi = sorted(d for d in view["ts"].dt.date.unique() if d in ssi_days)
 if view_ssi:
-    st.html('<div class="notice"><b>Nguồn SSI:</b> phiên ' + ", ".join(f"{d:%d/%m}" for d in view_ssi)
-            + " không có dữ liệu NEO (bộ ghi NEO không chạy đủ phiên) nên dùng sổ lệnh 3 mức giá của SSI, lấy mẫu mỗi phút "
-            "như NEO. SSI không có giá khớp và tổng khối lượng khớp nên không tính tỷ lệ hấp thụ và cờ không khớp cho phiên này. "
-            "Phiên SSI không được dùng làm mốc so sánh cho các phiên NEO, nên số của các phiên NEO không đổi; bản thân "
-            "phiên SSI được so với mốc là các phiên NEO trước đó. Đối chiếu ngày 11/11 (có cả hai nguồn): giá 3 mức khớp NEO 99,8%, "
-            "khối lượng 3 mức khớp 96 đến 99%.</div>")
+    data_notes.append((
+        "phiên " + ", ".join(f"{d:%d/%m}" for d in view_ssi) + " lấy từ SSI",
+        '<div class="notice"><b>Nguồn SSI:</b> phiên ' + ", ".join(f"{d:%d/%m}" for d in view_ssi)
+        + " không có dữ liệu NEO (bộ ghi NEO không chạy đủ phiên) nên dùng sổ lệnh 3 mức giá của SSI, lấy mẫu mỗi phút "
+        "như NEO. SSI không có giá khớp và tổng khối lượng khớp nên không tính tỷ lệ hấp thụ và cờ không khớp cho phiên này. "
+        "Phiên SSI không được dùng làm mốc so sánh cho các phiên NEO, nên số của các phiên NEO không đổi; bản thân "
+        "phiên SSI được so với mốc là các phiên NEO trước đó. Đối chiếu ngày 11/11 (có cả hai nguồn): giá 3 mức khớp NEO 99,8%, "
+        "khối lượng 3 mức khớp 96 đến 99%.</div>"))
 
 # Phiên chưa có baseline (chưa đủ phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
 no_base_days = sorted(d for d, g in view.groupby(view["ts"].dt.date) if g["n_hist"].isna().all())
 if no_base_days:
-    st.html('<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
-            + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
-            "(đặt ở config.toml), nên chưa có cảnh báo và điểm LRS. "
-            "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>")
+    data_notes.append((
+        f"{len(no_base_days)} phiên chưa đủ dữ liệu mốc nền",
+        '<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
+        + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
+        "(đặt ở config.toml), nên chưa có cảnh báo và điểm LRS. "
+        "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>"))
 
 # Ngày đặc biệt (đáo hạn phái sinh, cơ cấu ETF...): vẫn tính bình thường nhưng nói rõ và không dùng làm mốc nền.
 sp_in_view = view[view["special_day"] != ""].groupby(view["ts"].dt.date)["special_day"].first()
 if len(sp_in_view):
-    st.html('<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
-            + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
-            "cho các ngày khác (config.toml, special_days.exclude_from_baseline).</div>")
+    data_notes.append((
+        "ngày đặc biệt " + ", ".join(f"{d:%d/%m}" for d in sp_in_view.index),
+        '<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
+        + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
+        "cho các ngày khác (config.toml, special_days.exclude_from_baseline).</div>"))
 
 # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
 locked = report["limit_locked"]
@@ -300,16 +308,44 @@ locked = locked[locked["symbol"].isin(picked)]
 if not locked.empty:
     parts = [f"<b>{s}</b> khóa {side} {len(g)} lần ({g['ts'].min():%d/%m %H:%M}–{g['ts'].max():%H:%M})"
              for (s, side), g in locked.sort_values("ts").groupby(["symbol", "side"])]
-    st.html('<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
-            "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>")
+    data_notes.append((
+        "khóa trần/sàn: " + ", ".join(sorted(locked["symbol"].unique())),
+        '<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
+        "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>"))
 
-# Chất lượng dữ liệu theo mã: lần chụp không dùng được cho spread (đã loại) và lần chụp đáng ngờ (đã đánh cờ, vẫn dùng).
+alert_sub = (f'{vn(n_alerts)} lần chụp · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
+             if n_events else "không có mã nào vượt ngưỡng")
+st.html(
+    '<div class="kpis">'
+    f'<div class="kpi lead"><div class="l">Đợt cảnh báo trong kỳ</div><div class="v">{n_events}</div>'
+    f'<div class="s">{alert_sub}</div></div>'
+    f'<div class="kpi"><div class="l">Spread tương đối trung vị</div>'
+    f'<div class="v">{vn(view["rel_spread_bps"].median(), 1)}<small>bps</small></div>'
+    '<div class="s">chi phí mua rồi bán ngay</div></div>'
+    f'<div class="kpi"><div class="l">Độ sâu 3 mức giá trung vị</div>'
+    f'<div class="v">{vn(view["depth_value"].median() / 1e6, 0)}<small>triệu đ</small></div>'
+    '<div class="s">tiền chờ khớp ở 3 mức mua và bán</div></div>'
+    f'<div class="kpi"><div class="l">Thanh khoản yếu nhất nhóm</div>'
+    f'<div class="v">{weakest["symbol"]}<small>{vn(weakest["score"], 0)}/100</small></div>'
+    f'<div class="s">điểm thấp nhất trong {len(ranking)} mã</div></div>'
+    "</div>"
+)
+
+# Dòng tóm tắt các ghi chú dữ liệu (luôn hiện, để vẫn thấy nguồn và giới hạn) và mục thu gọn chứa nội dung đầy đủ.
+st.caption("; ".join(notes).capitalize() + ".")
 qt = report["quality"]
 qt = qt[qt["symbol"].isin(picked)]
-with st.expander("Chất lượng dữ liệu theo mã", icon=":material/fact_check:"):
+if data_notes:
+    st.caption("Ghi chú về dữ liệu: " + " · ".join(label for label, _ in data_notes) + ". Mở mục bên dưới để xem chi tiết.")
+with st.expander("Chi tiết ghi chú và chất lượng dữ liệu" + (f" ({len(data_notes)} ghi chú)" if data_notes else ""),
+                 icon=":material/fact_check:"):
+    for _, html_note in data_notes:
+        st.html(html_note)
+    # Chất lượng dữ liệu theo mã: lần chụp không dùng được cho spread (đã loại) và lần chụp đáng ngờ (đã đánh cờ, vẫn dùng).
     if qt.empty:
         st.caption("Chưa có thống kê chất lượng cho các mã đã chọn.")
     else:
+        st.markdown("**Chất lượng dữ liệu theo mã**")
         st.caption(
             f"Toàn bộ dữ liệu đã ghi. Không hợp lệ cho spread: {vn(qt['invalid'].sum())} trong {vn(qt['rows'].sum())} lần chụp "
             f"({vn(qt['invalid'].sum() / max(qt['rows'].sum(), 1) * 100, 2)}%), đã loại khỏi xếp hạng, cảnh báo và mốc nền. Lần chụp đứng sau khoảng "
@@ -329,24 +365,6 @@ with st.expander("Chất lượng dữ liệu theo mã", icon=":material/fact_ch
                 "stale": st.column_config.NumberColumn("Nghi dữ liệu cũ", format="%d", width=110,
                                                        help="Sổ lệnh không đổi nhiều lần chụp liền trong khi các mã khác vẫn đổi"),
             })
-
-alert_sub = (f'{vn(n_alerts)} lần chụp · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
-             if n_events else "không có mã nào vượt ngưỡng")
-st.html(
-    '<div class="kpis">'
-    f'<div class="kpi lead"><div class="l">Đợt cảnh báo trong kỳ</div><div class="v">{n_events}</div>'
-    f'<div class="s">{alert_sub}</div></div>'
-    f'<div class="kpi"><div class="l">Spread tương đối trung vị</div>'
-    f'<div class="v">{vn(view["rel_spread_bps"].median(), 1)}<small>bps</small></div>'
-    '<div class="s">chi phí mua rồi bán ngay</div></div>'
-    f'<div class="kpi"><div class="l">Độ sâu 3 mức giá trung vị</div>'
-    f'<div class="v">{vn(view["depth_value"].median() / 1e6, 0)}<small>triệu đ</small></div>'
-    '<div class="s">tiền chờ khớp ở 3 mức mua và bán</div></div>'
-    f'<div class="kpi"><div class="l">Thanh khoản yếu nhất nhóm</div>'
-    f'<div class="v">{weakest["symbol"]}<small>{vn(weakest["score"], 0)}/100</small></div>'
-    f'<div class="s">điểm thấp nhất trong {len(ranking)} mã</div></div>'
-    "</div>"
-)
 
 # ---------- bản đồ nhiệt thẻ lật (chỉ khi phát lại một phiên) ----------
 if mode == MODE_REPLAY:
