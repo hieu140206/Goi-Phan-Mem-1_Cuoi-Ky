@@ -45,7 +45,7 @@ MODE_REPLAY = "Phát lại một phiên"
 SCOPE_ALL, SCOPE_PICK = "Tất cả mã", "Chọn từng mã"
 ALERT_SHORT = {"Spread mở rộng": "Spread rộng", "Độ sâu mỏng": "Sổ mỏng", "Spread rộng, độ sâu mỏng": "Spread rộng, sổ mỏng"}
 
-from theme import CHART_CONFIG, INK, MUTED, NEG, WARN, badge_style, base_layout, group, how_to_read, vn  # noqa: E402
+from theme import CHART_CONFIG, HUE, INK, MUTED, NEG, WARN, badge_style, base_layout, group, how_to_read, is_dark, vn  # noqa: E402
 
 
 # ---------- tiện ích ----------
@@ -432,7 +432,7 @@ with left, st.container(border=True, key="panel_rank"):
                                                      color="#8a8a8a", width=84,
                                                      help="Điểm thanh khoản tính trên cả khoảng đang xem (cổng của Bộ lọc dùng điểm này)."),
             "score_w": st.column_config.ProgressColumn("Điểm 30 phút", min_value=0, max_value=100, format="%.0f",
-                                                       color="#1d5fbf", width=96,
+                                                       color=HUE, width=96,
                                                        help="Cùng công thức nhưng chỉ trên 30 lần chụp gần nhất của chính mã đó tính đến lần chụp cuối "
                                                             "(không vắt qua nghỉ trưa). Ô trống = Chưa đủ dữ liệu: dưới một nửa số lần chụp hợp lệ."),
             "spread_bps_mean": st.column_config.NumberColumn(
@@ -502,7 +502,8 @@ with st.container(border=True, key="panel_heatmap"):
             z=pivot.values, x=pivot.columns, y=pivot.index,
             zmin=0.8, zmax=2.0,
             # Dưới 1,3 lần: xám (bình thường); từ 1,3 lần trở lên mới chuyển dần sang đỏ.
-            colorscale=[[0, "#f5f6f8"], [0.42, "#e6e9ee"], [0.5, "#f4cfca"], [0.75, "#e0807a"], [1, NEG]],
+            colorscale=([[0, "#1d222b"], [0.42, "#2a313c"], [0.5, "#5a2a2e"], [0.75, "#b04a50"], [1, NEG]] if is_dark() else
+                        [[0, "#f5f6f8"], [0.42, "#e6e9ee"], [0.5, "#f4cfca"], [0.75, "#e0807a"], [1, NEG]]),
             xgap=2, ygap=2,
             colorbar=dict(title=dict(text="lần thường lệ", font=dict(size=11, color=MUTED)), thickness=10,
                           len=0.6, outlinewidth=0, tickfont=dict(size=11, color=MUTED),

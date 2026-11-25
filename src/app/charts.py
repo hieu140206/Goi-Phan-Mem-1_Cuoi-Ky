@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from theme import BORDER, GRID, HUE, INK, MUTED, NEG, WARN, base_layout, vn
+from theme import base_layout, is_dark, palette, vn
 
 
 def intraday_caption(sym: str, day, one: pd.DataFrame) -> str:
@@ -23,6 +23,9 @@ def intraday_figure(one: pd.DataFrame, height: int = 600) -> go.Figure:
 
     `one`: các lần chụp của MỘT mã trong MỘT phiên, đã qua phân tích (cột rel_spread_bps, depth_value, lrs,
     lrs_watch, lrs_high, is_alert)."""
+    p = palette()                                        # màu theo chủ đề sáng/tối của phiên đang vẽ
+    BORDER, GRID, HUE, INK, MUTED, NEG, WARN = (p[k] for k in ("BORDER", "GRID", "HUE", "INK", "MUTED", "NEG", "WARN"))
+    depth_fill = "rgba(232,234,237,0.08)" if is_dark() else "rgba(10,10,10,0.06)"
     one = one.sort_values("ts").copy()
     one["x"] = one["ts"].dt.tz_localize(None)
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.36, 0.32, 0.32],
@@ -32,7 +35,7 @@ def intraday_figure(one: pd.DataFrame, height: int = 600) -> go.Figure:
                              name="Spread", showlegend=False,
                              hovertemplate="%{x|%H:%M}  %{y:.1f} bps<extra></extra>"), 1, 1)
     fig.add_trace(go.Scatter(x=one["x"], y=one["depth_value"] / 1e6, mode="lines", fill="tozeroy",
-                             line=dict(color=INK, width=1.5), fillcolor="rgba(10,10,10,0.06)", name="Độ sâu",
+                             line=dict(color=INK, width=1.5), fillcolor=depth_fill, name="Độ sâu",
                              showlegend=False, hovertemplate="%{x|%H:%M}  %{y:,.0f} triệu đ<extra></extra>"), 2, 1)
     fig.add_trace(go.Scatter(x=one["x"], y=one["lrs"], mode="lines", line=dict(color=INK, width=1.5), name="LRS",
                              showlegend=False, hovertemplate="%{x|%H:%M}  LRS %{y:.2f}<extra></extra>"), 3, 1)

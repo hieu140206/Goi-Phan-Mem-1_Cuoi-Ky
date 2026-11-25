@@ -106,7 +106,7 @@ st.html(
 .idx-card .ce {{ color: {CE}; font-weight: 500; }}
 .idx-card .fo {{ color: {FLR}; font-weight: 500; }}
 .idx-card .status {{ color: {INK}; font-weight: 600; }}
-.bd-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }}
+.bd-head {{ display: flex; align-items: baseline; flex-wrap: nowrap; gap: 2px 12px; white-space: nowrap; }}
 .bd-title {{ font-size: 18px; font-weight: 700; color: {INK}; }}
 .bd-head .lg {{ font-size: 12px; font-weight: 600; white-space: nowrap; }}
 </style>"""
@@ -302,7 +302,7 @@ def _board_panel(day, live: bool) -> None:
     """Khung bảng giá. Ở chế độ Trực tiếp khối này tự chạy lại mỗi 5 giây và đọc thẳng bảng board (bộ ghi làm mới VN30 mỗi
     5 giây, các sàn khác mỗi phút); ô nào đổi so với lần cập nhật trước thì tô nền theo màu mức giá."""
     with st.container(border=True, key="panel_board"):
-        h1, h2, h3, h4 = st.columns([3.0, 7.6, 1.6, 2.2], gap="small", vertical_alignment="center")   # một hàng: tên + chú giải màu | nhóm | tìm mã | sắp xếp
+        h1, h2, h3, h4 = st.columns([4.8, 5.6, 1.6, 2.2], gap="small", vertical_alignment="center")   # một hàng: tên + chú giải màu | nhóm | tìm mã | sắp xếp
         h1.html(f'<div class="bd-head"><span class="bd-title">Bảng giá</span><span class="lg" style="color:{CE}">■ Trần</span>'
                 f'<span class="lg" style="color:{FLR}">■ Sàn</span><span class="lg" style="color:{REF}">■ Tham chiếu</span>'
                 f'<span class="lg" style="color:{POS}">■ Tăng</span><span class="lg" style="color:{NEG}">■ Giảm</span></div>')

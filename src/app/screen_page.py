@@ -19,11 +19,11 @@ import streamlit as st  # noqa: E402
 from analytics.screener import sample_warning  # noqa: E402
 from data.special_days import describe  # noqa: E402
 from shared import GATE_MIN_SCORE, analyzed_data, current_source, screen_for_day  # noqa: E402
-from theme import (BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, WARN, arrow_pct, badge_style, base_layout, sign_color,  # noqa: E402
+from theme import (BORDER, CHART_CONFIG, FLAT, GRID, HUE, INK, MUTED, PANEL, WARN, arrow_pct, badge_style, base_layout, sign_color,  # noqa: E402
                    how_to_read, vn)
 
 GATE_BADGE = {"Đạt": "ok", "Chú ý": "warn", "Chưa đánh giá": "muted", "Loại": "faint"}
-GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Chưa đánh giá": MUTED, "Loại": "#b5bac1"}
+GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Chưa đánh giá": MUTED, "Loại": FLAT}
 
 source = current_source()
 st.title("Bộ lọc cổ phiếu VN30", anchor=False)
@@ -135,7 +135,7 @@ with left, st.container(border=True, key="panel_screen"):
             "flag": st.column_config.TextColumn("", width=28, help="⚠ = có đợt cảnh báo thanh khoản (nhãn Chú ý); vẫn được xếp hạng cùng mã Đạt"),
             "gate": st.column_config.TextColumn("Cổng", width=100),
             "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f", width=70,
-                                                     color="#1d5fbf"),
+                                                     color=HUE),
             "f_rank": st.column_config.NumberColumn("Hạng NN", width=64, help="Thứ hạng phần trăm của dòng tiền nước ngoài trong nhóm qua cổng"),
             "f_ratio": st.column_config.NumberColumn("NN ròng/GTGD", width=90, help="Giá trị khối ngoại mua ròng chia tổng giá trị giao dịch của mã"),
             "m_rank": st.column_config.NumberColumn("Hạng ĐL", width=64, help="Thứ hạng phần trăm của động lượng trong nhóm qua cổng"),
@@ -164,7 +164,7 @@ with right, st.container(border=True, key="panel_map"):
             fig.add_trace(go.Scatter(
                 x=d["m_val"], y=d["f_ratio"], mode="markers+text", text=d["symbol"], textposition="top center",
                 textfont=dict(size=10, color=MUTED if g in ("Loại", "Chưa đánh giá") else INK), name=g,
-                marker=dict(size=9, color=GATE_COLOR[g], line=dict(color="#ffffff", width=1)),
+                marker=dict(size=9, color=GATE_COLOR[g], line=dict(color=PANEL, width=1)),
                 hovertemplate="%{text}<br>Động lượng %{x:+.2f}%<br>NN ròng/GTGD %{y:+.1f}%<extra>" + g + "</extra>"))
         fig.add_hline(y=0, line=dict(color=BORDER, width=1))
         fig.add_vline(x=0, line=dict(color=BORDER, width=1))

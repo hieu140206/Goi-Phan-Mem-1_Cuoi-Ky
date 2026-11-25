@@ -20,10 +20,9 @@ from charts import intraday_caption, intraday_figure  # noqa: E402
 from data.overview import board_view, price_board  # noqa: E402
 from shared import (SRC_DB, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
                     current_source, liquidity_ranking, screen_for_day)
-from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, how_to_read, vn  # noqa: E402
+from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, POS, how_to_read, vn  # noqa: E402
 from watchlist import load_watchlist, toggle  # noqa: E402
 
-POS = "#2e7d32"
 
 st.html(f"""<style>
 .ob {{ width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }}
