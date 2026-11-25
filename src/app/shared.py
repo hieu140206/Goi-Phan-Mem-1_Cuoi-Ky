@@ -294,17 +294,29 @@ def _hose_universe(db_path: str, version: float, candle_path: str, candle_versio
     board = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     closes = load_daily_closes(Path(candle_path))
     if board.empty:
-        return {"result": pd.DataFrame(), "days": [], "threshold": None, "ref_day": None, "board_days": 0, "candle_symbols": 0}
+        return {"result": pd.DataFrame(), "days": [], "threshold": None, "ref_day": None, "board_days": 0, "candle_symbols": 0,
+                "quote_day": None, "quote_ts": None}
     res = screen_universe(board, closes)
-    return {"result": res, "days": list(res.attrs.get("days", [])), "threshold": res.attrs.get("threshold"),
-            "ref_day": res.attrs.get("ref_day"), "board_days": int(board["day"].nunique()),
-            "candle_symbols": int(closes["symbol"].nunique()) if not closes.empty else 0}
+    days, threshold, ref_day = list(res.attrs.get("days", [])), res.attrs.get("threshold"), res.attrs.get("ref_day")
+    # Giá và % thay đổi trong ngày: lần chụp bảng giá mới nhất của ngày ghi gần nhất (không có giá khớp thì để trống, không điền).
+    last_day = board["day"].max()
+    snap = board[board["day"] == last_day].sort_values("ts").groupby("symbol").tail(1)
+    px = pd.to_numeric(snap["last_px"], errors="coerce")
+    ref = pd.to_numeric(snap["ref_px"], errors="coerce")
+    ok = (px > 0) & (ref > 0)
+    quote = pd.DataFrame({"symbol": snap["symbol"].to_numpy(), "price": px.where(px > 0).to_numpy(),
+                          "pct_change": ((px / ref - 1) * 100).where(ok).to_numpy()})
+    res = res.merge(quote, on="symbol", how="left")
+    return {"result": res, "days": days, "threshold": threshold, "ref_day": ref_day, "board_days": int(board["day"].nunique()),
+            "candle_symbols": int(closes["symbol"].nunique()) if not closes.empty else 0,
+            "quote_day": last_day, "quote_ts": snap["ts"].max()}
 
 
 def hose_universe() -> dict:
     """Bộ lọc toàn HOSE (cổng giá trị khớp, động lượng 6-1 từ nến SSI, nước ngoài tham khảo): mọi trang dùng cùng một kết quả.
     Trả dict: result (mỗi mã một dòng), days (ngày đủ dùng làm mẫu), threshold (VND), ref_day (ngày nến tham chiếu chung),
-    board_days (số ngày bảng giá đã ghi), candle_symbols (số mã có nến). Chưa có bảng giá HOSE: result rỗng."""
+    board_days (số ngày bảng giá đã ghi), candle_symbols (số mã có nến),
+    quote_day và quote_ts (ngày và giờ lần chụp bảng giá dùng cho cột giá và % thay đổi). Chưa có bảng giá HOSE: result rỗng."""
     cp = Path(CANDLE_DB)
     cv = cp.stat().st_mtime if cp.exists() else 0.0
     return _hose_universe(str(get_settings().db_path), db_version(), str(cp), cv)

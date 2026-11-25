@@ -238,3 +238,55 @@ def test_screen_universe_without_candles_never_shows_pass_with_a_rank():
                        "foreign_sell_val": 0.0, "foreign_net_val": 0.0} for i, d in enumerate(DAYS)])
     res = u.screen_universe(b, pd.DataFrame(columns=["symbol", "day", "close"]))
     assert res.loc[0, "status"] == u.NO_HISTORY and np.isnan(res.loc[0, "mom_rank"])
+
+
+# ---- cửa sổ N ngày gần nhất
+def test_screen_universe_uses_only_the_latest_window_days(monkeypatch):
+    monkeypatch.setitem(u.section("universe"), "window_days", 5)
+    ts = "2026-11-%02dT15:02:20+07:00"
+    b = pd.DataFrame([{"day": d, "ts": ts % (i + 2), "symbol": "AAA", "total_value": 20e9 if i >= 7 else 0.0, "foreign_buy_val": 0.0,
+                       "foreign_sell_val": 0.0, "foreign_net_val": 0.0} for i, d in enumerate(DAYS)])
+    res = u.screen_universe(b, pd.DataFrame(columns=["symbol", "day", "close"]))
+    assert res.attrs["days"] == DAYS[-5:]                       # chỉ 5 ngày cuối; các ngày cũ (giá trị 0) rơi ra khỏi mẫu
+    assert res.loc[0, "gate"] == u.PASS and res.loc[0, "n_days"] == 5
+
+
+# ---- lọc theo tiêu chí
+def table():
+    return pd.DataFrame({
+        "symbol": ["AAA", "BBB", "CCC", "DDD"], "status": [u.PASS, u.PASS, u.FAIL, u.NO_HISTORY],
+        "median_value": [10e9, 30e9, 1e9, 8e9], "mom": [0.2, -0.1, np.nan, np.nan],
+        "near": [True, False, False, np.nan], "jump": [False, True, np.nan, np.nan], "foreign_over": [False, False, True, np.nan]})
+
+
+def test_filter_by_status_and_symbol_query():
+    t = table()
+    assert list(u.filter_universe(t, statuses=[u.PASS])["symbol"]) == ["AAA", "BBB"]
+    assert list(u.filter_universe(t, statuses=[]).symbol) == ["AAA", "BBB", "CCC", "DDD"]             # rỗng: không lọc theo nhãn
+    assert list(u.filter_universe(t, query=" bb ")["symbol"]) == ["BBB"]
+
+
+def test_filter_ranges_are_inclusive_and_open_ended_bounds_are_allowed():
+    t = table()
+    assert list(u.filter_universe(t, ranges={"median_value": (10e9, 30e9)})["symbol"]) == ["AAA", "BBB"]   # đúng bằng đầu mút vẫn giữ
+    assert list(u.filter_universe(t, ranges={"median_value": (None, 8e9)})["symbol"]) == ["CCC", "DDD"]
+    assert list(u.filter_universe(t, ranges={"median_value": (10e9 + 1, None)})["symbol"]) == ["BBB"]
+    assert len(u.filter_universe(t, ranges={"median_value": (None, None)})) == 4                     # không đặt giới hạn: không lọc
+
+
+def test_filter_drops_symbols_with_no_value_in_a_filtered_column():
+    t = table()
+    assert list(u.filter_universe(t, ranges={"mom": (-1.0, 1.0)})["symbol"]) == ["AAA", "BBB"]      # CCC, DDD không có động lượng: không thể nói là thỏa
+
+
+def test_filter_exclude_flags_keeps_symbols_without_information():
+    t = table()
+    assert list(u.filter_universe(t, exclude_flags=["Sát ngưỡng"])["symbol"]) == ["BBB", "CCC", "DDD"]   # NaN không bị coi là có cờ
+    assert list(u.filter_universe(t, exclude_flags=["Sát ngưỡng", "Bước nhảy"])["symbol"]) == ["CCC", "DDD"]
+
+
+def test_filters_combine_and_do_not_change_the_numbers():
+    t = table()
+    out = u.filter_universe(t, statuses=[u.PASS], ranges={"median_value": (None, 20e9)}, exclude_flags=["Bước nhảy"])
+    assert list(out["symbol"]) == ["AAA"] and out.loc[0, "median_value"] == 10e9 and len(t) == 4
+

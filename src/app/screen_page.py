@@ -17,12 +17,12 @@ import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from analytics import universe as U  # noqa: E402
+from model_config import section  # noqa: E402
 from shared import analyzed_data, current_source, hose_universe, liquidity_ranking  # noqa: E402
 from theme import (BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, PANEL, arrow_pct, badge_style, base_layout, sign_color,  # noqa: E402
                    how_to_read, vn)
 
 STATUS_BADGE = {U.PASS: "ok", U.NO_HISTORY: "muted", U.STALE: "muted", U.FAIL: "faint", U.FEW: "faint", U.MISSING: "faint"}
-VIEWS = ["Qua cổng thanh khoản", "Có xếp hạng", "Tất cả"]
 
 
 @st.cache_data(show_spinner=False)
@@ -39,7 +39,7 @@ def _radar_tiers(source: str, version: float) -> pd.DataFrame:
 
 st.title("Bộ lọc cổ phiếu HOSE", anchor=False)
 st.caption("Dành cho nhà đầu tư cá nhân: lọc ra cổ phiếu HOSE đủ thanh khoản để vào/ra vị thế của bạn (theo giá trị khớp mỗi ngày), "
-           "rồi xếp theo động lượng giá 6 tháng bỏ tháng gần nhất. Công cụ sàng lọc để so sánh, không dự báo giá.")
+           "rồi xếp theo động lượng giá 6 tháng bỏ tháng gần nhất. Bảng tiêu chí bên trái để bạn tự chọn điều kiện. Công cụ sàng lọc để so sánh, không dự báo giá.")
 how_to_read(
     "**Bước 1, cổng thanh khoản:** trung vị giá trị khớp mỗi ngày (ngày không giao dịch tính là 0) phải từ ngưỡng trở lên. "
     "Nhãn: *Đạt*, *Không đạt thanh khoản*, *Ít giao dịch* (ít ngày có giao dịch), *Thiếu dữ liệu* (không có dòng nào trong các ngày đủ).",
@@ -86,13 +86,49 @@ st.html(f'<div class="notice"><b>Nguồn dữ liệu.</b> Giá trị khớp và 
         f'(trong {info["board_days"]} ngày đã ghi, ngày chụp dở dang bị loại). Động lượng: nến ngày <b>SSI</b> (giá điều chỉnh cổ tức), '
         f'ngày tham chiếu chung {ref_txt}, {vn(info["candle_symbols"])} mã có nến.</div>')
 
-view = st.segmented_control("Hiển thị", VIEWS, default=VIEWS[0], required=True, width="content")
-shown = r
-if view == VIEWS[0]:
-    shown = r[r["gate"] == U.PASS]
-elif view == VIEWS[1]:
-    shown = r[r["mom_rank"].notna()]
-shown = shown.merge(tiers, on="symbol", how="left")
+# ---------- bảng tiêu chí (bên trái) và kết quả (bên phải), như bộ lọc của NEO Invest ----------
+FLT = {"q": "flt_q", "status": "flt_status", "flags": "flt_flags"}
+# (khóa, nhãn, cột, hệ số đổi từ đơn vị người dùng nhập sang đơn vị của cột, đơn vị, gợi ý)
+RANGES = [
+    ("value", "Giá trị khớp trung vị", "median_value", 1e9, "tỷ đ/ngày", "Trung vị giá trị khớp mỗi ngày; ngày không giao dịch tính 0"),
+    ("days", "Số ngày có giao dịch", "trade_days", 1, "ngày", "Trên số ngày đủ dùng làm mẫu"),
+    ("mom", "Lợi suất 6-1", "mom", 0.01, "%", "Từ 6 tháng trước đến 1 tháng trước (nến SSI). Mã chưa tính được thì bị loại khi bật tiêu chí này"),
+    ("mom_ref", "Lợi suất 3 tháng", "mom_ref", 0.01, "%", "Tham khảo, đến ngày tham chiếu chung"),
+    ("rank", "Xếp hạng động lượng", "mom_rank", 1, "điểm", "0-100, chỉ nhóm Đạt có xếp hạng"),
+    ("foreign", "Nước ngoài ròng / GTGD", "foreign_ratio", 0.01, "%", "Tổng ròng chia tổng giá trị khớp cả cửa sổ. Chỉ tham khảo"),
+    ("price", "Giá hiện tại", "price", 1000, "nghìn đ", "Giá khớp ở lần chụp bảng giá mới nhất"),
+    ("chg", "Thay đổi giá trong ngày", "pct_change", 1, "%", "So với giá tham chiếu, ở lần chụp mới nhất"),
+]
+STATUS_DEFAULT = [U.PASS]
+
+
+def _reset_filters() -> None:
+    for k, *_ in RANGES:
+        st.session_state[f"flt_{k}_lo"] = None
+        st.session_state[f"flt_{k}_hi"] = None
+    st.session_state[FLT["q"]] = ""
+    st.session_state[FLT["status"]] = list(STATUS_DEFAULT)
+    st.session_state[FLT["flags"]] = []
+
+
+filters, results = st.columns([3, 9], gap="small")
+with filters, st.container(border=True, key="panel_filters"):
+    st.subheader("Tiêu chí lọc", anchor=False, help="Mỗi tiêu chí để trống là không giới hạn. Mã không có giá trị ở tiêu chí đang đặt sẽ bị loại.")
+    query = st.text_input("Tìm mã", key=FLT["q"], placeholder="Ví dụ: FPT")
+    statuses = st.multiselect("Trạng thái", U.STATUS_ORDER, default=STATUS_DEFAULT, key=FLT["status"],
+                              help="Mặc định chỉ hiện mã Đạt cổng thanh khoản. Bỏ chọn hết để hiện mọi trạng thái.")
+    ranges: dict[str, tuple[float | None, float | None]] = {}
+    for key, label, col, scale, unit, tip in RANGES:
+        st.markdown(f"**{label}** <span style='color:{MUTED};font-size:0.85em'>({unit})</span>", unsafe_allow_html=True, help=tip)
+        c1, c2 = st.columns(2, gap="small")
+        lo = c1.number_input("Từ", value=None, key=f"flt_{key}_lo", placeholder="Từ", label_visibility="collapsed")
+        hi = c2.number_input("Đến", value=None, key=f"flt_{key}_hi", placeholder="Đến", label_visibility="collapsed")
+        ranges[col] = (None if lo is None else lo * scale, None if hi is None else hi * scale)
+    flag_off = st.multiselect("Loại bỏ mã có cờ", list(U.FLAG_COLUMNS), key=FLT["flags"],
+                              help="Ví dụ chọn Sát ngưỡng để bỏ các mã chỉ vừa đủ thanh khoản.")
+    st.button("Đặt lại tiêu chí", icon=":material/restart_alt:", on_click=_reset_filters, width="stretch")
+
+shown = U.filter_universe(r, statuses=statuses, ranges=ranges, exclude_flags=flag_off, query=query).merge(tiers, on="symbol", how="left")
 
 
 def flags(row) -> str:
@@ -110,75 +146,80 @@ table = pd.DataFrame({
     "symbol": shown["symbol"], "status": shown["status"], "flags": shown.apply(flags, axis=1) if len(shown) else "",
     "rank": shown["mom_rank"], "mom": shown["mom"] * 100, "mom_ref": shown["mom_ref"] * 100,
     "value": shown["median_value"] / 1e9, "days": shown["trade_days"].astype(int).astype(str) + "/" + shown["n_days"].astype(int).astype(str),
-    "foreign": shown["foreign_ratio"] * 100, "radar": shown["lrs_tier"].where(shown["symbol"].isin(vn30), None),
-    "reason": shown["gate_reason"],
+    "foreign": shown["foreign_ratio"] * 100, "price": shown["price"] / 1000, "chg": shown["pct_change"],
+    "radar": shown["lrs_tier"].where(shown["symbol"].isin(vn30), None), "reason": shown["gate_reason"],
 }).reset_index(drop=True)
 
-left, right = st.columns([7, 5], gap="small")
-with left, st.container(border=True, key="panel_screen"):
-    st.subheader("Xếp hạng bộ lọc", anchor=False,
-                 help="Xếp hạng động lượng = thứ hạng phần trăm (0-100) của lợi suất từ 6 tháng trước đến 1 tháng trước, chỉ trong nhóm Đạt. "
-                      "Đơn nhân tố, chưa điều chỉnh biến động. Cột nước ngoài và Radar chỉ để tham khảo.")
-    st.caption(f"{len(table)} mã đang hiện. Chọn một dòng để mở biểu đồ nến của mã. Mã có nhãn Chưa đủ lịch sử, Dữ liệu cũ và các nhãn không qua cổng nằm sau mã có xếp hạng.")
-    if table.empty:
-        st.info("Không có mã nào ở cách hiển thị này.")
-    else:
-        event = st.dataframe(
-            table.style.format({"rank": "{:.0f}", "mom": arrow_pct(1), "mom_ref": arrow_pct(1), "value": lambda v: vn(v, 1),
-                                "foreign": arrow_pct(1)}, decimal=",", thousands=".", na_rep="–")
-                 .map(lambda g: badge_style(STATUS_BADGE.get(g, "muted")), subset=["status"])
-                 .map(sign_color, subset=["mom", "mom_ref", "foreign"]),
-            hide_index=True, height=438, key=f"screen_tbl_{view}", on_select="rerun", selection_mode="single-row",
-            alt="Bảng xếp hạng bộ lọc cổ phiếu HOSE",
-            column_config={
-                "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
-                "status": st.column_config.TextColumn("Trạng thái", width=130),
-                "flags": st.column_config.TextColumn("Cờ", width=170, help="Sát ngưỡng, Bước nhảy, NN vượt GT: xem mục Cách đọc trang này"),
-                "rank": st.column_config.ProgressColumn("Xếp hạng ĐL", min_value=0, max_value=100, format="%.0f", width=100, color=HUE,
-                                                        help="Thứ hạng phần trăm của lợi suất 6-1 trong nhóm Đạt (giá SSI điều chỉnh)"),
-                "mom": st.column_config.NumberColumn("Lợi suất 6-1", width=90, help="Từ 6 tháng trước đến 1 tháng trước, tính theo mốc lịch"),
-                "mom_ref": st.column_config.NumberColumn("3 tháng (tham khảo)", width=110, help="Lợi suất 3 tháng đến ngày tham chiếu; không vào xếp hạng"),
-                "value": st.column_config.NumberColumn("GT khớp trung vị (tỷ)", width=130, help="Trung vị giá trị khớp mỗi ngày trong các ngày đủ, ngày không giao dịch tính 0"),
-                "days": st.column_config.TextColumn("Ngày GD", width=70, help="Số ngày có giao dịch trên số ngày đủ"),
-                "foreign": st.column_config.NumberColumn("NN ròng/GTGD", width=100, help="Tổng ròng nước ngoài chia tổng giá trị khớp cả cửa sổ. Chỉ tham khảo"),
-                "radar": st.column_config.TextColumn("Radar (VN30)", width=100, help="Mức LRS lần chụp cuối phiên NEO mới nhất; chỉ có cho mã VN30"),
-                "reason": st.column_config.TextColumn("Lý do cổng"),
-            },
-        )
-        sel = event.selection.rows if event is not None else []
-        if sel:
-            st.switch_page("overview.py", query_params={"xem": str(table["symbol"].iloc[sel[0]])})
+with results:
+    with st.container(border=True, key="panel_screen"):
+        st.subheader(f"Kết quả lọc: {len(table)} mã", anchor=False,
+                     help="Xếp hạng động lượng = thứ hạng phần trăm (0-100) của lợi suất từ 6 tháng trước đến 1 tháng trước, chỉ trong nhóm Đạt. "
+                          "Đơn nhân tố, chưa điều chỉnh biến động. Cột nước ngoài và Radar chỉ để tham khảo.")
+        qd, qt = info.get("quote_day"), info.get("quote_ts")
+        st.caption(f"Chọn một dòng để mở biểu đồ nến của mã. Giá và thay đổi giá lấy từ bảng giá NEO ngày {pd.Timestamp(qd):%d/%m}"
+                   + (f" lúc {pd.Timestamp(qt):%H:%M}" if qt is not None and not pd.isna(qt) else "") + ".")
+        if table.empty:
+            st.info("Không có mã nào thỏa các tiêu chí. Nới bớt tiêu chí hoặc bấm Đặt lại tiêu chí.")
+        else:
+            event = st.dataframe(
+                table.style.format({"rank": "{:.0f}", "mom": arrow_pct(1), "mom_ref": arrow_pct(1), "value": lambda v: vn(v, 1),
+                                    "foreign": arrow_pct(1), "price": lambda v: vn(v, 2), "chg": arrow_pct(2)},
+                                   decimal=",", thousands=".", na_rep="–")
+                     .map(lambda g: badge_style(STATUS_BADGE.get(g, "muted")), subset=["status"])
+                     .map(sign_color, subset=["mom", "mom_ref", "foreign", "chg"]),
+                hide_index=True, height=520, key=f"screen_tbl_{len(table)}_{table['symbol'].iloc[0]}", on_select="rerun",
+                selection_mode="single-row", alt="Bảng kết quả bộ lọc cổ phiếu HOSE",
+                column_config={
+                    "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
+                    "status": st.column_config.TextColumn("Trạng thái", width=130),
+                    "flags": st.column_config.TextColumn("Cờ", width=170, help="Sát ngưỡng, Bước nhảy, NN vượt GT: xem mục Cách đọc trang này"),
+                    "rank": st.column_config.ProgressColumn("Xếp hạng ĐL", min_value=0, max_value=100, format="%.0f", width=100, color=HUE,
+                                                            help="Thứ hạng phần trăm của lợi suất 6-1 trong nhóm Đạt (giá SSI điều chỉnh)"),
+                    "mom": st.column_config.NumberColumn("Lợi suất 6-1", width=90, help="Từ 6 tháng trước đến 1 tháng trước, tính theo mốc lịch"),
+                    "mom_ref": st.column_config.NumberColumn("3 tháng (tham khảo)", width=110, help="Lợi suất 3 tháng đến ngày tham chiếu; không vào xếp hạng"),
+                    "value": st.column_config.NumberColumn("GT khớp trung vị (tỷ)", width=130, help="Trung vị giá trị khớp mỗi ngày trong các ngày đủ, ngày không giao dịch tính 0"),
+                    "days": st.column_config.TextColumn("Ngày GD", width=70, help="Số ngày có giao dịch trên số ngày đủ"),
+                    "foreign": st.column_config.NumberColumn("NN ròng/GTGD", width=100, help="Tổng ròng nước ngoài chia tổng giá trị khớp cả cửa sổ. Chỉ tham khảo"),
+                    "price": st.column_config.NumberColumn("Giá (nghìn đ)", width=90),
+                    "chg": st.column_config.NumberColumn("Thay đổi", width=80, help="So với giá tham chiếu ở lần chụp bảng giá mới nhất"),
+                    "radar": st.column_config.TextColumn("Radar (VN30)", width=100, help="Mức LRS lần chụp cuối phiên NEO mới nhất; chỉ có cho mã VN30"),
+                    "reason": st.column_config.TextColumn("Lý do cổng"),
+                },
+            )
+            sel = event.selection.rows if event is not None else []
+            if sel:
+                st.switch_page("overview.py", query_params={"xem": str(table["symbol"].iloc[sel[0]])})
 
-with right, st.container(border=True, key="panel_map"):
-    st.subheader("Động lượng và thanh khoản", anchor=False,
-                 help="Mỗi chấm là một mã Đạt có động lượng. Ngang: lợi suất 6-1. Dọc: trung vị giá trị khớp (thang log). Đường ngang là ngưỡng.")
-    pts = r[r["mom_rank"].notna()]
-    if pts.empty:
-        st.caption("Chưa đủ dữ liệu để vẽ.")
-    else:
-        top = pts.nlargest(10, "mom_rank")["symbol"]
-        lab = pts["symbol"].where(pts["symbol"].isin(top), "")
-        fig = go.Figure(go.Scatter(
-            x=pts["mom"] * 100, y=pts["median_value"] / 1e9, mode="markers+text", text=lab, textposition="top center",
-            textfont=dict(size=10, color=INK), customdata=pts["symbol"],
-            marker=dict(size=8, color=HUE, line=dict(color=PANEL, width=1)),
-            hovertemplate="%{customdata}<br>Lợi suất 6-1 %{x:+.1f}%<br>GT khớp trung vị %{y:,.1f} tỷ<extra></extra>"))
-        fig.add_hline(y=T / 1e9, line=dict(color=BORDER, width=1, dash="dot"))
-        fig.add_vline(x=0, line=dict(color=BORDER, width=1))
-        fig.update_xaxes(title=dict(text="Lợi suất 6-1 (%)", font=dict(size=11, color=MUTED)), gridcolor=GRID, zeroline=False, ticksuffix="%")
-        fig.update_yaxes(title=dict(text="GT khớp trung vị (tỷ đồng, thang log)", font=dict(size=11, color=MUTED)), gridcolor=GRID,
-                         zeroline=False, type="log")
-        fig.update_xaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
-        fig.update_yaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
-        base_layout(fig, 420)
-        fig.update_layout(showlegend=False, margin=dict(l=56, r=12, t=24, b=48))
-        st.plotly_chart(fig, config=CHART_CONFIG, theme=None, alt="Biểu đồ phân tán lợi suất 6-1 và giá trị khớp trung vị theo mã HOSE")
+    with st.container(border=True, key="panel_map"):
+        st.subheader("Động lượng và thanh khoản", anchor=False,
+                     help="Mỗi chấm là một mã trong kết quả lọc có xếp hạng. Ngang: lợi suất 6-1. Dọc: trung vị giá trị khớp (thang log). Đường ngang là ngưỡng.")
+        pts = shown[shown["mom_rank"].notna()]
+        if pts.empty:
+            st.caption("Không có mã có xếp hạng trong kết quả lọc để vẽ.")
+        else:
+            top = pts.nlargest(10, "mom_rank")["symbol"]
+            lab = pts["symbol"].where(pts["symbol"].isin(top), "")
+            fig = go.Figure(go.Scatter(
+                x=pts["mom"] * 100, y=pts["median_value"] / 1e9, mode="markers+text", text=lab, textposition="top center",
+                textfont=dict(size=10, color=INK), customdata=pts["symbol"],
+                marker=dict(size=8, color=HUE, line=dict(color=PANEL, width=1)),
+                hovertemplate="%{customdata}<br>Lợi suất 6-1 %{x:+.1f}%<br>GT khớp trung vị %{y:,.1f} tỷ<extra></extra>"))
+            fig.add_hline(y=T / 1e9, line=dict(color=BORDER, width=1, dash="dot"))
+            fig.add_vline(x=0, line=dict(color=BORDER, width=1))
+            fig.update_xaxes(title=dict(text="Lợi suất 6-1 (%)", font=dict(size=11, color=MUTED)), gridcolor=GRID, zeroline=False, ticksuffix="%")
+            fig.update_yaxes(title=dict(text="GT khớp trung vị (tỷ đồng, thang log)", font=dict(size=11, color=MUTED)), gridcolor=GRID,
+                             zeroline=False, type="log")
+            fig.update_xaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
+            fig.update_yaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
+            base_layout(fig, 380)
+            fig.update_layout(showlegend=False, margin=dict(l=56, r=12, t=24, b=48))
+            st.plotly_chart(fig, config=CHART_CONFIG, theme=None, alt="Biểu đồ phân tán lợi suất 6-1 và giá trị khớp trung vị theo mã HOSE")
 
 with st.expander("Phương pháp và giới hạn", icon=":material/menu_book:"):
     st.markdown(
         f"""
 **1. Cổng thanh khoản.** Ngưỡng T = vị thế dự kiến ÷ tỷ lệ tham gia tối đa vào giá trị khớp một phiên (hiện {vn(T / 1e9, 1)} tỷ đồng/ngày,
-tính từ vị thế dự kiến 250 triệu đồng và tỷ lệ tham gia tối đa 5%; đổi hai số này thì ngưỡng đổi). Mỗi mã lấy **trung vị** giá trị khớp mỗi ngày trên {len(days)} ngày đủ;
+tính từ vị thế dự kiến 250 triệu đồng và tỷ lệ tham gia tối đa 5%; đổi hai số này thì ngưỡng đổi). Mỗi mã lấy **trung vị** giá trị khớp mỗi ngày trên {len(days)} ngày đủ gần nhất (tối đa {section("universe")["window_days"]} ngày);
 ngày mã không giao dịch và ngày mã không có trong ảnh chụp đều tính là 0 (không bỏ khỏi mẫu), nên mã khớp lai rai không trông thanh khoản hơn thực tế.
 Trung vị từ T trở lên (đúng bằng T cũng được) và có giao dịch ít nhất 80% số ngày thì *Đạt*. *Sát ngưỡng* là cờ cho mã Đạt có trung vị dưới 1,25 lần T.
 Mã không thuộc dạng cổ phiếu 3 ký tự (ETF, chứng quyền) bị loại khỏi tập đánh giá.

@@ -216,7 +216,39 @@ def _pct_rank(s: pd.Series) -> pd.Series:
     return (s.rank(method="average") - 1) / (n - 1) * 100
 
 
-# 4. Ghép lại
+# 4. Lọc theo tiêu chí người dùng chọn (như bộ lọc của NEO Invest)
+FLAG_COLUMNS = {"Sát ngưỡng": "near", "Bước nhảy": "jump", "NN vượt GT": "foreign_over"}
+
+
+def filter_universe(df: pd.DataFrame, statuses: list[str] | None = None, ranges: dict[str, tuple[float | None, float | None]] | None = None,
+                    exclude_flags: list[str] | None = None, query: str = "") -> pd.DataFrame:
+    """Lọc kết quả screen_universe theo các tiêu chí người dùng chọn; chỉ lọc bớt, không đổi số nào.
+
+    statuses: chỉ giữ mã có `status` trong danh sách (None hoặc rỗng: không lọc theo nhãn). ranges: cột -> (từ, đến), bao gồm hai đầu; một đầu None là không
+    giới hạn đầu đó. Mã KHÔNG có giá trị ở cột đang lọc (NaN) bị loại, vì không thể nói nó thỏa điều kiện. exclude_flags: bỏ mã mang cờ trong danh sách
+    (tên cờ như FLAG_COLUMNS). query: giữ mã có chứa chuỗi này (không phân biệt hoa thường). Giữ nguyên thứ tự và thuộc tính của `df`."""
+    out = df
+    if statuses:
+        out = out[out["status"].isin(statuses)]
+    for col, (lo, hi) in (ranges or {}).items():
+        if lo is None and hi is None:
+            continue
+        v = pd.to_numeric(out[col], errors="coerce")
+        keep = v.notna()
+        if lo is not None:
+            keep &= v >= lo
+        if hi is not None:
+            keep &= v <= hi
+        out = out[keep]
+    for name in exclude_flags or []:
+        out = out[~(out[FLAG_COLUMNS[name]] == True)]  # noqa: E712  (NaN nghĩa là không có thông tin, không bị coi là có cờ)
+    q = (query or "").strip().upper()
+    if q:
+        out = out[out["symbol"].str.upper().str.contains(q, regex=False)]
+    return out
+
+
+# 5. Ghép lại
 def screen_universe(board: pd.DataFrame, closes: pd.DataFrame, after: str | None = None) -> pd.DataFrame:
     """Bộ lọc toàn HOSE. board: các dòng bảng giá nhóm HOSE của MỌI ngày đã ghi (day, ts, symbol, total_value, foreign_*).
     closes: nến ngày SSI (symbol, day, close). Trả mỗi mã một dòng, đã sắp thứ tự; thuộc tính: days (ngày đủ), threshold, ref_day.
@@ -225,6 +257,9 @@ def screen_universe(board: pd.DataFrame, closes: pd.DataFrame, after: str | None
     hiện, không có xếp hạng). mom_rank = xếp hạng động lượng 0-100 (đơn nhân tố, chưa điều chỉnh biến động) CHỈ trong nhóm Đạt có động lượng.
     Cột nước ngoài chỉ để tham khảo, không vào xếp hạng ở v1."""
     days = full_days(board, after)
+    cap = section("universe")["window_days"]
+    if cap and len(days) > cap:
+        days = days[-int(cap):]                      # cửa sổ trượt: chỉ N ngày đủ gần nhất
     stocks = board[board["symbol"].map(is_stock_symbol)] if board is not None and not board.empty else board
     gate = liquidity_gate(stocks if stocks is not None else pd.DataFrame(), days,
                           symbols=sorted(set(stocks["symbol"])) if stocks is not None and not stocks.empty else [])

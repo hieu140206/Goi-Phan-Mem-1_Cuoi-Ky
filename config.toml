@@ -70,6 +70,7 @@ atc_done = "14:45"             # từ giờ này giá đã qua ATC, coi là giá
 position_vnd = 250_000_000     # vị thế dự kiến vào/ra mỗi mã (VND); đổi số này hoặc max_participation thì ngưỡng thanh khoản tự đổi
 max_participation = 0.05       # tối đa chiếm chừng này giá trị khớp một phiên; ngưỡng T = position_vnd / max_participation = 5 tỷ
 near_factor = 1.25             # mã Đạt có trung vị trong [T, near_factor x T) gắn cờ "Sát ngưỡng" (cờ cảnh báo, không đổi nhãn)
+window_days = 20               # chỉ dùng chừng này ngày đủ GẦN NHẤT làm mẫu giá trị khớp (ghi lâu thì cửa sổ không dài mãi, ngày cũ rơi ra)
 min_days_ratio = 0.8           # cần ít nhất chừng này tỷ lệ số ngày đủ có giao dịch, ít hơn là "Ít giao dịch" (12 ngày: tối thiểu 10)
 full_day_after = "14:50"       # ngày chỉ tính là ĐỦ khi lần chụp bảng giá cuối của ngày từ giờ này (đã có khớp ATC); 14:45:00 vẫn chưa có ATC
 momentum_window_months = 6     # động lượng 6-1: lợi suất từ T-6 tháng đến T-1 tháng (mặc định phổ biến, chưa kiểm trên dữ liệu dự án)
