@@ -30,7 +30,7 @@ from charts import intraday_caption, intraday_figure  # noqa: E402
 from flipgrid import grid_state, tile_weights, treemap_layout  # noqa: E402
 from flipgrid_component import flip_treemap  # noqa: E402
 from limits import limits_markdown  # noqa: E402
-from data.special_days import describe  # noqa: E402
+from data.special_days import describe, market_holiday_dates  # noqa: E402
 from model_config import section  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from shared import (analyzed_data, available_sources, liquidity_ranking, load_source,  # noqa: E402
@@ -304,6 +304,16 @@ if len(sp_in_view):
         '<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
         + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
         "cho các ngày khác (config.toml, special_days.exclude_from_baseline).</div>"))
+
+# Ngày nghỉ giao dịch (data/special_days.csv, type market_holiday) từ đầu khoảng đang xem đến hôm nay: giải thích vì sao không có phiên và không có dữ liệu.
+_today = pd.Timestamp.now(tz=TZ).date()
+_hol = [h for h in market_holiday_dates() if view["ts"].dt.date.min() <= h <= _today and h not in set(all_df["ts"].dt.date)]
+if _hol:
+    data_notes.append((
+        "ngày nghỉ giao dịch " + ", ".join(f"{h:%d/%m}" for h in _hol),
+        '<div class="notice">Ngày nghỉ giao dịch: ' + ", ".join(f"{h:%d/%m/%Y}" for h in _hol)
+        + ". Sàn không có phiên nên không có dữ liệu (bảng giá không nhấp nháy như mọi ngày); không phải lỗi của bộ ghi. "
+        "Danh sách này lấy từ data/special_days.csv do sinh viên ghi, chưa đối chiếu lịch chính thức của HOSE.</div>"))
 
 # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
 locked = report["limit_locked"]

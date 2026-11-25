@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 
 from analytics.baseline import detect_anomalies_tod
-from data.special_days import (add_expiry_dates, derivative_expiry_dates, describe, load_special_days, special_day_map,
-                               third_thursday)
+from data.special_days import (add_expiry_dates, derivative_expiry_dates, describe, is_market_holiday, load_special_days,
+                               market_holiday_dates, no_data_message, special_day_map, third_thursday)
 from finance.liquidity import add_liquidity_metrics
 
 TZ = "Asia/Ho_Chi_Minh"
@@ -106,3 +106,39 @@ def test_excluding_the_special_day_can_push_a_later_day_below_the_session_minimu
     assert detect_anomalies_tod(df)["baseline_status"].iloc[-1] == "Đủ dữ liệu"
     excl = detect_anomalies_tod(df, no_baseline_days={dt.date(2026, 11, 3)})
     assert excl["baseline_status"].iloc[-1] == "Chưa đủ dữ liệu" and "hiện có 4" in excl["baseline_reason"].iloc[-1]
+
+
+# ---- ngày nghỉ giao dịch (để giao diện giải thích vì sao không có dữ liệu) ----
+def test_market_holiday_is_read_from_the_file_only(tmp_path):
+    p = tmp_path / "s.csv"
+    p.write_text("date,type,note\n2026-11-24,market_holiday,nghỉ\n2026-11-19,derivative_expiry,\n", encoding="utf-8")
+    assert is_market_holiday(dt.date(2026, 11, 24), p)
+    assert not is_market_holiday(dt.date(2026, 11, 19), p)             # ngày đáo hạn không phải ngày nghỉ
+    assert not is_market_holiday(dt.date(2026, 11, 25), p)             # không tự đoán: ngày không ghi thì không phải ngày nghỉ
+    assert not is_market_holiday(dt.date(2026, 11, 24), tmp_path / "khong_co.csv")
+    assert describe("market_holiday") == "ngày nghỉ giao dịch"
+
+
+def test_market_holiday_dates_lists_only_holidays_sorted(tmp_path):
+    p = tmp_path / "s.csv"
+    p.write_text("date,type,note\n2026-12-01,market_holiday,\n2026-11-24,market_holiday,\n2026-11-19,derivative_expiry,\n", encoding="utf-8")
+    assert market_holiday_dates(p) == [dt.date(2026, 11, 24), dt.date(2026, 12, 1)]
+    assert market_holiday_dates(tmp_path / "khong_co.csv") == []
+
+
+def test_real_file_lists_24_11_as_holiday_and_it_does_not_disturb_analysis_days():
+    assert is_market_holiday(dt.date(2026, 11, 24))
+    df = load_special_days()
+    assert dt.date(2026, 11, 19) in set(df[df["type"] == "derivative_expiry"]["date"])
+
+
+def test_no_data_message_explains_holiday_but_not_ordinary_missing_days(tmp_path):
+    p = tmp_path / "s.csv"
+    p.write_text("date,type,note\n2026-11-24,market_holiday,nghỉ\n", encoding="utf-8")
+    shown, have = dt.date(2026, 11, 20), {dt.date(2026, 11, 20)}
+    holiday = no_data_message(dt.date(2026, 11, 24), shown, have, p)
+    assert "ngày nghỉ giao dịch" in holiday and "không nhấp nháy" in holiday and "20/11/2026" in holiday
+    ordinary = no_data_message(dt.date(2026, 11, 25), shown, have, p)                 # không ghi là ngày nghỉ: không đoán
+    assert "ngày nghỉ" not in ordinary and ordinary.startswith("Chưa có dữ liệu phiên 25/11/2026")
+    has_data = no_data_message(dt.date(2026, 11, 20), dt.date(2026, 11, 19), have, p)
+    assert has_data.startswith("Đang xem phiên 19/11/2026")

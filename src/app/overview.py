@@ -30,6 +30,7 @@ from data.storage import (data_days, latest_ts, load_board, load_depth_market, l
 from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
+from data.special_days import no_data_message  # noqa: E402
 from theme import (BORDER, CHART_CONFIG, FAINT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, how_to_read,  # noqa: E402
                    naive_vn, vn)
 
@@ -205,8 +206,7 @@ how_to_read(
     "**Độ sâu, độ rộng, thanh khoản**: thị trường đang dày hay mỏng, bao nhiêu mã tăng và giảm.",
     "Số lấy từ lần ghi gần nhất. Bật **Trực tiếp** ở thanh bên để trang tự cập nhật khi bộ ghi đang chạy.")
 if day != trade_day:
-    msg = (f"Chưa có dữ liệu phiên {trade_day:%d/%m/%Y}. Đang hiển thị phiên {day:%d/%m/%Y} đã ghi." if trade_day not in days
-           else f"Đang xem phiên {day:%d/%m/%Y} đã ghi, không phải phiên hiện tại.")
+    msg = no_data_message(trade_day, day, days)
     st.html(f'<div class="notice" style="margin-top:10px">{msg}</div>')
 
 

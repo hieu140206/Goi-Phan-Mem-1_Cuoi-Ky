@@ -2,3 +2,4 @@ date,type,note
 2026-10-15,derivative_expiry,"Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"
 2026-11-19,derivative_expiry,"Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"
 2026-12-17,derivative_expiry,"Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"
+2026-11-24,market_holiday,"Ngày nghỉ giao dịch theo sinh viên (25/11/2026): bộ ghi chỉ nhận tin marketSession, không có tin cổ phiếu; chưa đối chiếu lịch chính thức"

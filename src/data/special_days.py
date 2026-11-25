@@ -20,9 +20,10 @@ from model_config import section
 
 ROOT = Path(__file__).resolve().parents[2]
 log = logging.getLogger(__name__)
-DAY_TYPES = ("derivative_expiry", "etf_rebalance", "index_review", "ex_rights", "earnings", "other")
+DAY_TYPES = ("derivative_expiry", "etf_rebalance", "index_review", "ex_rights", "earnings", "market_holiday", "other")
 TYPE_VI = {"derivative_expiry": "đáo hạn phái sinh", "etf_rebalance": "cơ cấu ETF", "index_review": "review chỉ số",
-           "ex_rights": "chốt quyền", "earnings": "công bố kết quả kinh doanh", "other": "khác"}
+           "ex_rights": "chốt quyền", "earnings": "công bố kết quả kinh doanh", "market_holiday": "ngày nghỉ giao dịch",
+           "other": "khác"}
 COLUMNS = ["date", "type", "note"]
 EXPIRY_NOTE = "Thứ Năm thứ ba của tháng (tính bằng code); nếu trùng ngày nghỉ lễ thì ngày đáo hạn thật có thể dời, cần kiểm tra"
 
@@ -93,6 +94,30 @@ def special_day_map(days: pd.DataFrame) -> dict[dt.date, str]:
 def describe(types: str) -> str:
     """'derivative_expiry,earnings' -> 'đáo hạn phái sinh, công bố kết quả kinh doanh' (để hiện trên giao diện)."""
     return ", ".join(TYPE_VI.get(t, t) for t in str(types).split(",") if t)
+
+
+def is_market_holiday(day: dt.date, path: str | Path | None = None) -> bool:
+    """True nếu `day` được ghi là ngày nghỉ giao dịch (type market_holiday) trong tệp ngày đặc biệt. Chỉ dựa vào tệp do sinh viên điền,
+    KHÔNG tự đoán lịch nghỉ lễ. Ngày nghỉ không có phiên nào để phân tích nên không ảnh hưởng mốc nền; chỉ dùng để giao diện giải thích vì sao không có dữ liệu."""
+    days = load_special_days(path)
+    return bool(((days["date"] == day) & (days["type"] == "market_holiday")).any()) if not days.empty else False
+
+
+def market_holiday_dates(path: str | Path | None = None) -> list[dt.date]:
+    """Các ngày ghi là ngày nghỉ giao dịch (type market_holiday) trong tệp, tăng dần. Chỉ lấy từ tệp, không tự đoán lịch nghỉ lễ."""
+    days = load_special_days(path)
+    return sorted(days.loc[days["type"] == "market_holiday", "date"]) if not days.empty else []
+
+
+def no_data_message(trade_day: dt.date, shown_day: dt.date, days_with_data: set | list, path: str | Path | None = None) -> str:
+    """Câu thông báo khi ngày đang xem khác ngày giao dịch hiện tại. Nếu ngày hiện tại chưa có dữ liệu và được ghi là ngày nghỉ giao dịch thì
+    nói rõ lý do (sàn không giao dịch nên bảng giá không nhấp nháy), không thì chỉ nói chưa có dữ liệu. Không tự đoán ngày nghỉ."""
+    if trade_day not in set(days_with_data):
+        if is_market_holiday(trade_day, path):
+            return (f"Hôm nay ({trade_day:%d/%m/%Y}) là ngày nghỉ giao dịch nên sàn không có giao dịch và không có dữ liệu mới; bảng giá vì vậy "
+                    f"không nhấp nháy như mọi ngày. Đang hiển thị phiên {shown_day:%d/%m/%Y} đã ghi.")
+        return f"Chưa có dữ liệu phiên {trade_day:%d/%m/%Y}. Đang hiển thị phiên {shown_day:%d/%m/%Y} đã ghi."
+    return f"Đang xem phiên {shown_day:%d/%m/%Y} đã ghi, không phải phiên hiện tại."
 
 
 def add_expiry_dates(path: str | Path, start: dt.date, end: dt.date) -> int:
