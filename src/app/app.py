@@ -116,7 +116,7 @@ pages = st.navigation([PAGE_OVERVIEW, PAGE_RADAR, PAGE_SCREEN, PAGE_STOCK], posi
 with st.sidebar:
     st.html(f'<div class="brand">{BRAND_MARK}<div><b>Thị trường VN</b>'
             '<span>Dữ liệu NEO API · VPBankS</span></div></div>')
-    if pages.title != PAGE_OVERVIEW.title:           # Tổng quan đặt công tắc này ở thanh đầu trang
+    if pages.title not in (PAGE_OVERVIEW.title, PAGE_RADAR.title):   # Tổng quan đặt công tắc này ở thanh đầu trang, Radar ở bảng bên trái
         group("Cập nhật")
         st.toggle("Trực tiếp: tự cập nhật", key="live", help=LIVE_HELP)
 if st.session_state.get("live"):

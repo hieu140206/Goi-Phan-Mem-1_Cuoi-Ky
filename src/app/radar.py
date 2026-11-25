@@ -84,7 +84,20 @@ def _pick_from_ranking(key: str, syms: list[str]) -> None:
 settings = get_settings()
 sources = available_sources()
 
-with st.sidebar:
+# Trang rộng tràn viền như Tổng quan; điều khiển nằm ở bảng bên trái (như trang Bộ lọc) thay vì thanh bên.
+st.html('<style>[data-testid="stMainBlockContainer"] { max-width: none; padding-left: 24px; padding-right: 24px; }'
+        # Bảng điều khiển đứng yên khi cuộn trang (màn hình đủ rộng); tự cuộn bên trong nếu cao hơn màn hình; màn hẹp thì xếp trên nội dung.
+        '@media (min-width: 900px) { [data-testid="stLayoutWrapper"]:has(> .st-key-panel_ctl) { position: sticky; top: 64px; align-self: flex-start;'
+        ' max-height: calc(100vh - 80px); overflow-y: auto; } }'
+        '@media (max-width: 899px) { [data-testid="stHorizontalBlock"]:has(.st-key-panel_ctl) { flex-wrap: wrap; }'
+        ' [data-testid="stHorizontalBlock"]:has(.st-key-panel_ctl) > [data-testid="stColumn"] { flex: 1 1 100%; min-width: 100%; } }</style>')
+ctl_col, main_col = st.columns([3, 9], gap="small")
+ctl = ctl_col.container(border=True, key="panel_ctl")
+LIVE_HELP = "Tự đọc lại dữ liệu khi có bản ghi mới. Dữ liệu được chụp mỗi phút nên trễ tối đa khoảng 1 phút."
+
+with ctl:
+    group("Cập nhật")
+    st.toggle("Trực tiếp: tự cập nhật", key="live", help=LIVE_HELP)
     group("Dữ liệu")
     source = sources[0] if sources else None
     if source is not None:
@@ -93,8 +106,8 @@ with st.sidebar:
     st.session_state["source"] = source  # các trang khác (Bộ lọc, Chi tiết mã) dùng cùng nguồn
 
 if source is None:
-    st.title("Radar thanh khoản VN30", anchor=False)
-    st.error(
+    main_col.title("Radar thanh khoản VN30", anchor=False)
+    main_col.error(
         "Chưa tìm thấy dữ liệu. Cần bật bộ ghi dữ liệu NEO trong giờ giao dịch. "
         "Đang bật chế độ Trực tiếp thì trang tự hiện dữ liệu khi bộ ghi ghi xong phút đầu tiên.",
         title="Chưa có dữ liệu",
@@ -106,13 +119,13 @@ db_path_str = str(settings.db_path)
 try:
     all_df, report = load_source(source, db_path_str, version)
 except Exception as exc:  # hiển thị lỗi rõ ràng thay vì để ứng dụng treo
-    st.title("Radar thanh khoản VN30", anchor=False)
-    st.error(f"Không đọc được dữ liệu: {type(exc).__name__}. Kiểm tra tệp dữ liệu và thử lại.")
+    main_col.title("Radar thanh khoản VN30", anchor=False)
+    main_col.error(f"Không đọc được dữ liệu: {type(exc).__name__}. Kiểm tra tệp dữ liệu và thử lại.")
     st.stop()
 
 if all_df.empty:
-    st.title("Radar thanh khoản VN30", anchor=False)
-    st.warning(
+    main_col.title("Radar thanh khoản VN30", anchor=False)
+    main_col.warning(
         "Nguồn dữ liệu đã chọn không có lần chụp nào trong phiên khớp lệnh liên tục "
         "(09:15-11:30 và 13:00-14:30) sau khi làm sạch."
     )
@@ -128,7 +141,7 @@ def day_label(d) -> str:
 
 symbols_all = sorted(all_df["symbol"].unique())
 
-with st.sidebar:
+with ctl:
     mode = st.segmented_control("Chế độ xem", [MODE_SUMMARY, MODE_REPLAY], default=MODE_SUMMARY, required=True,
                                 format_func=lambda m: "Tổng hợp" if m == MODE_SUMMARY else "Phát lại phiên",
                                 help="Phát lại cho phép tua một phiên đã ghi từng bước, dùng khi sàn đã đóng cửa.",
@@ -163,8 +176,8 @@ st.session_state["params"] = {"threshold": threshold, "max_sessions": max_sessio
                               "w_spread": w_spread, "w_depth": w_depth, "w_imb": w_imb}
 
 if not picked:
-    st.title("Radar thanh khoản VN30", anchor=False)
-    st.info("Chọn ít nhất một mã ở thanh bên để xem kết quả.")
+    main_col.title("Radar thanh khoản VN30", anchor=False)
+    main_col.info("Chọn ít nhất một mã ở bảng bên trái để xem kết quả.")
     st.stop()
 
 analyzed = analyzed_data(source)
@@ -172,7 +185,7 @@ analyzed = analyzed_data(source)
 # ---------- chế độ phát lại ----------
 replay_day = cut_ts = None
 if mode == MODE_REPLAY:
-    with st.sidebar:
+    with ctl:
         group("Phát lại")
         replay_day = st.selectbox("Phiên", sorted(days, reverse=True), format_func=day_label)
         day_ts = (analyzed.loc[analyzed["ts"].dt.date == replay_day, "ts"].drop_duplicates().sort_values().tolist())
@@ -209,8 +222,8 @@ else:
 
 view = analyzed[mask]
 if view.empty:
-    st.title("Radar thanh khoản VN30", anchor=False)
-    st.info("Không có dữ liệu trong khoảng phiên và mã đã chọn. Mở rộng khoảng ngày hoặc chọn thêm mã.")
+    main_col.title("Radar thanh khoản VN30", anchor=False)
+    main_col.info("Không có dữ liệu trong khoảng phiên và mã đã chọn. Mở rộng khoảng ngày hoặc chọn thêm mã.")
     st.stop()
 
 ranking, alerts, alert_counts = liquidity_ranking(view)
@@ -226,339 +239,340 @@ top_alert_n = int(alert_counts.max()) if len(alert_counts) else 0
 top_alert_ratio = (alerts.loc[(alerts["symbol"] == top_alert_sym) & alerts["alert_type"].str.contains("Spread"),
                               "spread_ratio"].max() if n_alerts else np.nan)
 
-# ---------- đầu trang ----------
-last_ts = cut_ts if cut_ts is not None else all_df["ts"].max()
+with main_col:
+    # ---------- đầu trang ----------
+    last_ts = cut_ts if cut_ts is not None else all_df["ts"].max()
 
-if n_events:
-    finding = (f'<span class="neg">{n_events} đợt cảnh báo ở {n_alert_syms} mã.</span> '
-               f"{top_alert_sym} bị cảnh báo nhiều nhất ({top_alert_n} đợt)")
-    finding += (f", spread có lúc gấp {vn(top_alert_ratio, 1)} lần mức thường lệ của mã." if np.isfinite(top_alert_ratio)
-                else ".")
-else:
-    finding = "Không có cảnh báo nào trong khoảng đã chọn."
-finding += f" Thanh khoản yếu nhất nhóm: {weakest['symbol']}."
-
-if mode == MODE_REPLAY:
-    stamp = f"Đang phát lại {replay_day:%d/%m/%Y}<br>đến {last_ts:%H:%M} (UTC+7)"
-else:
-    age_min = max((pd.Timestamp.now(tz=TZ) - all_df["ts"].max()).total_seconds() / 60, 0)  # lệch đồng hồ không ra số âm
-    link = f"đang nhận dữ liệu, cách {age_min:.0f} phút" if age_min <= 5 else "không có dữ liệu mới"
-    stamp = f"Bản ghi cuối {last_ts:%d/%m/%Y %H:%M} (UTC+7)<br>Kết nối: {link}" + (" · tự cập nhật" if st.session_state.get("live") else "")
-
-with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
-    with st.container(width="stretch"):
-        st.title("Radar thanh khoản VN30", anchor=False)
-        st.caption("Dành cho nhà đầu tư cá nhân và người quản trị rủi ro: cho biết mã VN30 nào đang khó mua bán, "
-                   "và khi nào spread hoặc độ sâu sổ lệnh lệch khỏi mức thường lệ của chính mã đó.")
-        st.html(f'<p class="finding">{finding}</p>')
-    with st.container(horizontal=True, width="content", vertical_alignment="center", gap="small"):
-        st.html(f'<div class="stamp">{stamp}</div>', width="content")
-        st.button("Tải lại", icon=":material/refresh:",
-                  help="Đọc lại tệp hoặc cơ sở dữ liệu để lấy các bản ghi mới nhất.")
-
-how_to_read(
-    "Đọc từ trên xuống: **bốn chỉ số chính**, **bảng xếp hạng thanh khoản** (điểm cả kỳ, điểm 30 phút gần nhất, điểm rủi ro LRS), "
-    "**cảnh báo gần nhất**, **chi phí giao dịch theo giờ** và biểu đồ diễn biến của từng mã.",
-    "**Đợt cảnh báo**: spread mở rộng hoặc độ sâu mỏng bất thường so với chính mã đó ở cùng khung giờ, kéo dài ít nhất hai lần chụp liên tiếp. "
-    "Mức **Chú ý** và **Cao** là mức nghiêm trọng (của đợt cảnh báo, hoặc của điểm LRS so với ngưỡng theo quá khứ).",
-    "**Phát lại phiên** (thanh bên) tua từng bước trong một ngày đã ghi, kèm bản đồ nhiệt thẻ lật.",
-    "Mục **Chi tiết ghi chú** ở dưới các chỉ số cho biết nguồn dữ liệu (NEO hay SSI), phiên nào chưa đủ dữ liệu và chất lượng dữ liệu.")
-
-notes = []
-notes.append(f"{vn(len(view))} lần chụp sổ lệnh của {view['symbol'].nunique()} mã")
-dropped_session = report.get("dropped_session", 0)
-if dropped_session:
-    notes.append(f"đã loại {vn(dropped_session)} lần chụp ngoài phiên khớp lệnh liên tục")
-
-# Các ghi chú về dữ liệu gom lại: nhãn ngắn hiện ngay dưới các chỉ số chính, nội dung đầy đủ nằm trong một mục thu gọn.
-data_notes: list[tuple[str, str]] = []
-
-# Phiên lấy từ SSI: nói rõ nguồn, vì khác NEO ở mấy điểm (xem shared.load_source).
-view_ssi = sorted(d for d in view["ts"].dt.date.unique() if d in ssi_days)
-if view_ssi:
-    data_notes.append((
-        "phiên " + ", ".join(f"{d:%d/%m}" for d in view_ssi) + " lấy từ SSI",
-        '<div class="notice"><b>Nguồn SSI:</b> phiên ' + ", ".join(f"{d:%d/%m}" for d in view_ssi)
-        + " không có dữ liệu NEO (bộ ghi NEO không chạy đủ phiên) nên dùng sổ lệnh 3 mức giá của SSI, lấy mẫu mỗi phút "
-        "như NEO. SSI không có giá khớp và tổng khối lượng khớp nên không tính tỷ lệ hấp thụ và cờ không khớp cho phiên này. "
-        "Phiên SSI không được dùng làm mốc so sánh cho các phiên NEO, nên số của các phiên NEO không đổi; bản thân "
-        "phiên SSI được so với mốc là các phiên NEO trước đó. Đối chiếu ngày 11/11 (có cả hai nguồn): giá 3 mức khớp NEO 99,8%, "
-        "khối lượng 3 mức khớp 96 đến 99%.</div>"))
-
-# Phiên chưa có baseline (chưa đủ phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
-no_base_days = sorted(d for d, g in view.groupby(view["ts"].dt.date) if g["n_hist"].isna().all())
-if no_base_days:
-    data_notes.append((
-        f"{len(no_base_days)} phiên chưa đủ dữ liệu mốc nền",
-        '<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
-        + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
-        "nên chưa có cảnh báo và điểm LRS. "
-        "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>"))
-
-# Ngày đặc biệt (đáo hạn phái sinh, cơ cấu ETF...): vẫn tính bình thường nhưng nói rõ và không dùng làm mốc nền.
-sp_in_view = view[view["special_day"] != ""].groupby(view["ts"].dt.date)["special_day"].first()
-if len(sp_in_view):
-    data_notes.append((
-        "ngày đặc biệt " + ", ".join(f"{d:%d/%m}" for d in sp_in_view.index),
-        '<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
-        + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
-        "cho các ngày khác.</div>"))
-
-# Ngày nghỉ giao dịch (data/special_days.csv, type market_holiday) từ đầu khoảng đang xem đến hôm nay: giải thích vì sao không có phiên và không có dữ liệu.
-_today = pd.Timestamp.now(tz=TZ).date()
-_hol = [h for h in market_holiday_dates() if view["ts"].dt.date.min() <= h <= _today and h not in set(all_df["ts"].dt.date)]
-if _hol:
-    data_notes.append((
-        "ngày nghỉ giao dịch " + ", ".join(f"{h:%d/%m}" for h in _hol),
-        '<div class="notice">Ngày nghỉ giao dịch: ' + ", ".join(f"{h:%d/%m/%Y}" for h in _hol)
-        + ". Sàn không có phiên nên không có dữ liệu (bảng giá không nhấp nháy như mọi ngày); không phải lỗi của bộ ghi. "
-        "Danh sách này do sinh viên tự ghi, chưa đối chiếu lịch chính thức của HOSE.</div>"))
-
-# Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
-locked = report["limit_locked"]
-lk_day = locked["ts"].dt.date
-if mode == MODE_REPLAY:
-    locked = locked[(lk_day == replay_day) & (locked["ts"] <= cut_ts)]
-else:
-    locked = locked[(lk_day >= d_from) & (lk_day <= d_to)]
-locked = locked[locked["symbol"].isin(picked)]
-if not locked.empty:
-    parts = [f"<b>{s}</b> khóa {side} {len(g)} lần ({g['ts'].min():%d/%m %H:%M}–{g['ts'].max():%H:%M})"
-             for (s, side), g in locked.sort_values("ts").groupby(["symbol", "side"])]
-    data_notes.append((
-        "khóa trần/sàn: " + ", ".join(sorted(locked["symbol"].unique())),
-        '<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
-        "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>"))
-
-alert_sub = (f'{vn(n_alerts)} lần chụp · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
-             if n_events else "không có mã nào vượt ngưỡng")
-st.html(
-    '<div class="kpis">'
-    f'<div class="kpi lead"><div class="l">Đợt cảnh báo trong kỳ</div><div class="v">{n_events}</div>'
-    f'<div class="s">{alert_sub}</div></div>'
-    f'<div class="kpi"><div class="l">Spread tương đối trung vị</div>'
-    f'<div class="v">{vn(view["rel_spread_bps"].median(), 1)}<small>bps</small></div>'
-    '<div class="s">chi phí mua rồi bán ngay</div></div>'
-    f'<div class="kpi"><div class="l">Độ sâu 3 mức giá trung vị</div>'
-    f'<div class="v">{vn(view["depth_value"].median() / 1e6, 0)}<small>triệu đ</small></div>'
-    '<div class="s">tiền chờ khớp ở 3 mức mua và bán</div></div>'
-    f'<div class="kpi"><div class="l">Thanh khoản yếu nhất nhóm</div>'
-    f'<div class="v">{weakest["symbol"]}<small>{vn(weakest["score"], 0)}/100</small></div>'
-    f'<div class="s">điểm thấp nhất trong {len(ranking)} mã</div></div>'
-    "</div>"
-)
-
-# Dòng tóm tắt các ghi chú dữ liệu (luôn hiện, để vẫn thấy nguồn và giới hạn) và mục thu gọn chứa nội dung đầy đủ.
-st.caption("; ".join(notes).capitalize() + ".")
-qt = report["quality"]
-qt = qt[qt["symbol"].isin(picked)]
-if data_notes:
-    st.caption("Ghi chú về dữ liệu: " + " · ".join(label for label, _ in data_notes) + ". Mở mục bên dưới để xem chi tiết.")
-with st.expander("Chi tiết ghi chú và chất lượng dữ liệu" + (f" ({len(data_notes)} ghi chú)" if data_notes else ""),
-                 icon=":material/fact_check:"):
-    for _, html_note in data_notes:
-        st.html(html_note)
-    # Chất lượng dữ liệu theo mã: lần chụp không dùng được cho spread (đã loại) và lần chụp đáng ngờ (đã đánh cờ, vẫn dùng).
-    if qt.empty:
-        st.caption("Chưa có thống kê chất lượng cho các mã đã chọn.")
+    if n_events:
+        finding = (f'<span class="neg">{n_events} đợt cảnh báo ở {n_alert_syms} mã.</span> '
+                   f"{top_alert_sym} bị cảnh báo nhiều nhất ({top_alert_n} đợt)")
+        finding += (f", spread có lúc gấp {vn(top_alert_ratio, 1)} lần mức thường lệ của mã." if np.isfinite(top_alert_ratio)
+                    else ".")
     else:
-        st.markdown("**Chất lượng dữ liệu theo mã**")
-        st.caption(
-            f"Toàn bộ dữ liệu đã ghi. Không hợp lệ cho spread: {vn(qt['invalid'].sum())} trong {vn(qt['rows'].sum())} lần chụp "
-            f"({vn(qt['invalid'].sum() / max(qt['rows'].sum(), 1) * 100, 2)}%), đã loại khỏi xếp hạng, cảnh báo và mốc nền. Lần chụp đứng sau khoảng "
-            f"trống > 90 giây: {vn(qt['gaps'].sum())}; nghi dữ liệu cũ: {vn(qt['stale'].sum())} (chỉ đánh cờ, vẫn dùng).")
-        st.dataframe(
-            qt.sort_values("invalid_rate", ascending=False)[["symbol", "rows", "invalid_rate", "locked", "touch", "other", "gaps", "stale"]],
-            hide_index=True, height=260, alt="Bảng chất lượng dữ liệu theo mã",
-            column_config={
-                "symbol": st.column_config.TextColumn("Mã", width=56, pinned=True),
-                "rows": st.column_config.NumberColumn("Lần chụp", format="%d", width=80, help="Dòng ghi được trong phiên khớp lệnh liên tục"),
-                "invalid_rate": st.column_config.NumberColumn("Không hợp lệ %", format="%.2f", width=100,
-                                                              help="Tỷ lệ lần chụp không dùng được cho spread"),
-                "locked": st.column_config.NumberColumn("Khóa trần/sàn", format="%d", width=100, help="Một bên sổ lệnh trống"),
-                "touch": st.column_config.NumberColumn("Chạm trần/sàn", format="%d", width=100, help="Giá tốt nhất bằng trần hoặc sàn, còn đủ hai bên"),
-                "other": st.column_config.NumberColumn("Lỗi khác", format="%d", width=80, help="Sổ chéo, giá lỗi, trùng..."),
-                "gaps": st.column_config.NumberColumn("Sau khoảng trống", format="%d", width=110, help="Lần chụp đứng sau khoảng cách > 90 giây"),
-                "stale": st.column_config.NumberColumn("Nghi dữ liệu cũ", format="%d", width=110,
-                                                       help="Sổ lệnh không đổi nhiều lần chụp liền trong khi các mã khác vẫn đổi"),
-            })
+        finding = "Không có cảnh báo nào trong khoảng đã chọn."
+    finding += f" Thanh khoản yếu nhất nhóm: {weakest['symbol']}."
 
-# ---------- bản đồ nhiệt thẻ lật (chỉ khi phát lại một phiên) ----------
-if mode == MODE_REPLAY:
-    i_now = st.session_state["replay_idx"]
-    flip_syms = sorted(picked)
-    cur_state = grid_state(analyzed, flip_syms, cut_ts)
-    GRID_W, GRID_H = 100.0, 46.0   # tỷ lệ khung bản đồ nhiệt (rộng : cao)
-    layout = treemap_layout(tile_weights(analyzed, flip_syms, replay_day), GRID_W, GRID_H)
-    with st.container(border=True, key="panel_flipgrid"):
-        st.subheader(f"Bản đồ nhiệt thẻ lật · {cut_ts:%H:%M}", anchor=False)
-        st.caption("Mỗi ô là một mã, hiện điểm rủi ro thanh khoản LRS tại lần chụp đang xem. Diện tích ô theo độ sâu sổ lệnh "
-                   "trung vị của mã trong cả phiên (cố định khi phát). Nền: xanh nhạt = dễ giao dịch hơn thường lệ, xám = bình "
-                   "thường, cam rồi đỏ = khó hơn (LRS càng cao càng rủi ro). Viền cam đậm = mức Chú ý, viền đỏ đậm = mức Cao "
-                   "(theo ngưỡng của Radar). Viền nét đứt = chưa đủ dữ liệu so với các phiên trước. Sang lần chụp kế tiếp, "
-                   "ô nào đổi điểm sẽ lật. Bấm vào ô để mở hồ sơ mã.")
-        # Component giữ nguyên các ô giữa các nhịp; JS so với trạng thái đang hiện và chỉ lật ô nào đổi.
-        flip_treemap(cur_state, layout, reset_key=f"{replay_day}|{','.join(flip_syms)}", step=i_now,
-                     width=GRID_W, height=GRID_H, flip_ms=450, link="ma", animate=st.session_state.get("flip_on", True))
+    if mode == MODE_REPLAY:
+        stamp = f"Đang phát lại {replay_day:%d/%m/%Y}<br>đến {last_ts:%H:%M} (UTC+7)"
+    else:
+        age_min = max((pd.Timestamp.now(tz=TZ) - all_df["ts"].max()).total_seconds() / 60, 0)  # lệch đồng hồ không ra số âm
+        link = f"đang nhận dữ liệu, cách {age_min:.0f} phút" if age_min <= 5 else "không có dữ liệu mới"
+        stamp = f"Bản ghi cuối {last_ts:%d/%m/%Y %H:%M} (UTC+7)<br>Kết nối: {link}" + (" · tự cập nhật" if st.session_state.get("live") else "")
 
-# ---------- xếp hạng + cảnh báo ----------
-TABLE_H = 438
-left, right = st.columns([7, 5], gap="small")
-with left, st.container(border=True, key="panel_rank"):
-    st.subheader("Xếp hạng thanh khoản", anchor=False,
-                 help="Điểm 0-100 so sánh giữa các mã đang chọn: spread trung bình thấp tính bằng bps (40%), "
-                      "độ sâu lớn (40%), ít lệch mua/bán (20%). LRS là điểm rủi ro ở lần chụp mới nhất của từng mã.")
-    st.caption("Mã yếu nhất ở trên cùng. Chọn ô đầu dòng để xem diễn biến của mã đó bên dưới.")
-    table = ranking.assign(depth_m=ranking["depth_value"] / 1e6)[
-        ["symbol", "score", "score_w", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts", "base_status"]
-    ].reset_index(drop=True)
-    rank_syms = table["symbol"].tolist()
-    # Khóa bảng đổi theo thứ tự xếp hạng, để dấu chọn không nằm nhầm dòng khi thứ hạng thay đổi.
-    rank_key = "rank_tbl_" + format(zlib.crc32("|".join(rank_syms).encode()), "x")
-    st.dataframe(
-        table.style.map(tier_style, subset=["lrs_tier"]).format(
-            {"spread_ticks": "{:.2f}", "spread_bps_mean": "{:.1f}", "depth_m": "{:,.0f}", "lrs": "{:+.2f}"},
-            decimal=",", thousands=".", na_rep="–"),
-        hide_index=True,
-        height=TABLE_H,
-        key=rank_key,
-        on_select=partial(_pick_from_ranking, rank_key, rank_syms),
-        selection_mode="single-row",
-        alt="Bảng xếp hạng thanh khoản các mã VN30",
-        column_config={
-            "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
-            "score": st.column_config.ProgressColumn("Điểm cả kỳ", min_value=0, max_value=100, format="%.0f",
-                                                     color="#8a8a8a", width=84,
-                                                     help="Điểm thanh khoản tính trên cả khoảng đang xem (cổng của Bộ lọc dùng điểm này)."),
-            "score_w": st.column_config.ProgressColumn("Điểm 30 phút", min_value=0, max_value=100, format="%.0f",
-                                                       color=HUE, width=96,
-                                                       help="Cùng công thức nhưng chỉ trên 30 lần chụp gần nhất của chính mã đó tính đến lần chụp cuối "
-                                                            "(không vắt qua nghỉ trưa). Ô trống = Chưa đủ dữ liệu: dưới một nửa số lần chụp hợp lệ."),
-            "spread_bps_mean": st.column_config.NumberColumn(
-                "Spread bps", width=76,
-                help="Spread tương đối trung bình: chi phí mua rồi bán ngay (1 bps = 0,01%). Dùng để chấm điểm. "
-                     "Mã giá thấp thường có bps cao vì bước giá chiếm tỷ lệ lớn trong giá."),
-            "spread_ticks": st.column_config.NumberColumn(
-                "Bước giá", width=70,
-                help="Spread trung bình tính bằng số bước giá; 1,00 là hẹp nhất có thể. Chỉ để tham khảo."),
-            "depth_m": st.column_config.NumberColumn("Độ sâu (tr)", width=80,
-                                                     help="Độ sâu 3 mức giá trung vị, triệu đồng"),
-            "lrs": st.column_config.NumberColumn("LRS", width=54,
-                                                 help="Điểm rủi ro thanh khoản ở lần chụp mới nhất. Cao hơn là rủi ro hơn."),
-            "lrs_tier": st.column_config.TextColumn("Mức", width=112),
-            "alerts": st.column_config.NumberColumn("Đợt CB", format="%d", width=60, help="Số đợt cảnh báo trong kỳ"),
-            "base_status": st.column_config.TextColumn("Dữ liệu mốc", width=112,
-                                                        help="Chưa đủ dữ liệu: mã chưa có mốc nền cùng khung giờ nên 0 đợt cảnh báo là chưa đánh giá được, không phải bình thường."),
-        },
+    with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
+        with st.container(width="stretch"):
+            st.title("Radar thanh khoản VN30", anchor=False)
+            st.caption("Dành cho nhà đầu tư cá nhân và người quản trị rủi ro: cho biết mã VN30 nào đang khó mua bán, "
+                       "và khi nào spread hoặc độ sâu sổ lệnh lệch khỏi mức thường lệ của chính mã đó.")
+            st.html(f'<p class="finding">{finding}</p>')
+        with st.container(horizontal=True, width="content", vertical_alignment="center", gap="small"):
+            st.html(f'<div class="stamp">{stamp}</div>', width="content")
+            st.button("Tải lại", icon=":material/refresh:",
+                      help="Đọc lại tệp hoặc cơ sở dữ liệu để lấy các bản ghi mới nhất.")
+
+    how_to_read(
+        "Đọc từ trên xuống: **bốn chỉ số chính**, **bảng xếp hạng thanh khoản** (điểm cả kỳ, điểm 30 phút gần nhất, điểm rủi ro LRS), "
+        "**cảnh báo gần nhất**, **chi phí giao dịch theo giờ** và biểu đồ diễn biến của từng mã.",
+        "**Đợt cảnh báo**: spread mở rộng hoặc độ sâu mỏng bất thường so với chính mã đó ở cùng khung giờ, kéo dài ít nhất hai lần chụp liên tiếp. "
+        "Mức **Chú ý** và **Cao** là mức nghiêm trọng (của đợt cảnh báo, hoặc của điểm LRS so với ngưỡng theo quá khứ).",
+        "**Phát lại phiên** (thanh bên) tua từng bước trong một ngày đã ghi, kèm bản đồ nhiệt thẻ lật.",
+        "Mục **Chi tiết ghi chú** ở dưới các chỉ số cho biết nguồn dữ liệu (NEO hay SSI), phiên nào chưa đủ dữ liệu và chất lượng dữ liệu.")
+
+    notes = []
+    notes.append(f"{vn(len(view))} lần chụp sổ lệnh của {view['symbol'].nunique()} mã")
+    dropped_session = report.get("dropped_session", 0)
+    if dropped_session:
+        notes.append(f"đã loại {vn(dropped_session)} lần chụp ngoài phiên khớp lệnh liên tục")
+
+    # Các ghi chú về dữ liệu gom lại: nhãn ngắn hiện ngay dưới các chỉ số chính, nội dung đầy đủ nằm trong một mục thu gọn.
+    data_notes: list[tuple[str, str]] = []
+
+    # Phiên lấy từ SSI: nói rõ nguồn, vì khác NEO ở mấy điểm (xem shared.load_source).
+    view_ssi = sorted(d for d in view["ts"].dt.date.unique() if d in ssi_days)
+    if view_ssi:
+        data_notes.append((
+            "phiên " + ", ".join(f"{d:%d/%m}" for d in view_ssi) + " lấy từ SSI",
+            '<div class="notice"><b>Nguồn SSI:</b> phiên ' + ", ".join(f"{d:%d/%m}" for d in view_ssi)
+            + " không có dữ liệu NEO (bộ ghi NEO không chạy đủ phiên) nên dùng sổ lệnh 3 mức giá của SSI, lấy mẫu mỗi phút "
+            "như NEO. SSI không có giá khớp và tổng khối lượng khớp nên không tính tỷ lệ hấp thụ và cờ không khớp cho phiên này. "
+            "Phiên SSI không được dùng làm mốc so sánh cho các phiên NEO, nên số của các phiên NEO không đổi; bản thân "
+            "phiên SSI được so với mốc là các phiên NEO trước đó. Đối chiếu ngày 11/11 (có cả hai nguồn): giá 3 mức khớp NEO 99,8%, "
+            "khối lượng 3 mức khớp 96 đến 99%.</div>"))
+
+    # Phiên chưa có baseline (chưa đủ phiên trước cùng khung giờ): nói rõ thay vì để người xem tưởng là "không bất thường".
+    no_base_days = sorted(d for d, g in view.groupby(view["ts"].dt.date) if g["n_hist"].isna().all())
+    if no_base_days:
+        data_notes.append((
+            f"{len(no_base_days)} phiên chưa đủ dữ liệu mốc nền",
+            '<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
+            + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
+            "nên chưa có cảnh báo và điểm LRS. "
+            "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>"))
+
+    # Ngày đặc biệt (đáo hạn phái sinh, cơ cấu ETF...): vẫn tính bình thường nhưng nói rõ và không dùng làm mốc nền.
+    sp_in_view = view[view["special_day"] != ""].groupby(view["ts"].dt.date)["special_day"].first()
+    if len(sp_in_view):
+        data_notes.append((
+            "ngày đặc biệt " + ", ".join(f"{d:%d/%m}" for d in sp_in_view.index),
+            '<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
+            + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
+            "cho các ngày khác.</div>"))
+
+    # Ngày nghỉ giao dịch (data/special_days.csv, type market_holiday) từ đầu khoảng đang xem đến hôm nay: giải thích vì sao không có phiên và không có dữ liệu.
+    _today = pd.Timestamp.now(tz=TZ).date()
+    _hol = [h for h in market_holiday_dates() if view["ts"].dt.date.min() <= h <= _today and h not in set(all_df["ts"].dt.date)]
+    if _hol:
+        data_notes.append((
+            "ngày nghỉ giao dịch " + ", ".join(f"{h:%d/%m}" for h in _hol),
+            '<div class="notice">Ngày nghỉ giao dịch: ' + ", ".join(f"{h:%d/%m/%Y}" for h in _hol)
+            + ". Sàn không có phiên nên không có dữ liệu (bảng giá không nhấp nháy như mọi ngày); không phải lỗi của bộ ghi. "
+            "Danh sách này do sinh viên tự ghi, chưa đối chiếu lịch chính thức của HOSE.</div>"))
+
+    # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
+    locked = report["limit_locked"]
+    lk_day = locked["ts"].dt.date
+    if mode == MODE_REPLAY:
+        locked = locked[(lk_day == replay_day) & (locked["ts"] <= cut_ts)]
+    else:
+        locked = locked[(lk_day >= d_from) & (lk_day <= d_to)]
+    locked = locked[locked["symbol"].isin(picked)]
+    if not locked.empty:
+        parts = [f"<b>{s}</b> khóa {side} {len(g)} lần ({g['ts'].min():%d/%m %H:%M}–{g['ts'].max():%H:%M})"
+                 for (s, side), g in locked.sort_values("ts").groupby(["symbol", "side"])]
+        data_notes.append((
+            "khóa trần/sàn: " + ", ".join(sorted(locked["symbol"].unique())),
+            '<div class="notice">Mã bị khóa trần/sàn (một bên sổ lệnh trống, không tính được spread nên không có '
+            "trong xếp hạng và cảnh báo ở các thời điểm này): " + "; ".join(parts) + ".</div>"))
+
+    alert_sub = (f'{vn(n_alerts)} lần chụp · nhiều nhất <span class="neg">{top_alert_sym} ({top_alert_n})</span>'
+                 if n_events else "không có mã nào vượt ngưỡng")
+    st.html(
+        '<div class="kpis">'
+        f'<div class="kpi lead"><div class="l">Đợt cảnh báo trong kỳ</div><div class="v">{n_events}</div>'
+        f'<div class="s">{alert_sub}</div></div>'
+        f'<div class="kpi"><div class="l">Spread tương đối trung vị</div>'
+        f'<div class="v">{vn(view["rel_spread_bps"].median(), 1)}<small>bps</small></div>'
+        '<div class="s">chi phí mua rồi bán ngay</div></div>'
+        f'<div class="kpi"><div class="l">Độ sâu 3 mức giá trung vị</div>'
+        f'<div class="v">{vn(view["depth_value"].median() / 1e6, 0)}<small>triệu đ</small></div>'
+        '<div class="s">tiền chờ khớp ở 3 mức mua và bán</div></div>'
+        f'<div class="kpi"><div class="l">Thanh khoản yếu nhất nhóm</div>'
+        f'<div class="v">{weakest["symbol"]}<small>{vn(weakest["score"], 0)}/100</small></div>'
+        f'<div class="s">điểm thấp nhất trong {len(ranking)} mã</div></div>'
+        "</div>"
     )
-with right, st.container(border=True, key="panel_alerts"):
-    st.subheader("Cảnh báo gần nhất", anchor=False,
-                 help="Spread mở rộng hoặc độ sâu mỏng bất thường so với lịch sử của chính mã.")
-    shown_n = min(40, n_alerts)
-    if alerts.empty:
-        st.caption("Không có cảnh báo trong khoảng đã chọn. Thử hạ ngưỡng z-score ở thanh bên.")
-    else:
-        st.caption(f"{n_events} đợt cảnh báo ({vn(n_alerts)} lần chụp) trong kỳ, hiện {shown_n} lần chụp gần nhất.")
-    if not alerts.empty:
-        shown = alerts.head(40).assign(
-            when=lambda d: d["ts"].dt.strftime("%d/%m %H:%M"),
-            alert_type=lambda d: d["alert_type"].map(ALERT_SHORT).fillna(d["alert_type"])
-            + np.where(d["thin_no_trade"], " · không khớp", ""),
-        )[["when", "symbol", "severity", "spread_ratio", "alert_type"]].reset_index(drop=True)
+
+    # Dòng tóm tắt các ghi chú dữ liệu (luôn hiện, để vẫn thấy nguồn và giới hạn) và mục thu gọn chứa nội dung đầy đủ.
+    st.caption("; ".join(notes).capitalize() + ".")
+    qt = report["quality"]
+    qt = qt[qt["symbol"].isin(picked)]
+    if data_notes:
+        st.caption("Ghi chú về dữ liệu: " + " · ".join(label for label, _ in data_notes) + ". Mở mục bên dưới để xem chi tiết.")
+    with st.expander("Chi tiết ghi chú và chất lượng dữ liệu" + (f" ({len(data_notes)} ghi chú)" if data_notes else ""),
+                     icon=":material/fact_check:"):
+        for _, html_note in data_notes:
+            st.html(html_note)
+        # Chất lượng dữ liệu theo mã: lần chụp không dùng được cho spread (đã loại) và lần chụp đáng ngờ (đã đánh cờ, vẫn dùng).
+        if qt.empty:
+            st.caption("Chưa có thống kê chất lượng cho các mã đã chọn.")
+        else:
+            st.markdown("**Chất lượng dữ liệu theo mã**")
+            st.caption(
+                f"Toàn bộ dữ liệu đã ghi. Không hợp lệ cho spread: {vn(qt['invalid'].sum())} trong {vn(qt['rows'].sum())} lần chụp "
+                f"({vn(qt['invalid'].sum() / max(qt['rows'].sum(), 1) * 100, 2)}%), đã loại khỏi xếp hạng, cảnh báo và mốc nền. Lần chụp đứng sau khoảng "
+                f"trống > 90 giây: {vn(qt['gaps'].sum())}; nghi dữ liệu cũ: {vn(qt['stale'].sum())} (chỉ đánh cờ, vẫn dùng).")
+            st.dataframe(
+                qt.sort_values("invalid_rate", ascending=False)[["symbol", "rows", "invalid_rate", "locked", "touch", "other", "gaps", "stale"]],
+                hide_index=True, height=260, alt="Bảng chất lượng dữ liệu theo mã",
+                column_config={
+                    "symbol": st.column_config.TextColumn("Mã", width=56, pinned=True),
+                    "rows": st.column_config.NumberColumn("Lần chụp", format="%d", width=80, help="Dòng ghi được trong phiên khớp lệnh liên tục"),
+                    "invalid_rate": st.column_config.NumberColumn("Không hợp lệ %", format="%.2f", width=100,
+                                                                  help="Tỷ lệ lần chụp không dùng được cho spread"),
+                    "locked": st.column_config.NumberColumn("Khóa trần/sàn", format="%d", width=100, help="Một bên sổ lệnh trống"),
+                    "touch": st.column_config.NumberColumn("Chạm trần/sàn", format="%d", width=100, help="Giá tốt nhất bằng trần hoặc sàn, còn đủ hai bên"),
+                    "other": st.column_config.NumberColumn("Lỗi khác", format="%d", width=80, help="Sổ chéo, giá lỗi, trùng..."),
+                    "gaps": st.column_config.NumberColumn("Sau khoảng trống", format="%d", width=110, help="Lần chụp đứng sau khoảng cách > 90 giây"),
+                    "stale": st.column_config.NumberColumn("Nghi dữ liệu cũ", format="%d", width=110,
+                                                           help="Sổ lệnh không đổi nhiều lần chụp liền trong khi các mã khác vẫn đổi"),
+                })
+
+    # ---------- bản đồ nhiệt thẻ lật (chỉ khi phát lại một phiên) ----------
+    if mode == MODE_REPLAY:
+        i_now = st.session_state["replay_idx"]
+        flip_syms = sorted(picked)
+        cur_state = grid_state(analyzed, flip_syms, cut_ts)
+        GRID_W, GRID_H = 100.0, 46.0   # tỷ lệ khung bản đồ nhiệt (rộng : cao)
+        layout = treemap_layout(tile_weights(analyzed, flip_syms, replay_day), GRID_W, GRID_H)
+        with st.container(border=True, key="panel_flipgrid"):
+            st.subheader(f"Bản đồ nhiệt thẻ lật · {cut_ts:%H:%M}", anchor=False)
+            st.caption("Mỗi ô là một mã, hiện điểm rủi ro thanh khoản LRS tại lần chụp đang xem. Diện tích ô theo độ sâu sổ lệnh "
+                       "trung vị của mã trong cả phiên (cố định khi phát). Nền: xanh nhạt = dễ giao dịch hơn thường lệ, xám = bình "
+                       "thường, cam rồi đỏ = khó hơn (LRS càng cao càng rủi ro). Viền cam đậm = mức Chú ý, viền đỏ đậm = mức Cao "
+                       "(theo ngưỡng của Radar). Viền nét đứt = chưa đủ dữ liệu so với các phiên trước. Sang lần chụp kế tiếp, "
+                       "ô nào đổi điểm sẽ lật. Bấm vào ô để mở hồ sơ mã.")
+            # Component giữ nguyên các ô giữa các nhịp; JS so với trạng thái đang hiện và chỉ lật ô nào đổi.
+            flip_treemap(cur_state, layout, reset_key=f"{replay_day}|{','.join(flip_syms)}", step=i_now,
+                         width=GRID_W, height=GRID_H, flip_ms=450, link="ma", animate=st.session_state.get("flip_on", True))
+
+    # ---------- xếp hạng + cảnh báo ----------
+    TABLE_H = 438
+    left, right = st.columns([7, 5], gap="small")
+    with left, st.container(border=True, key="panel_rank"):
+        st.subheader("Xếp hạng thanh khoản", anchor=False,
+                     help="Điểm 0-100 so sánh giữa các mã đang chọn: spread trung bình thấp tính bằng bps (40%), "
+                          "độ sâu lớn (40%), ít lệch mua/bán (20%). LRS là điểm rủi ro ở lần chụp mới nhất của từng mã.")
+        st.caption("Mã yếu nhất ở trên cùng. Chọn ô đầu dòng để xem diễn biến của mã đó bên dưới.")
+        table = ranking.assign(depth_m=ranking["depth_value"] / 1e6)[
+            ["symbol", "score", "score_w", "spread_bps_mean", "spread_ticks", "depth_m", "lrs", "lrs_tier", "alerts", "base_status"]
+        ].reset_index(drop=True)
+        rank_syms = table["symbol"].tolist()
+        # Khóa bảng đổi theo thứ tự xếp hạng, để dấu chọn không nằm nhầm dòng khi thứ hạng thay đổi.
+        rank_key = "rank_tbl_" + format(zlib.crc32("|".join(rank_syms).encode()), "x")
         st.dataframe(
-            shown.style.map(tier_style, subset=["severity"]).format(
-                {"spread_ratio": "{:.1f}"}, decimal=",", na_rep="–"),
+            table.style.map(tier_style, subset=["lrs_tier"]).format(
+                {"spread_ticks": "{:.2f}", "spread_bps_mean": "{:.1f}", "depth_m": "{:,.0f}", "lrs": "{:+.2f}"},
+                decimal=",", thousands=".", na_rep="–"),
             hide_index=True,
             height=TABLE_H,
-            alt="Danh sách cảnh báo thanh khoản gần nhất",
+            key=rank_key,
+            on_select=partial(_pick_from_ranking, rank_key, rank_syms),
+            selection_mode="single-row",
+            alt="Bảng xếp hạng thanh khoản các mã VN30",
             column_config={
-                "when": st.column_config.TextColumn("Thời điểm", width=86),
-                "symbol": st.column_config.TextColumn("Mã", width=52),
-                "severity": st.column_config.TextColumn("Mức", width=60),
-                "spread_ratio": st.column_config.NumberColumn("Spread (lần)", width=80,
-                                                              help="Spread (theo bước giá) so với trung vị của mã ở cùng khung giờ các phiên trước"),
-                "alert_type": st.column_config.TextColumn(
-                    "Loại", help="Spread rộng: chênh lệch mua-bán giãn ra. Sổ mỏng: độ sâu 3 mức rút đi. "
-                                 "'không khớp': độ sâu rút mỏng mà gần như không có giao dịch khớp."),
+                "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
+                "score": st.column_config.ProgressColumn("Điểm cả kỳ", min_value=0, max_value=100, format="%.0f",
+                                                         color="#8a8a8a", width=84,
+                                                         help="Điểm thanh khoản tính trên cả khoảng đang xem (cổng của Bộ lọc dùng điểm này)."),
+                "score_w": st.column_config.ProgressColumn("Điểm 30 phút", min_value=0, max_value=100, format="%.0f",
+                                                           color=HUE, width=96,
+                                                           help="Cùng công thức nhưng chỉ trên 30 lần chụp gần nhất của chính mã đó tính đến lần chụp cuối "
+                                                                "(không vắt qua nghỉ trưa). Ô trống = Chưa đủ dữ liệu: dưới một nửa số lần chụp hợp lệ."),
+                "spread_bps_mean": st.column_config.NumberColumn(
+                    "Spread bps", width=76,
+                    help="Spread tương đối trung bình: chi phí mua rồi bán ngay (1 bps = 0,01%). Dùng để chấm điểm. "
+                         "Mã giá thấp thường có bps cao vì bước giá chiếm tỷ lệ lớn trong giá."),
+                "spread_ticks": st.column_config.NumberColumn(
+                    "Bước giá", width=70,
+                    help="Spread trung bình tính bằng số bước giá; 1,00 là hẹp nhất có thể. Chỉ để tham khảo."),
+                "depth_m": st.column_config.NumberColumn("Độ sâu (tr)", width=80,
+                                                         help="Độ sâu 3 mức giá trung vị, triệu đồng"),
+                "lrs": st.column_config.NumberColumn("LRS", width=54,
+                                                     help="Điểm rủi ro thanh khoản ở lần chụp mới nhất. Cao hơn là rủi ro hơn."),
+                "lrs_tier": st.column_config.TextColumn("Mức", width=112),
+                "alerts": st.column_config.NumberColumn("Đợt CB", format="%d", width=60, help="Số đợt cảnh báo trong kỳ"),
+                "base_status": st.column_config.TextColumn("Dữ liệu mốc", width=112,
+                                                            help="Chưa đủ dữ liệu: mã chưa có mốc nền cùng khung giờ nên 0 đợt cảnh báo là chưa đánh giá được, không phải bình thường."),
             },
         )
-
-# ---------- bản đồ nhiệt ----------
-hm = view.copy()
-hm["ratio"] = hm["rel_spread_bps"] / hm.groupby("symbol")["rel_spread_bps"].transform("median")
-# Khung 30 phút tính từ đầu mỗi buổi khớp lệnh liên tục (9:15, 9:45, ... 13:00, ...), trùng khung của baseline cảnh báo.
-hm["bucket"] = tod_bucket(hm["ts"])
-pivot = hm.pivot_table(index="symbol", columns="bucket", values="ratio", aggfunc="mean")
-pivot = pivot.reindex(index=ranking["symbol"].tolist(), columns=sorted(pivot.columns))
-pivot.columns = [bucket_label(b) for b in pivot.columns]
-
-with st.container(border=True, key="panel_heatmap"):
-    st.subheader("Chi phí giao dịch theo giờ", anchor=False)
-    st.caption("Spread trung bình mỗi khung 30 phút (ghi giờ bắt đầu khung), tính bằng số lần so với mức trung vị của chính mã. "
-               "Ô xám là bình thường; ô càng đỏ, mua bán càng đắt hơn thường lệ.")
-    fig_hm = go.Figure(
-        go.Heatmap(
-            z=pivot.values, x=pivot.columns, y=pivot.index,
-            zmin=0.8, zmax=2.0,
-            # Dưới 1,3 lần: xám (bình thường); từ 1,3 lần trở lên mới chuyển dần sang đỏ.
-            colorscale=([[0, "#1d222b"], [0.42, "#2a313c"], [0.5, "#5a2a2e"], [0.75, "#b04a50"], [1, NEG]] if is_dark() else
-                        [[0, "#f5f6f8"], [0.42, "#e6e9ee"], [0.5, "#f4cfca"], [0.75, "#e0807a"], [1, NEG]]),
-            xgap=2, ygap=2,
-            colorbar=dict(title=dict(text="lần thường lệ", font=dict(size=11, color=MUTED)), thickness=10,
-                          len=0.6, outlinewidth=0, tickfont=dict(size=11, color=MUTED),
-                          tickvals=[1.0, 1.5, 2.0], ticktext=["1,0", "1,5", "≥2,0"]),
-            hovertemplate="%{y} lúc %{x}<br>Spread = %{z:.2f} lần thường lệ<extra></extra>",
-        )
-    )
-    base_layout(fig_hm, max(320, 21 * len(pivot) + 70))
-    fig_hm.update_layout(
-        margin=dict(l=52, r=4, t=28, b=4),
-        xaxis=dict(side="top", showgrid=False, type="category", tickfont=dict(color=MUTED)),
-        yaxis=dict(autorange="reversed", showgrid=False, type="category", automargin=True,
-                   tickfont=dict(color=INK, size=12), ticks="", showticklabels=True),
-    )
-    st.plotly_chart(fig_hm, config=CHART_CONFIG, theme=None,
-                    alt="Bản đồ nhiệt spread theo mã và khung 30 phút")
-
-# ---------- chi tiết một mã ----------
-sym_list = ranking["symbol"].tolist()
-if st.session_state.get("sym") not in sym_list:  # mở sẵn mã nhiều cảnh báo nhất
-    st.session_state["sym"] = sym_list[int(ranking["alerts"].values.argmax())] if ranking["alerts"].max() > 0 else sym_list[0]
-
-with st.container(border=True, key="panel_detail"):
-    with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
-        st.subheader("Diễn biến trong phiên", anchor=False,
-                     help="Spread, độ sâu và điểm rủi ro LRS của một mã; dải tô đỏ nhạt là các đợt cảnh báo.")
-        sym = st.selectbox("Mã", sym_list, key="sym", width=140)
-        st.page_link("stock.py", label="Mở hồ sơ mã", icon=":material/open_in_new:", query_params={"ma": sym})
-        if mode == MODE_REPLAY:
-            day = replay_day
+    with right, st.container(border=True, key="panel_alerts"):
+        st.subheader("Cảnh báo gần nhất", anchor=False,
+                     help="Spread mở rộng hoặc độ sâu mỏng bất thường so với lịch sử của chính mã.")
+        shown_n = min(40, n_alerts)
+        if alerts.empty:
+            st.caption("Không có cảnh báo trong khoảng đã chọn. Thử hạ ngưỡng z-score ở thanh bên.")
         else:
-            day_options = sorted(view["ts"].dt.date.unique(), reverse=True)
-            sym_alert_days = alerts.loc[alerts["symbol"] == sym, "ts"].dt.date
-            day_default = day_options.index(sym_alert_days.max()) if len(sym_alert_days) else 0
-            day = st.selectbox("Phiên", day_options, index=day_default, width=160,
-                               format_func=lambda d: d.strftime("%d/%m/%Y"))
+            st.caption(f"{n_events} đợt cảnh báo ({vn(n_alerts)} lần chụp) trong kỳ, hiện {shown_n} lần chụp gần nhất.")
+        if not alerts.empty:
+            shown = alerts.head(40).assign(
+                when=lambda d: d["ts"].dt.strftime("%d/%m %H:%M"),
+                alert_type=lambda d: d["alert_type"].map(ALERT_SHORT).fillna(d["alert_type"])
+                + np.where(d["thin_no_trade"], " · không khớp", ""),
+            )[["when", "symbol", "severity", "spread_ratio", "alert_type"]].reset_index(drop=True)
+            st.dataframe(
+                shown.style.map(tier_style, subset=["severity"]).format(
+                    {"spread_ratio": "{:.1f}"}, decimal=",", na_rep="–"),
+                hide_index=True,
+                height=TABLE_H,
+                alt="Danh sách cảnh báo thanh khoản gần nhất",
+                column_config={
+                    "when": st.column_config.TextColumn("Thời điểm", width=86),
+                    "symbol": st.column_config.TextColumn("Mã", width=52),
+                    "severity": st.column_config.TextColumn("Mức", width=60),
+                    "spread_ratio": st.column_config.NumberColumn("Spread (lần)", width=80,
+                                                                  help="Spread (theo bước giá) so với trung vị của mã ở cùng khung giờ các phiên trước"),
+                    "alert_type": st.column_config.TextColumn(
+                        "Loại", help="Spread rộng: chênh lệch mua-bán giãn ra. Sổ mỏng: độ sâu 3 mức rút đi. "
+                                     "'không khớp': độ sâu rút mỏng mà gần như không có giao dịch khớp."),
+                },
+            )
 
-    one = view[(view["symbol"] == sym) & (view["ts"].dt.date == day)].copy()
-    if one.empty:
-        st.info("Mã này không có dữ liệu trong phiên đã chọn.")
-    else:
-        st.caption(intraday_caption(sym, day, one))
-        fig = intraday_figure(one)
-        st.plotly_chart(fig, config=CHART_CONFIG, theme=None,
-                        alt=f"Diễn biến spread, độ sâu và LRS của {sym} trong phiên {day:%d/%m/%Y}")
-        if one["lrs_watch"].isna().all():
-            st.caption(f"Chưa đủ dữ liệu để tính ngưỡng LRS (cần ít nhất {MIN_OBS_PAST} điểm LRS trước thời điểm xét).")
+    # ---------- bản đồ nhiệt ----------
+    hm = view.copy()
+    hm["ratio"] = hm["rel_spread_bps"] / hm.groupby("symbol")["rel_spread_bps"].transform("median")
+    # Khung 30 phút tính từ đầu mỗi buổi khớp lệnh liên tục (9:15, 9:45, ... 13:00, ...), trùng khung của baseline cảnh báo.
+    hm["bucket"] = tod_bucket(hm["ts"])
+    pivot = hm.pivot_table(index="symbol", columns="bucket", values="ratio", aggfunc="mean")
+    pivot = pivot.reindex(index=ranking["symbol"].tolist(), columns=sorted(pivot.columns))
+    pivot.columns = [bucket_label(b) for b in pivot.columns]
 
-# ---------- phương pháp và giới hạn ----------
-_neo = analyzed[analyzed["src"] == "NEO"]
-_n_neo = int(_neo["ts"].dt.date.nunique())
-_n_early = int(sum(1 for _, g in _neo.groupby(_neo["ts"].dt.date) if g["n_hist"].isna().all()))
-LIMITS_MD = limits_markdown(_n_neo, MIN_BASELINE, int(_BASE["max_sessions"]), _n_early)
-with st.expander("Phương pháp tính và giới hạn", icon=":material/menu_book:"):
-    st.markdown(
-        f"""
+    with st.container(border=True, key="panel_heatmap"):
+        st.subheader("Chi phí giao dịch theo giờ", anchor=False)
+        st.caption("Spread trung bình mỗi khung 30 phút (ghi giờ bắt đầu khung), tính bằng số lần so với mức trung vị của chính mã. "
+                   "Ô xám là bình thường; ô càng đỏ, mua bán càng đắt hơn thường lệ.")
+        fig_hm = go.Figure(
+            go.Heatmap(
+                z=pivot.values, x=pivot.columns, y=pivot.index,
+                zmin=0.8, zmax=2.0,
+                # Dưới 1,3 lần: xám (bình thường); từ 1,3 lần trở lên mới chuyển dần sang đỏ.
+                colorscale=([[0, "#1d222b"], [0.42, "#2a313c"], [0.5, "#5a2a2e"], [0.75, "#b04a50"], [1, NEG]] if is_dark() else
+                            [[0, "#f5f6f8"], [0.42, "#e6e9ee"], [0.5, "#f4cfca"], [0.75, "#e0807a"], [1, NEG]]),
+                xgap=2, ygap=2,
+                colorbar=dict(title=dict(text="lần thường lệ", font=dict(size=11, color=MUTED)), thickness=10,
+                              len=0.6, outlinewidth=0, tickfont=dict(size=11, color=MUTED),
+                              tickvals=[1.0, 1.5, 2.0], ticktext=["1,0", "1,5", "≥2,0"]),
+                hovertemplate="%{y} lúc %{x}<br>Spread = %{z:.2f} lần thường lệ<extra></extra>",
+            )
+        )
+        base_layout(fig_hm, max(320, 21 * len(pivot) + 70))
+        fig_hm.update_layout(
+            margin=dict(l=52, r=4, t=28, b=4),
+            xaxis=dict(side="top", showgrid=False, type="category", tickfont=dict(color=MUTED)),
+            yaxis=dict(autorange="reversed", showgrid=False, type="category", automargin=True,
+                       tickfont=dict(color=INK, size=12), ticks="", showticklabels=True),
+        )
+        st.plotly_chart(fig_hm, config=CHART_CONFIG, theme=None,
+                        alt="Bản đồ nhiệt spread theo mã và khung 30 phút")
+
+    # ---------- chi tiết một mã ----------
+    sym_list = ranking["symbol"].tolist()
+    if st.session_state.get("sym") not in sym_list:  # mở sẵn mã nhiều cảnh báo nhất
+        st.session_state["sym"] = sym_list[int(ranking["alerts"].values.argmax())] if ranking["alerts"].max() > 0 else sym_list[0]
+
+    with st.container(border=True, key="panel_detail"):
+        with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
+            st.subheader("Diễn biến trong phiên", anchor=False,
+                         help="Spread, độ sâu và điểm rủi ro LRS của một mã; dải tô đỏ nhạt là các đợt cảnh báo.")
+            sym = st.selectbox("Mã", sym_list, key="sym", width=140)
+            st.page_link("stock.py", label="Mở hồ sơ mã", icon=":material/open_in_new:", query_params={"ma": sym})
+            if mode == MODE_REPLAY:
+                day = replay_day
+            else:
+                day_options = sorted(view["ts"].dt.date.unique(), reverse=True)
+                sym_alert_days = alerts.loc[alerts["symbol"] == sym, "ts"].dt.date
+                day_default = day_options.index(sym_alert_days.max()) if len(sym_alert_days) else 0
+                day = st.selectbox("Phiên", day_options, index=day_default, width=160,
+                                   format_func=lambda d: d.strftime("%d/%m/%Y"))
+
+        one = view[(view["symbol"] == sym) & (view["ts"].dt.date == day)].copy()
+        if one.empty:
+            st.info("Mã này không có dữ liệu trong phiên đã chọn.")
+        else:
+            st.caption(intraday_caption(sym, day, one))
+            fig = intraday_figure(one)
+            st.plotly_chart(fig, config=CHART_CONFIG, theme=None,
+                            alt=f"Diễn biến spread, độ sâu và LRS của {sym} trong phiên {day:%d/%m/%Y}")
+            if one["lrs_watch"].isna().all():
+                st.caption(f"Chưa đủ dữ liệu để tính ngưỡng LRS (cần ít nhất {MIN_OBS_PAST} điểm LRS trước thời điểm xét).")
+
+    # ---------- phương pháp và giới hạn ----------
+    _neo = analyzed[analyzed["src"] == "NEO"]
+    _n_neo = int(_neo["ts"].dt.date.nunique())
+    _n_early = int(sum(1 for _, g in _neo.groupby(_neo["ts"].dt.date) if g["n_hist"].isna().all()))
+    LIMITS_MD = limits_markdown(_n_neo, MIN_BASELINE, int(_BASE["max_sessions"]), _n_early)
+    with st.expander("Phương pháp tính và giới hạn", icon=":material/menu_book:"):
+        st.markdown(
+            f"""
 **Dữ liệu đầu vào.** Chỉ dùng các lần chụp trong phiên khớp lệnh liên tục (09:15-11:30 và 13:00-14:30). Các phiên
 ATO, ATC và nghỉ trưa bị loại vì sổ lệnh lúc đó không phản ánh thanh khoản liên tục.
 
@@ -615,14 +629,14 @@ cũ chỉ bị đánh cờ. Ngày đặc biệt vẫn được tính nhưng khô
 **Giới hạn cần nói thật**
 {LIMITS_MD}
         """
+        )
+
+    st.html(
+        '<p class="note">Đây là công cụ phân tích học thuật phục vụ đồ án, không phải khuyến nghị đầu tư. '
+        "Ứng dụng chỉ đọc dữ liệu thị trường, không gửi, sửa hay hủy lệnh giao dịch.</p>"
     )
 
-st.html(
-    '<p class="note">Đây là công cụ phân tích học thuật phục vụ đồ án, không phải khuyến nghị đầu tư. '
-    "Ứng dụng chỉ đọc dữ liệu thị trường, không gửi, sửa hay hủy lệnh giao dịch.</p>"
-)
-
-# Phát lại tự động: chờ một nhịp rồi chạy lại để sang lần chụp kế tiếp.
-if st.session_state.get("playing"):
-    time.sleep(0.35)
-    st.rerun()
+    # Phát lại tự động: chờ một nhịp rồi chạy lại để sang lần chụp kế tiếp.
+    if st.session_state.get("playing"):
+        time.sleep(0.35)
+        st.rerun()
