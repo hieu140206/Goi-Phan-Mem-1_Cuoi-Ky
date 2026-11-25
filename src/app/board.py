@@ -74,11 +74,12 @@ def changed_cells(board: pd.DataFrame, prev: pd.DataFrame | None) -> set[tuple[s
 
 
 def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | None = None,
-               link: str | None = None) -> str:
+               link: str | None = None, dialog: bool = False) -> str:
     """kind="stock": cổ phiếu/ETF/CW (giá nghìn đồng). kind="future": hợp đồng tương lai (giá điểm, thêm KL mở và basis).
     prev: bảng ở lần cập nhật trước; ô nào đổi giá trị được tô nền theo màu mức giá của ô (trên TC xanh, dưới TC đỏ,
     bằng TC vàng, trần tím, sàn xanh dương), như bảng điện: "vừa đổi so với lần cập nhật trước", không phải từng giao dịch.
-    link: đường dẫn trang Chi tiết mã (ví dụ "ma"); có thì ô mã thành liên kết `ma?ma=<mã>` mở hồ sơ của mã đó."""
+    link: đường dẫn trang Chi tiết mã (ví dụ "ma"); có thì ô mã thành liên kết `ma?ma=<mã>` mở hồ sơ của mã đó.
+    dialog: ô mã thành liên kết `?xem=<mã>` (cùng trang) để trang mở hộp thoại chi tiết mã; ưu tiên hơn link."""
     changed = changed_cells(board, prev)
     fut = kind == "future"
     px_fmt = fmt_pt if fut else fmt_px
@@ -104,7 +105,9 @@ def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | No
         net = r.foreign_net / 1e9 if not fut and not pd.isna(r.foreign_net) else float("nan")
         net_cls = "up" if net > 0 else "dn" if net < 0 else ""
         sym_txt = html.escape(str(r.symbol))
-        if link and not fut:
+        if dialog and not fut:
+            sym_txt = f'<a href="?xem={quote(str(r.symbol))}" target="_self" title="Xem biểu đồ nến {sym_txt}">{sym_txt}</a>'
+        elif link and not fut:
             sym_txt = f'<a href="{link}?ma={quote(str(r.symbol))}" target="_self" title="Mở hồ sơ {sym_txt}">{sym_txt}</a>'
         cells = [
             f'<td class="sym {match}">{sym_txt}'

@@ -267,6 +267,52 @@ def fetch_index_day(client: SsiClient, index_code: str, day: str) -> pd.DataFram
     return parse_index(_rows(body), index_code, day)
 
 
+# ---------------------------------------------------------------- nến OHLC (chỉ để hiển thị, không lưu, không đưa vào tính điểm)
+OHLC_FRAMES = ("1d", "1h", "15m", "5m", "3m", "1m")
+OHLC_COLUMNS = ["ts", "open", "high", "low", "close", "volume"]
+
+
+def _ohlc_ts(v: object) -> pd.Timestamp | None:
+    """'2026/11/23' hoặc '2026/11/23 14:45:00' -> Timestamp (giờ Việt Nam, không múi giờ); không đọc được thì None."""
+    s = str(v).strip()
+    for fmt in ("%Y/%m/%d %H:%M:%S", "%Y/%m/%d"):
+        try:
+            return pd.Timestamp(datetime.strptime(s, fmt))
+        except ValueError:
+            continue
+    return None
+
+
+def parse_ohlc(rows: list[dict]) -> pd.DataFrame:
+    """Phản hồi nến của SSI -> bảng tăng dần theo thời gian. Dòng sai thời gian hoặc thiếu giá bị bỏ (không đoán). Giá bằng đồng.
+    LƯU Ý: giá SSI của ngày cũ có thể đã điều chỉnh cổ tức (có số lẻ), không dùng để tính lợi suất."""
+    out = []
+    for r in rows:
+        ts = _ohlc_ts(r.get("tradingDate"))
+        o, h, l, c = (_num(r.get(k)) for k in ("open", "high", "low", "close"))
+        if ts is None or any(math.isnan(x) for x in (o, h, l, c)):
+            continue
+        out.append({"ts": ts, "open": o, "high": h, "low": l, "close": c, "volume": _num(r.get("volume"))})
+    df = pd.DataFrame(out, columns=OHLC_COLUMNS)
+    return df.drop_duplicates("ts", keep="last").sort_values("ts").reset_index(drop=True)
+
+
+def fetch_ohlc(client: SsiClient, symbol: str, frm: str, to: str, timeframe: str = "1d",
+               page_size: int = 200, max_pages: int = 10) -> pd.DataFrame:
+    """Nến của một mã trong [frm, to] (YYYY/MM/DD). timeframe: 1d, 1h, 15m, 5m, 3m, 1m. Tự lật trang (SSI trả mới nhất trước)."""
+    if timeframe not in OHLC_FRAMES:
+        raise ValueError(f"Khung nến {timeframe!r} không được hỗ trợ: {', '.join(OHLC_FRAMES)}")
+    rows: list[dict] = []
+    for page in range(1, max_pages + 1):
+        body = client.get("/api/v3/data/ohlc", {"symbol": symbol, "from": f"{frm} 00:00:00", "to": f"{to} 23:59:59",
+                                                "timeFrame": timeframe, "pageIndex": page, "pageSize": page_size})
+        got = _rows(body)
+        rows += got
+        if len(got) < page_size:
+            break
+    return parse_ohlc(rows)
+
+
 # ---------------------------------------------------------------- lưu và đọc (SQLite market.db)
 def _upsert(df: pd.DataFrame, table: str, columns: list[str], db_path: Path) -> int:
     if df.empty:

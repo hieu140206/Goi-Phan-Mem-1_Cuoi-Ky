@@ -31,6 +31,7 @@ from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from data.special_days import no_data_message  # noqa: E402
+from symbol_dialog import open_symbol_dialog  # noqa: E402
 from theme import (BORDER, CHART_CONFIG, FAINT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, how_to_read,  # noqa: E402
                    naive_vn, vn)
 
@@ -202,7 +203,7 @@ with st.container(horizontal=True, vertical_alignment="top", gap="medium"):
 how_to_read(
     "**Bốn thẻ chỉ số** (VN-Index, VN30, HNX-Index, UPCoM-Index): giá trị, mức thay đổi và đường diễn biến trong phiên.",
     "**Bảng giá** theo nhóm. Màu giá: tím là trần, xanh dương là sàn, vàng là tham chiếu, xanh lá là tăng, đỏ là giảm; mũi tên ▲▼ cạnh con số cho người "
-    "không phân biệt được màu. Bấm một mã để mở trang Chi tiết mã.",
+    "không phân biệt được màu. Bấm một mã để xem biểu đồ nến và chi tiết của mã đó ngay trên trang.",
     "**Độ sâu, độ rộng, thanh khoản**: thị trường đang dày hay mỏng, bao nhiêu mã tăng và giảm.",
     "Số lấy từ lần ghi gần nhất. Bật **Trực tiếp** ở thanh bên để trang tự cập nhật khi bộ ghi đang chạy.")
 if day != trade_day:
@@ -346,13 +347,27 @@ def _board_panel(day, live: bool) -> None:
         else:
             if total > MAX_BOARD_ROWS:
                 st.caption(f"Hiển thị {MAX_BOARD_ROWS}/{total} mã theo thứ tự sắp xếp; gõ mã vào ô tìm kiếm để xem mã khác.")
-            # Chỉ mã VN30 có hồ sơ (sổ lệnh theo phút); các sàn khác chưa có nên không gắn liên kết.
-            st.html(board_html(shown_board.head(MAX_BOARD_ROWS), kind, state["prev"], link="ma" if grp == "VN30" else None))
-            if grp == "VN30":
-                st.caption("Bấm vào mã để mở hồ sơ chi tiết của mã đó.")
+            # Bấm mã mở hộp thoại chi tiết có biểu đồ nến (mọi sàn); hồ sơ thanh khoản đầy đủ chỉ có cho mã VN30.
+            st.html(board_html(shown_board.head(MAX_BOARD_ROWS), kind, state["prev"], dialog=kind == "stock"))
+            if kind == "stock":
+                st.caption("Bấm vào mã để xem biểu đồ nến và chi tiết của mã đó.")
 
 
 st.fragment(run_every=CARD_REFRESH_SECONDS if _live else None)(_board_panel)(day, _live)
+
+# Bấm một mã trên bảng giá -> `?xem=<mã>`: xóa tham số ngay (đóng hộp thoại rồi tải lại trang thì không tự mở lại) rồi mở hộp thoại.
+_xem = str(st.query_params.get("xem", "")).strip().upper()
+if _xem:
+    del st.query_params["xem"]
+    _row, _grp_label = None, ""
+    for _g in BOARD_GROUPS[:-1]:                      # bỏ FU (phái sinh)
+        _view, _ = load_group(str(db_path), version, f"{day:%Y-%m-%d}", _g)
+        if not _view.empty and (_view["symbol"] == _xem).any():
+            _row, _grp_label = _view[_view["symbol"] == _xem].iloc[0], GROUP_LABELS[_g]
+            break
+    if _row is None and not board.empty and (board["symbol"] == _xem).any():   # ngày ghi bằng bản cũ: chỉ có sổ lệnh VN30
+        _row, _grp_label = board[board["symbol"] == _xem].iloc[0], GROUP_LABELS["VN30"]
+    open_symbol_dialog(_xem, _row, _grp_label, db_path, stock_page="ma" if _grp_label == GROUP_LABELS["VN30"] else None)
 
 # ---------- độ sâu và độ rộng ----------
 c1, c2 = st.columns(2, gap="medium")
