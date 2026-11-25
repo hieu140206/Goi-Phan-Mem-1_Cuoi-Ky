@@ -39,6 +39,10 @@ def _prepare_web_data() -> list[str]:
 
 _prepare_web_data()
 inject_css()
+# Ẩn Fork, GitHub, Share và menu ba chấm mà Streamlit Cloud thêm vào góc phải trên. Đặt ở app.py (chạy lại mỗi lần tải trang) chứ không ở theme.py:
+# trên Cloud, mô-đun đã nạp như theme.py giữ bản cũ cho tới khi khởi động lại app. KHÔNG ẩn cả stToolbar vì menu điều hướng trang nằm trong đó.
+st.html('<style>[data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"], .stDeployButton'
+        ' { display: none !important; }</style>')
 
 
 @st.fragment(run_every=2)
