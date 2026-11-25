@@ -1,7 +1,7 @@
-"""Trang "Bộ lọc cổ phiếu VN30": Radar thanh khoản làm cổng, rồi xếp hạng theo dòng tiền nước ngoài và động lượng.
+"""Trang "Bộ lọc cổ phiếu HOSE": cổng thanh khoản theo giá trị khớp, rồi xếp hạng động lượng 6-1 của các mã qua cổng.
 
-Logic nằm ở analytics/screener.py (thuần pandas, có kiểm thử); số liệu dựng ở shared.screen_for_day để Chi tiết mã và
-thanh bên dùng cùng một kết quả. Trang này chỉ chọn tham số và trình bày.
+Logic nằm ở analytics/universe.py (thuần pandas, có kiểm thử); số liệu dựng ở shared.hose_universe để mọi trang dùng cùng một kết quả.
+Trang này chỉ chọn cách hiển thị và trình bày. Radar thanh khoản vẫn chỉ cho VN30; ở đây mã VN30 có thêm cột "Radar" để tham khảo.
 """
 from __future__ import annotations
 
@@ -16,198 +16,189 @@ import pandas as pd  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from analytics.screener import sample_warning  # noqa: E402
-from data.special_days import describe  # noqa: E402
-from shared import GATE_MIN_SCORE, analyzed_data, current_source, screen_for_day  # noqa: E402
-from theme import (BORDER, CHART_CONFIG, FLAT, GRID, HUE, INK, MUTED, PANEL, WARN, arrow_pct, badge_style, base_layout, sign_color,  # noqa: E402
+from analytics import universe as U  # noqa: E402
+from shared import analyzed_data, current_source, hose_universe, liquidity_ranking  # noqa: E402
+from theme import (BORDER, CHART_CONFIG, GRID, HUE, INK, MUTED, PANEL, arrow_pct, badge_style, base_layout, sign_color,  # noqa: E402
                    how_to_read, vn)
 
-GATE_BADGE = {"Đạt": "ok", "Chú ý": "warn", "Chưa đánh giá": "muted", "Loại": "faint"}
-GATE_COLOR = {"Đạt": HUE, "Chú ý": WARN, "Chưa đánh giá": MUTED, "Loại": FLAT}
+STATUS_BADGE = {U.PASS: "ok", U.NO_HISTORY: "muted", U.STALE: "muted", U.FAIL: "faint", U.FEW: "faint", U.MISSING: "faint"}
+VIEWS = ["Qua cổng thanh khoản", "Có xếp hạng", "Tất cả"]
+
+
+@st.cache_data(show_spinner=False)
+def _radar_tiers(source: str, version: float) -> pd.DataFrame:
+    """Mức LRS lần chụp cuối của phiên NEO mới nhất cho mã VN30 (Radar chỉ có VN30); rỗng nếu chưa có sổ lệnh."""
+    an = analyzed_data(source)
+    an = an[an["src"] == "NEO"]
+    if an.empty:
+        return pd.DataFrame(columns=["symbol", "lrs_tier"])
+    last = an["ts"].dt.date.max()
+    ranking, _, _ = liquidity_ranking(an[an["ts"].dt.date == last])
+    return ranking[["symbol", "lrs_tier"]]
+
+
+st.title("Bộ lọc cổ phiếu HOSE", anchor=False)
+st.caption("Dành cho nhà đầu tư cá nhân: lọc ra cổ phiếu HOSE đủ thanh khoản để vào/ra vị thế của bạn (theo giá trị khớp mỗi ngày), "
+           "rồi xếp theo động lượng giá 6 tháng bỏ tháng gần nhất. Công cụ sàng lọc để so sánh, không dự báo giá.")
+how_to_read(
+    "**Bước 1, cổng thanh khoản:** trung vị giá trị khớp mỗi ngày (ngày không giao dịch tính là 0) phải từ ngưỡng trở lên. "
+    "Nhãn: *Đạt*, *Không đạt thanh khoản*, *Ít giao dịch* (ít ngày có giao dịch), *Thiếu dữ liệu* (không có dòng nào trong các ngày đủ).",
+    "**Bước 2, xếp hạng động lượng** chỉ cho mã *Đạt*: lợi suất từ 6 tháng trước đến 1 tháng trước (bỏ tháng gần nhất), thứ hạng 0-100. "
+    "Mã *Đạt* mà chưa tính được thì hiện *Chưa đủ lịch sử* hoặc *Dữ liệu cũ*, vẫn nằm trong bảng nhưng không có xếp hạng.",
+    "**Cờ:** *Sát ngưỡng* (mã Đạt nhưng trung vị chưa tới 1,25 lần ngưỡng, dễ rớt khi thị trường co lại); *Bước nhảy* (chuỗi giá có ngày đổi hơn 7,5% "
+    "giữa hai phiên liền kề, có thể do điều chỉnh giá hoặc chuyển sàn); *NN vượt GT* (khối ngoại mua hoặc bán lớn hơn giá trị khớp, có thể gồm thỏa thuận).",
+    "Cột nước ngoài chỉ để tham khảo, chưa vào xếp hạng. Bấm một dòng để mở biểu đồ nến của mã. Đây là công cụ so sánh, không phải khuyến nghị đầu tư.")
 
 source = current_source()
-st.title("Bộ lọc cổ phiếu VN30", anchor=False)
-st.caption("Dành cho nhà đầu tư cá nhân: lọc ra mã VN30 mua bán dễ (cổng thanh khoản lấy từ Radar), rồi xếp theo dòng tiền "
-           "nước ngoài và động lượng giá so với VN30. Công cụ sàng lọc để so sánh, không dự báo giá.")
-how_to_read(
-    "Chọn một **phiên**. Bộ lọc làm hai bước cho phiên đó.",
-    "**Bước 1, cổng thanh khoản** (lấy từ Radar): *Đạt*, *Chú ý* (có đợt cảnh báo), *Chưa đánh giá* (chưa đủ phiên làm mốc) hoặc *Loại* (điểm thanh khoản thấp).",
-    "**Bước 2, xếp hạng** các mã qua cổng theo dòng tiền nước ngoài và động lượng so với VN30; điểm 0-100 là trung bình hai thứ hạng. ▲▼ cho biết tăng hay giảm.",
-    "Bấm một dòng để mở Chi tiết mã. Đây là công cụ so sánh, không dự báo giá và không phải khuyến nghị đầu tư.")
 if source is None:
-    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py`.",
-             title="Chưa có dữ liệu")
+    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py`.", title="Chưa có dữ liệu")
     st.stop()
 
-_an = analyzed_data(source)
-# Bộ lọc cần giá khớp, nước ngoài và bảng giá của NEO; ngày chỉ có sổ lệnh SSI (không có các trường này) không đưa vào.
-days = sorted(_an.loc[_an["src"] == "NEO", "ts"].dt.date.unique(), reverse=True)
-if not days:
-    st.info("Chưa có lần chụp sổ lệnh nào trong phiên khớp lệnh liên tục.")
+info = hose_universe()
+r: pd.DataFrame = info["result"]
+if r.empty or not info["days"]:
+    st.info("Chưa có ngày nào đủ dữ liệu bảng giá HOSE (cần ảnh chụp sau phiên ATC, từ 14:50) để tính cổng thanh khoản.")
     st.stop()
 
-with st.container(horizontal=True, vertical_alignment="bottom", gap="medium"):
-    day = st.selectbox("Phiên", days, index=0, width=160, format_func=lambda d: d.strftime("%d/%m/%Y"))
-    min_score = st.slider("Cổng: loại mã có điểm thanh khoản từ mức này trở xuống", 0.0, 66.7, GATE_MIN_SCORE, 0.1,
-                          format="%.1f", width=320, help="Mặc định 33,3 là mốc \"Yếu\" của điểm thanh khoản ở Radar.")
-    probe = screen_for_day(source, day, min_score, "intraday")
-    horizon = st.segmented_control(
-        "Động lượng", ["intraday", "5d"], default="intraday", required=True,
-        format_func=lambda h: "Trong phiên" if h == "intraday" else "5 phiên",
-        help="5 phiên cần giá đóng cửa hợp lệ (bảng giá chụp từ 14:45, đã có ATC) của phiên này và của phiên cách đó "
-             "5 phiên giao dịch; lịch phiên lấy từ SSI (python scripts/fetch_ssi_history.py).")
+days, T, ref_day = info["days"], info["threshold"], info["ref_day"]
+n = r["status"].value_counts()
+n_gate = int((r["gate"] == U.PASS).sum())
+n_rank = int(r["mom_rank"].notna().sum())
+n_near = int((r["near"] == True).sum())          # noqa: E712  (cột bool có thể là object khi có NaN)
+n_no = int(n.get(U.NO_HISTORY, 0) + n.get(U.STALE, 0))
+fmt_day = lambda d: pd.Timestamp(d).strftime("%d/%m")  # noqa: E731
 
-if probe is None:
-    st.info("Phiên này không có sổ lệnh theo phút trong phiên khớp lệnh liên tục.")
-    st.stop()
-if horizon == "5d" and not probe["mom5_ok"]:
-    st.html('<div class="notice">Chưa đủ dữ liệu để tính động lượng 5 phiên: cần bảng giá chụp từ 14:45 của phiên này và của '
-            "phiên cách đó 5 phiên giao dịch, cùng lịch phiên từ SSI. Đang dùng động lượng trong phiên.</div>")
-    horizon = "intraday"
-res = screen_for_day(source, day, min_score, horizon) if horizon != "intraday" else probe
-r = res["result"]
-ctx = res["context"]
-_sp = _an.loc[_an["ts"].dt.date == day, "special_day"]
-if len(_sp) and _sp.iloc[0]:
-    st.html(f'<div class="notice">Phiên {day:%d/%m} là ngày đặc biệt ({describe(_sp.iloc[0])}): chỉ số và cảnh báo vẫn tính như thường, '
-            "nhưng thanh khoản hôm đó có thể khác thường nên cần đọc kết quả thận trọng hơn.</div>")
-
-# ---------- bối cảnh thị trường ----------
-st.html(f'<div class="notice"><b>Bối cảnh thị trường.</b> {ctx["summary"]}</div>')
-
-passed = r[r["gate"] != "Loại"]
-top = passed.dropna(subset=["screen_score"]).head(1)
-n_gate = r["gate"].value_counts()
-mom_col = "rel_mom_5" if "rank_rel_mom_5" in r else ("mom_rel" if "rank_mom_rel" in r else "mom_intraday")
-mom_label = {"rel_mom_5": "Động lượng 5 phiên so VN30", "mom_rel": "Động lượng trong phiên so VN30",
-             "mom_intraday": "Động lượng trong phiên"}[mom_col]
+tiers = _radar_tiers(source, 0.0)
+vn30 = set(tiers["symbol"])
 st.html(
     '<div class="kpis">'
-    f'<div class="kpi lead"><div class="l">Qua cổng thanh khoản</div><div class="v">{n_gate.get("Đạt", 0) + n_gate.get("Chú ý", 0)}'
-    f'<small>/{len(r)} mã</small></div><div class="s">{n_gate.get("Đạt", 0)} Đạt · {n_gate.get("Chú ý", 0)} Chú ý · '
-    f'{n_gate.get("Chưa đánh giá", 0)} Chưa đánh giá · {n_gate.get("Loại", 0)} Loại</div></div>'
-    f'<div class="kpi"><div class="l">Điểm bộ lọc cao nhất</div><div class="v">'
-    + (f'{top["symbol"].iloc[0]}<small>{vn(top["screen_score"].iloc[0], 0)}/100</small>' if not top.empty else "–")
-    + '</div><div class="s">trong các mã qua cổng</div></div>'
-    f'<div class="kpi"><div class="l">VN30 trong phiên</div><div class="v">'
-    + (f'{"+" if res["vn30_pct"] > 0 else ""}{vn(res["vn30_pct"], 2)}<small>%</small>' if res["vn30_pct"] is not None else "–")
-    + '</div><div class="s">mốc để đo động lượng tương đối</div></div>'
-    f'<div class="kpi"><div class="l">Khối ngoại ròng rổ VN30</div><div class="v">'
-    + (f'{"+" if ctx["vn30_foreign_net"] > 0 else ""}{vn(ctx["vn30_foreign_net"] / 1e9, 1)}<small>tỷ đ</small>'
-       if ctx["vn30_foreign_net"] is not None else "–")
-    + "</div><div class=\"s\">cộng 30 mã, lũy kế trong ngày</div></div>"
-    "</div>"
-)
-_warn = sample_warning(r)
-if _warn:
-    st.html(f'<div class="notice">{_warn}</div>')
-snap_note = (f"Giá và dòng tiền lấy từ bảng giá lúc {res['snap_ts']:%H:%M}"
-             + ("" if res["snap_kind"] != "board" or res["snap_ts"].time() >= pd.Timestamp("14:45").time()
-                else " (trước phiên ATC)")
-             if res["snap_kind"] == "board" else
-             f"Giá và dòng tiền lấy từ lần chụp sổ lệnh cuối lúc {res['snap_ts']:%H:%M} (chưa gồm phiên ATC)")
-st.caption(snap_note + ".")
+    f'<div class="kpi lead"><div class="l">Qua cổng thanh khoản</div><div class="v">{n_gate}<small>/{len(r)} mã HOSE</small></div>'
+    f'<div class="s">{n_rank} có xếp hạng · {n_no} chưa tính được động lượng · {n_near} sát ngưỡng</div></div>'
+    f'<div class="kpi"><div class="l">Không qua cổng</div><div class="v">{len(r) - n_gate}<small>mã</small></div>'
+    f'<div class="s">{n.get(U.FAIL, 0)} không đạt · {n.get(U.FEW, 0)} ít giao dịch · {n.get(U.MISSING, 0)} thiếu dữ liệu</div></div>'
+    f'<div class="kpi"><div class="l">Ngưỡng thanh khoản</div><div class="v">{vn(T / 1e9, 1)}<small>tỷ đ/ngày</small></div>'
+    '<div class="s">vị thế dự kiến ÷ tỷ lệ tham gia (config.toml)</div></div>'
+    f'<div class="kpi"><div class="l">Mẫu giá trị khớp</div><div class="v">{len(days)}<small>ngày đủ</small></div>'
+    f'<div class="s">{fmt_day(days[0])} đến {fmt_day(days[-1])}, bảng giá NEO sau ATC</div></div>'
+    "</div>")
+ref_txt = f"{pd.Timestamp(ref_day):%d/%m/%Y}" if ref_day is not None and not pd.isna(ref_day) else "chưa có"
+st.html(f'<div class="notice"><b>Nguồn dữ liệu.</b> Giá trị khớp và nước ngoài: NEO, bảng giá cuối ngày của {len(days)} ngày đủ '
+        f'(trong {info["board_days"]} ngày đã ghi, ngày chụp dở dang bị loại). Động lượng: nến ngày <b>SSI</b> (giá điều chỉnh cổ tức), '
+        f'ngày tham chiếu chung {ref_txt}, {vn(info["candle_symbols"])} mã có nến.</div>')
 
-# ---------- bảng xếp hạng ----------
+view = st.segmented_control("Hiển thị", VIEWS, default=VIEWS[0], required=True, width="content")
+shown = r
+if view == VIEWS[0]:
+    shown = r[r["gate"] == U.PASS]
+elif view == VIEWS[1]:
+    shown = r[r["mom_rank"].notna()]
+shown = shown.merge(tiers, on="symbol", how="left")
+
+
+def flags(row) -> str:
+    out = []
+    if row["near"] == True:  # noqa: E712  (so với True để NaN, nghĩa là mã không có thông tin, không bị coi là có cờ)
+        out.append("Sát ngưỡng")
+    if row["jump"] == True:  # noqa: E712
+        out.append("Bước nhảy")
+    if row["foreign_over"] == True:  # noqa: E712
+        out.append("NN vượt GT")
+    return " · ".join(out)
+
+
+table = pd.DataFrame({
+    "symbol": shown["symbol"], "status": shown["status"], "flags": shown.apply(flags, axis=1) if len(shown) else "",
+    "rank": shown["mom_rank"], "mom": shown["mom"] * 100, "mom_ref": shown["mom_ref"] * 100,
+    "value": shown["median_value"] / 1e9, "days": shown["trade_days"].astype(int).astype(str) + "/" + shown["n_days"].astype(int).astype(str),
+    "foreign": shown["foreign_ratio"] * 100, "radar": shown["lrs_tier"].where(shown["symbol"].isin(vn30), None),
+    "reason": shown["gate_reason"],
+}).reset_index(drop=True)
+
 left, right = st.columns([7, 5], gap="small")
 with left, st.container(border=True, key="panel_screen"):
     st.subheader("Xếp hạng bộ lọc", anchor=False,
-                 help="Điểm = trung bình thứ hạng phần trăm (0-100) của dòng tiền nước ngoài và động lượng, chỉ xếp trong "
-                      "các mã qua cổng thanh khoản. Trọng số bằng nhau.")
-    st.caption("Chọn một dòng để mở hồ sơ chi tiết của mã. Mã Chưa đánh giá, rồi mã bị Loại, nằm cuối bảng, kèm lý do.")
-    rank_mom = f"rank_{mom_col}"
-    table = pd.DataFrame({
-        "symbol": r["symbol"], "flag": r["gate"].map(lambda g: "⚠" if g == "Chú ý" else ""), "gate": r["gate"],
-        "score": r["screen_score"],
-        "f_rank": r.get("rank_foreign_ratio"), "f_ratio": r["foreign_ratio"] * 100,
-        "m_rank": r.get(rank_mom), "m_val": r[mom_col] * 100,
-        "liq": r["liq_score"], "alerts": r["alerts"], "reason": r["gate_reason"],
-    })
-    event = st.dataframe(
-        table.style.format({"score": "{:.0f}", "f_rank": "{:.0f}", "f_ratio": arrow_pct(1), "m_rank": "{:.0f}",
-                            "m_val": arrow_pct(2), "liq": "{:.0f}"}, decimal=",", thousands=".", na_rep="–")
-             .map(lambda g: badge_style(GATE_BADGE.get(g, "muted")), subset=["gate"])
-             .map(sign_color, subset=["f_ratio", "m_val"]),
-        hide_index=True, height=438, key=f"screen_tbl_{day}_{min_score}_{horizon}", on_select="rerun",
-        selection_mode="single-row", alt="Bảng xếp hạng bộ lọc cổ phiếu VN30",
-        column_config={
-            "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
-            "flag": st.column_config.TextColumn("", width=28, help="⚠ = có đợt cảnh báo thanh khoản (nhãn Chú ý); vẫn được xếp hạng cùng mã Đạt"),
-            "gate": st.column_config.TextColumn("Cổng", width=100),
-            "score": st.column_config.ProgressColumn("Điểm", min_value=0, max_value=100, format="%.0f", width=70,
-                                                     color=HUE),
-            "f_rank": st.column_config.NumberColumn("Hạng NN", width=64, help="Thứ hạng phần trăm của dòng tiền nước ngoài trong nhóm qua cổng"),
-            "f_ratio": st.column_config.NumberColumn("NN ròng/GTGD", width=90, help="Giá trị khối ngoại mua ròng chia tổng giá trị giao dịch của mã"),
-            "m_rank": st.column_config.NumberColumn("Hạng ĐL", width=64, help="Thứ hạng phần trăm của động lượng trong nhóm qua cổng"),
-            "m_val": st.column_config.NumberColumn("Động lượng", width=86, help=mom_label),
-            "liq": st.column_config.NumberColumn("Thanh khoản", width=80, help="Điểm thanh khoản 0-100 (cùng số với Radar)"),
-            "alerts": st.column_config.NumberColumn("Đợt CB", width=60, format="%d"),
-            "reason": st.column_config.TextColumn("Lý do cổng"),
-        },
-    )
-    sel = event.selection.rows if event is not None else []
-    if sel:
-        st.switch_page("stock.py", query_params={"ma": str(table["symbol"].iloc[sel[0]])})
+                 help="Xếp hạng động lượng = thứ hạng phần trăm (0-100) của lợi suất từ 6 tháng trước đến 1 tháng trước, chỉ trong nhóm Đạt. "
+                      "Đơn nhân tố, chưa điều chỉnh biến động. Cột nước ngoài và Radar chỉ để tham khảo.")
+    st.caption(f"{len(table)} mã đang hiện. Chọn một dòng để mở biểu đồ nến của mã. Mã có nhãn Chưa đủ lịch sử, Dữ liệu cũ và các nhãn không qua cổng nằm sau mã có xếp hạng.")
+    if table.empty:
+        st.info("Không có mã nào ở cách hiển thị này.")
+    else:
+        event = st.dataframe(
+            table.style.format({"rank": "{:.0f}", "mom": arrow_pct(1), "mom_ref": arrow_pct(1), "value": lambda v: vn(v, 1),
+                                "foreign": arrow_pct(1)}, decimal=",", thousands=".", na_rep="–")
+                 .map(lambda g: badge_style(STATUS_BADGE.get(g, "muted")), subset=["status"])
+                 .map(sign_color, subset=["mom", "mom_ref", "foreign"]),
+            hide_index=True, height=438, key=f"screen_tbl_{view}", on_select="rerun", selection_mode="single-row",
+            alt="Bảng xếp hạng bộ lọc cổ phiếu HOSE",
+            column_config={
+                "symbol": st.column_config.TextColumn("Mã", width=50, pinned=True),
+                "status": st.column_config.TextColumn("Trạng thái", width=130),
+                "flags": st.column_config.TextColumn("Cờ", width=170, help="Sát ngưỡng, Bước nhảy, NN vượt GT: xem mục Cách đọc trang này"),
+                "rank": st.column_config.ProgressColumn("Xếp hạng ĐL", min_value=0, max_value=100, format="%.0f", width=100, color=HUE,
+                                                        help="Thứ hạng phần trăm của lợi suất 6-1 trong nhóm Đạt (giá SSI điều chỉnh)"),
+                "mom": st.column_config.NumberColumn("Lợi suất 6-1", width=90, help="Từ 6 tháng trước đến 1 tháng trước, tính theo mốc lịch"),
+                "mom_ref": st.column_config.NumberColumn("3 tháng (tham khảo)", width=110, help="Lợi suất 3 tháng đến ngày tham chiếu; không vào xếp hạng"),
+                "value": st.column_config.NumberColumn("GT khớp trung vị (tỷ)", width=130, help="Trung vị giá trị khớp mỗi ngày trong các ngày đủ, ngày không giao dịch tính 0"),
+                "days": st.column_config.TextColumn("Ngày GD", width=70, help="Số ngày có giao dịch trên số ngày đủ"),
+                "foreign": st.column_config.NumberColumn("NN ròng/GTGD", width=100, help="Tổng ròng nước ngoài chia tổng giá trị khớp cả cửa sổ. Chỉ tham khảo"),
+                "radar": st.column_config.TextColumn("Radar (VN30)", width=100, help="Mức LRS lần chụp cuối phiên NEO mới nhất; chỉ có cho mã VN30"),
+                "reason": st.column_config.TextColumn("Lý do cổng"),
+            },
+        )
+        sel = event.selection.rows if event is not None else []
+        if sel:
+            st.switch_page("overview.py", query_params={"xem": str(table["symbol"].iloc[sel[0]])})
 
 with right, st.container(border=True, key="panel_map"):
-    st.subheader("Dòng tiền ngoại và động lượng", anchor=False,
-                 help="Mỗi chấm là một mã. Góc trên bên phải: khối ngoại mua ròng và giá mạnh hơn VN30.")
-    pts = table.dropna(subset=["f_ratio", "m_val"])
+    st.subheader("Động lượng và thanh khoản", anchor=False,
+                 help="Mỗi chấm là một mã Đạt có động lượng. Ngang: lợi suất 6-1. Dọc: trung vị giá trị khớp (thang log). Đường ngang là ngưỡng.")
+    pts = r[r["mom_rank"].notna()]
     if pts.empty:
         st.caption("Chưa đủ dữ liệu để vẽ.")
     else:
-        fig = go.Figure()
-        for g in ("Loại", "Chưa đánh giá", "Chú ý", "Đạt"):
-            d = pts[pts["gate"] == g]
-            if d.empty:
-                continue
-            fig.add_trace(go.Scatter(
-                x=d["m_val"], y=d["f_ratio"], mode="markers+text", text=d["symbol"], textposition="top center",
-                textfont=dict(size=10, color=MUTED if g in ("Loại", "Chưa đánh giá") else INK), name=g,
-                marker=dict(size=9, color=GATE_COLOR[g], line=dict(color=PANEL, width=1)),
-                hovertemplate="%{text}<br>Động lượng %{x:+.2f}%<br>NN ròng/GTGD %{y:+.1f}%<extra>" + g + "</extra>"))
-        fig.add_hline(y=0, line=dict(color=BORDER, width=1))
+        top = pts.nlargest(10, "mom_rank")["symbol"]
+        lab = pts["symbol"].where(pts["symbol"].isin(top), "")
+        fig = go.Figure(go.Scatter(
+            x=pts["mom"] * 100, y=pts["median_value"] / 1e9, mode="markers+text", text=lab, textposition="top center",
+            textfont=dict(size=10, color=INK), customdata=pts["symbol"],
+            marker=dict(size=8, color=HUE, line=dict(color=PANEL, width=1)),
+            hovertemplate="%{customdata}<br>Lợi suất 6-1 %{x:+.1f}%<br>GT khớp trung vị %{y:,.1f} tỷ<extra></extra>"))
+        fig.add_hline(y=T / 1e9, line=dict(color=BORDER, width=1, dash="dot"))
         fig.add_vline(x=0, line=dict(color=BORDER, width=1))
-        fig.update_xaxes(title=dict(text=mom_label + " (%)", font=dict(size=11, color=MUTED)), gridcolor=GRID,
-                         zeroline=False, ticksuffix="%")
-        fig.update_yaxes(title=dict(text="NN ròng / giá trị GD (%)", font=dict(size=11, color=MUTED)), gridcolor=GRID,
-                         zeroline=False, ticksuffix="%")
+        fig.update_xaxes(title=dict(text="Lợi suất 6-1 (%)", font=dict(size=11, color=MUTED)), gridcolor=GRID, zeroline=False, ticksuffix="%")
+        fig.update_yaxes(title=dict(text="GT khớp trung vị (tỷ đồng, thang log)", font=dict(size=11, color=MUTED)), gridcolor=GRID,
+                         zeroline=False, type="log")
         fig.update_xaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
         fig.update_yaxes(automargin=True, tickfont=dict(size=11, color=MUTED))
         base_layout(fig, 420)
-        fig.update_layout(legend=dict(orientation="h", y=1.1, x=0), margin=dict(l=56, r=12, t=40, b=48))
-        st.plotly_chart(fig, config=CHART_CONFIG, theme=None,
-                        alt="Biểu đồ phân tán động lượng và dòng tiền nước ngoài theo mã")
+        fig.update_layout(showlegend=False, margin=dict(l=56, r=12, t=24, b=48))
+        st.plotly_chart(fig, config=CHART_CONFIG, theme=None, alt="Biểu đồ phân tán lợi suất 6-1 và giá trị khớp trung vị theo mã HOSE")
 
 with st.expander("Phương pháp và giới hạn", icon=":material/menu_book:"):
     st.markdown(
         f"""
-**1. Cổng thanh khoản** (lấy từ Radar, cùng số): *Loại* nếu điểm thanh khoản trong phiên từ {vn(min_score, 1)} trở xuống
-(mặc định 33,3 là mốc "Yếu" của Radar); *Chưa đánh giá* nếu mã chưa có mốc nền (chưa đủ phiên trước cùng khung giờ, xem lý do ở bảng),
-xếp sau mã qua cổng và trước mã Loại, không có điểm; *Chú ý* nếu có ít nhất một đợt cảnh báo thanh khoản trong phiên (có dấu ⚠); còn lại *Đạt*.
-Mã *Chú ý* VẪN được chấm điểm và xếp hạng cùng mã *Đạt*; chỉ đợt cảnh báo mới quyết định nhãn Chú ý, còn điểm LRS chỉ hiện ở cột lý do
-(bật `gate.use_lrs` ở config.toml thì LRS cũng đổi nhãn). Thứ hạng phần trăm của hai yếu tố chỉ tính trong tập mã qua cổng; tập dưới
-10 mã thì trang cảnh báo mẫu nhỏ.
-Lý do: mã khó mua bán thì chi phí vào/ra lệnh cao, dù các yếu tố khác tốt.
+**1. Cổng thanh khoản.** Ngưỡng T = vị thế dự kiến ÷ tỷ lệ tham gia tối đa vào giá trị khớp một phiên (hiện {vn(T / 1e9, 1)} tỷ đồng/ngày,
+đặt ở `config.toml`, mục `[universe]`: 250 triệu đồng và 5%; đổi hai số này thì ngưỡng đổi). Mỗi mã lấy **trung vị** giá trị khớp mỗi ngày trên {len(days)} ngày đủ;
+ngày mã không giao dịch và ngày mã không có trong ảnh chụp đều tính là 0 (không bỏ khỏi mẫu), nên mã khớp lai rai không trông thanh khoản hơn thực tế.
+Trung vị từ T trở lên (đúng bằng T cũng được) và có giao dịch ít nhất 80% số ngày thì *Đạt*. *Sát ngưỡng* là cờ cho mã Đạt có trung vị dưới 1,25 lần T.
+Mã không thuộc dạng cổ phiếu 3 ký tự (ETF, chứng quyền) bị loại khỏi tập đánh giá.
 
-**2. Yếu tố xếp hạng** (chỉ tính cho mã qua cổng):
-- Dòng tiền nước ngoài = giá trị khối ngoại mua ròng / tổng giá trị giao dịch của mã trong ngày.
-- Động lượng trong phiên = giá khớp / giá tham chiếu − 1, trừ đi % thay đổi của VN30 cùng thời điểm (so với thị trường,
-  nên mã chỉ giảm theo thị trường không bị phạt). Động lượng 5 phiên dùng giá đóng cửa hợp lệ (bảng giá chụp từ 14:45).
+**2. Động lượng 6-1.** Lợi suất giữa giá đóng cửa cách ngày tham chiếu 6 tháng và 1 tháng, tính theo mốc lịch với một ngày tham chiếu chung cho mọi mã.
+Giá lấy là giá gần nhất không muộn hơn mốc; cách mốc quá 10 ngày thì coi là không đủ lịch sử, nến cuối cách ngày tham chiếu quá 3 phiên thì *Dữ liệu cũ*.
+Lọc thanh khoản trước, động lượng sau: nhãn *Chưa đủ lịch sử* chỉ gắn cho mã đã qua cổng. Xếp hạng là thứ hạng phần trăm trong nhóm Đạt.
 
-**3. Điểm bộ lọc** = trung bình thứ hạng phần trăm (0-100) của hai yếu tố, trọng số bằng nhau; không đặt trọng số tùy ý.
-Mã thiếu một yếu tố được tính trên yếu tố còn lại.
+**3. Nước ngoài** (tham khảo, chưa vào xếp hạng): tổng ròng chia tổng giá trị khớp trong cả cửa sổ. Khối lượng nước ngoài trống nghĩa là bên đó không
+có giao dịch (đã kiểm: mọi dòng khối lượng trống đều có giá trị bằng 0), nên chỉ dùng giá trị.
 
 **Giới hạn**
-- Chưa kiểm chứng điểm cao có đi kèm lợi suất ngày sau tốt hơn hay không: cần nhiều phiên hơn. Đây là công cụ so sánh,
-  không dự báo giá, không phải khuyến nghị mua bán.
-- Điểm thanh khoản là xếp hạng *tương đối* giữa 30 mã, nên luôn có mã bị Loại kể cả khi cả thị trường thanh khoản tốt
-  (với ngưỡng 33,3, trên dữ liệu 28/10 đến 20/11/2026 mỗi phiên loại từ 1 đến 6 trong 30 mã, thường khoảng 4: không cố định 10 mã vì điểm là tổng có trọng số
-  của ba thứ hạng). Cổng trả lời "mã nào kém nhất trong VN30", chưa phải "mã nào kém tuyệt đối".
-- Nhãn *Chú ý* khá rộng: từ 5/11 trở đi thường 7 đến 19 trong 30 mã mỗi phiên có ít nhất một đợt cảnh báo, nên nhãn này chưa phân biệt mã tốt.
-- Điểm thanh khoản đo chi phí chứ không đo độ "căng" của sổ lệnh, spread đo là spread chào, mốc nền còn ít phiên: xem mục Giới hạn ở trang Radar.
-- Bảng giá chụp trước 14:45 chưa gồm phiên ATC; trang ghi rõ giờ chụp.
-- Dòng tiền nước ngoài và giá trị giao dịch là số lũy kế NEO trả tại thời điểm chụp.
+- **Chỉ {len(days)} ngày đủ** để tính giá trị khớp (mẫu ngắn): một phiên đột biến (cơ cấu ETF, đáo hạn phái sinh) vẫn có thể ảnh hưởng, dù đã dùng trung vị. Ngày chụp bảng giá giữa phiên hoặc trước khớp ATC bị loại.
+- **Giá nến SSI là giá điều chỉnh cổ tức**, chỉ dùng tỷ lệ trong cùng mã; không trộn với giá NEO. Nến chỉ cập nhật khi chạy `python scripts/fetch_ssi_candles.py`, nên động lượng có thể cũ vài ngày: trang ghi ngày tham chiếu.
+- 6-1 là cửa sổ mặc định phổ biến, **chưa kiểm trên dữ liệu của dự án** (chỉ khoảng 13 tháng nến). Chưa kiểm chứng xếp hạng cao có đi kèm lợi suất sau đó tốt hơn hay không.
+- Xếp hạng động lượng là **đơn nhân tố**, chưa điều chỉnh biến động và chưa phải điểm tổng hợp.
+- Giá trị nước ngoài **có thể gồm cả thỏa thuận** (19 trong 4.488 dòng mã x ngày có mua hoặc bán lớn hơn giá trị khớp: suy ra, chưa xác nhận); chưa đối chiếu tổng ròng với số công bố của sàn.
+- Bảng giá không có trạng thái giao dịch (cảnh báo, kiểm soát, hạn chế) nên trang không có cờ này; không có cờ "sát room" vì chưa rõ đơn vị của hai cột room.
+- Mã mới niêm yết hoặc mới giao dịch lại có thể rơi vào *Ít giao dịch* hoặc *Chưa đủ lịch sử* chỉ vì mới có vài ngày.
+- Cột Radar chỉ có cho mã VN30. Radar thanh khoản không còn làm cổng của trang này.
         """
     )
 st.html('<p class="note">Đây là công cụ phân tích học thuật phục vụ đồ án, không phải khuyến nghị đầu tư. '
