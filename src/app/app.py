@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import streamlit as st  # noqa: E402
 
 from data.storage import live_stamp  # noqa: E402
+from data.web_data import ensure_web_data  # noqa: E402
 from neo_api.config import get_settings  # noqa: E402
 from shared import WATCHLIST_PATH, analyzed_data, current_source, screen_for_day  # noqa: E402
 from theme import BRAND_MARK, group, inject_css  # noqa: E402
@@ -27,6 +28,15 @@ from watchlist import load_watchlist  # noqa: E402
 LIVE_EVERY_SECONDS = 15  # cứ 15 giây xem bộ ghi có ghi thêm gì chưa; bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa ~1 phút
 
 st.set_page_config(page_title="Thị trường VN · NEO API", page_icon=":material/radar:", layout="wide")
+
+
+@st.cache_resource(show_spinner="Đang chuẩn bị dữ liệu…")
+def _prepare_web_data() -> list[str]:
+    """Bản web: giải nén dữ liệu rút gọn (data/web) lần đầu. Ở laptop có market.db thật thì không làm gì (không bao giờ ghi đè)."""
+    return ensure_web_data(ROOT)
+
+
+_prepare_web_data()
 inject_css()
 settings = get_settings()
 
