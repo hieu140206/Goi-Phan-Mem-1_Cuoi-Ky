@@ -10,7 +10,7 @@ liệu cuối ngày để đối chiếu, và sổ lệnh dự phòng khi bộ g
 | Trang | Nội dung |
 | --- | --- |
 | Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá (mọi nhóm) để mở hộp thoại chi tiết có biểu đồ nến OHLC (nguồn SSI); mã VN30 có liên kết sang hồ sơ thanh khoản |
-| Bộ lọc cổ phiếu HOSE (`screen_page.py`) | Cổng thanh khoản (Đạt / Không đạt / Ít giao dịch / Thiếu dữ liệu); xếp hạng động lượng 6-1 (nến SSI); cờ Sát ngưỡng, Bước nhảy, NN vượt GT; cột Radar cho mã VN30; chọn dòng để mở biểu đồ nến |
+| Bộ lọc cổ phiếu HOSE (`screen_page.py`) | Cổng thanh khoản (Đạt / Không đạt / Ít giao dịch / Thiếu dữ liệu); xếp hạng động lượng 6-1 (nến SSI); cờ Sát ngưỡng, Bước nhảy, NN vượt GT; cột Radar cho mã VN30; bảng tiêu chí bên trái để tự chọn điều kiện lọc (giá trị khớp, lợi suất, nước ngoài, giá, cờ...); chọn dòng để mở biểu đồ nến |
 | Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên với bản đồ nhiệt thẻ lật |
 | Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi |
 
@@ -129,7 +129,7 @@ Chạy mọi lệnh từ thư mục gốc dự án.
 ## Bộ lọc cổ phiếu HOSE (gợi ý 2 của đề), logic ở `src/analytics/universe.py`, tham số ở `config.toml` mục `[universe]`
 1. **Cổng thanh khoản**: trung vị giá trị khớp mỗi ngày (ngày không giao dịch tính 0) trên các ngày đủ (bảng giá NEO chụp sau ATC) phải từ ngưỡng T
    = vị thế dự kiến ÷ tỷ lệ tham gia (mặc định 250 triệu ÷ 5% = 5 tỷ đồng/ngày), và có giao dịch ít nhất 80% số ngày. Mã Đạt có trung vị dưới 1,25T gắn cờ Sát ngưỡng.
-   Chỉ cổ phiếu 3 ký tự; ETF và chứng quyền bị loại.
+   Chỉ cổ phiếu 3 ký tự; ETF và chứng quyền bị loại. Chỉ dùng tối đa 20 ngày đủ gần nhất (`window_days`).
 2. **Xếp hạng động lượng 6-1** (chỉ nhóm Đạt): lợi suất từ 6 tháng trước đến 1 tháng trước, theo mốc lịch, một ngày tham chiếu chung, từ nến ngày SSI (giá điều chỉnh cổ tức).
    Đơn nhân tố, chưa điều chỉnh biến động. Mã Đạt thiếu nến hiện *Chưa đủ lịch sử* hoặc *Dữ liệu cũ*.
 3. **Nước ngoài** chỉ để tham khảo: tổng ròng ÷ tổng giá trị khớp cả cửa sổ; cờ khi mua hoặc bán lớn hơn giá trị khớp (nghi gồm thỏa thuận, chưa xác nhận).
@@ -146,7 +146,7 @@ src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng,
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu (screener.py)
 config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          396 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
+tests/          402 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
 scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi, fetch_ssi_candles), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
                 dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn
