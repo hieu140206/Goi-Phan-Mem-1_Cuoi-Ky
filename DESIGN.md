@@ -18,7 +18,7 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - **Bộ ghi SSI chạy song song, không nằm trong `run_live.py`:** `scripts/record_ssi.py` mở ở cửa sổ riêng để có sổ lệnh dự phòng khi NEO mất kết nối
   hoặc dừng giữa phiên; ghi vào bảng `ssi_quotes`, không đụng bảng của NEO. `run_live.py` không có cờ `--ssi` (quyết định 24/11).
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), giới hạn tần suất, stream WebSocket (nhị phân Avro).
-- `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`), `schema.py` (cột chuẩn,
+- `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`; nến OHLC `fetch_ohlc` chỉ để hiển thị, không lưu), `candles.py` (nến ngày NEO dự phòng từ bảng `board`), `schema.py` (cột chuẩn,
   làm sạch), `storage.py` (SQLite), `rest_recorder.py`, `ws_recorder.py` và `ssi_recorder.py` (bộ ghi), `market_board.py` (bảng giá nhiều sàn, phái sinh),
   `overview.py` (hàm dữ liệu trang Tổng quan), `backfill.py`, `market_day.py`, `simulator.py`.
 - `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng, điểm cửa sổ trượt 30 lần chụp), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng),
@@ -28,7 +28,7 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - `src/model_config.py` đọc `config.toml`: nơi DUY NHẤT chứa hằng số và ngưỡng của phần phân tích; `src/status.py` chứa chuỗi trạng thái "Đủ dữ liệu" / "Chưa đủ dữ liệu";
   `src/data/special_days.py` đọc `data/special_days.csv` (ngày đặc biệt); `src/app/limits.py` dựng khối "Giới hạn cần nói thật" (số phiên đếm từ dữ liệu).
 - `src/analytics/`: `baseline.py` (cảnh báo theo khung giờ), `lrs.py` (điểm rủi ro), `screener.py` (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường), `anomaly.py` (cách cũ).
-- `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py`, `screen_page.py`, `radar.py`, `stock.py` (4 trang),
+- `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py`, `screen_page.py`, `radar.py`, `stock.py` (4 trang), `symbol_dialog.py` (hộp thoại chi tiết mã có biểu đồ nến, mở từ bảng giá Tổng quan),
   `shared.py` (tải và phân tích dùng chung), `theme.py`, `charts.py`, `board.py`, `watchlist.py`, `flipgrid.py` (dữ liệu bản đồ nhiệt), `flipgrid_component.py` (vẽ).
 - `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `record_ws.py`, `record_ssi.py` (bộ ghi SSI dự phòng, cửa sổ riêng), `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`,
   `backfill_extra.py`, `fetch_day_index.py`, `fetch_ssi_history.py` (lịch sử theo ngày từ SSI; `--check` đối chiếu với NEO), `probe_ssi.py` (thử SSI: `rest`, `stream`),
@@ -86,7 +86,8 @@ Không thêm màu mới ngoài bảng dưới đây khi chưa hỏi.
   Thông báo nguồn SSI dùng `.notice` (nền trắng, vạch xanh bên trái).
 - Mỗi trang có dòng "công cụ phân tích học thuật, không phải khuyến nghị đầu tư"; Radar và Bộ lọc có thêm khối "Phương pháp tính và giới hạn". Giao diện không còn lựa chọn dữ liệu mô phỏng (quyết định 25/11/2026): nguồn là NEO (chính) cộng SSI (bù ngày NEO thiếu); mã mô phỏng chỉ còn để kiểm thử.
 - **Trạng thái và dễ đọc (25/11/2026):** nhãn trạng thái ở bảng (cổng Đạt/Chú ý/Chưa đánh giá/Loại, mức Cao/Chú ý) dùng huy hiệu `badge_style` trong `theme.py`: chữ theo màu của bảng màu, nền là bản nhạt của chính màu đó, KHÔNG thêm màu mới. Tăng giảm có mũi tên ▲ ▼ cạnh màu để người không phân biệt màu vẫn đọc được. Số dùng `tabular-nums` toàn trang. Lần tính nặng đầu tiên có khung chờ (`show_spinner`). Mỗi trang có mục thu gọn "Cách đọc trang này" (`how_to_read`). Ghi chú dữ liệu ở Radar gom thành dòng tóm tắt cộng mục thu gọn, chỉ số chính đứng trên cùng.
-- Ứng dụng không giữ mật khẩu hay token; không có nút nào gửi lệnh.
+- Ứng dụng không lưu mật khẩu hay token (không ghi ra tệp, không in ra log); riêng hộp thoại nến gọi SSI chỉ đọc bằng khóa trong `.env`, token chỉ nằm trong bộ nhớ. Không có nút nào gửi lệnh.
+- **Hộp thoại chi tiết mã (25/11/2026):** bấm mã ở mọi nhóm bảng giá Tổng quan -> liên kết `?xem=<mã>` (trang tải lại một lần, tham số được xóa ngay để đóng hộp thoại không mở lại). Nến SSI ghi rõ nguồn và chú thích giá ngày cũ có thể điều chỉnh cổ tức; nến chỉ để xem, không dùng để tính điểm. Nến trong phiên (1 giờ, 15 phút, 5 phút) có cho mọi mã từ SSI. Ngày nghỉ giao dịch (`market_holiday` ở `data/special_days.csv`) được trang Tổng quan giải thích khi không có dữ liệu.
 
 ## 5. Bản đồ nhiệt thẻ lật (Radar, chế độ Phát lại phiên)
 - Dạng treemap: mỗi mã VN30 một ô, **diện tích theo độ sâu sổ lệnh trung vị cả phiên** (cố định khi phát để ô không nhảy chỗ); chỉ để chia diện tích, không phải chỉ số.

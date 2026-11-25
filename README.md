@@ -10,7 +10,7 @@ liệu cuối ngày để đối chiếu, và sổ lệnh dự phòng khi bộ g
 ## Bốn trang, nối với nhau qua "một mã"
 | Trang | Nội dung |
 | --- | --- |
-| Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá VN30 để mở hồ sơ mã |
+| Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá (mọi nhóm) để mở hộp thoại chi tiết có biểu đồ nến OHLC (nguồn SSI); mã VN30 có liên kết sang hồ sơ thanh khoản |
 | Bộ lọc cổ phiếu (`screen_page.py`) | Bối cảnh thị trường; cổng thanh khoản (Đạt / Chú ý / Loại); xếp hạng theo dòng tiền ngoại và động lượng; chọn dòng để mở hồ sơ mã |
 | Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên với bản đồ nhiệt thẻ lật |
 | Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi |
