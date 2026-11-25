@@ -42,7 +42,9 @@ paddingTop = "0.5rem"
 gatherUsageStats = false
 
 [server]
-headless = false
+# true: bản web (Streamlit Cloud) không được hỏi email lúc khởi động, nếu không máy chủ treo và kiểm tra sức khỏe báo lỗi.
+# Chạy ở máy: tự mở http://localhost:8501 trong trình duyệt (không còn tự bật cửa sổ).
+headless = true
 
 [client]
 toolbarMode = "minimal"
