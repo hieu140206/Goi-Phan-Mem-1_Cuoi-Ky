@@ -76,8 +76,8 @@ Không thêm màu mới ngoài bảng dưới đây khi chưa hỏi.
 - Cấu hình chủ đề đặt ở `.streamlit/config.toml` (phông Geist, cỡ chữ gốc 15, bo góc 8px, nút 6px). CSS chỉ dành cho phần tự vẽ, nằm ở `theme.py`
   (`inject_css`); thêm CSS cho một phần tử thì đặt `key=` và nhắm lớp `st-key-<key>`, không dựa vào lớp nội bộ của Streamlit.
 - Bố cục: 4 trang, điều hướng ở đầu trang (`st.navigation(position="top")`): **Tổng quan** (`/tong-quan`), **Bộ lọc** (`/bo-loc`), **Radar** (`/radar`),
-  **Chi tiết mã** (`/ma?ma=<mã>`). Các trang nối nhau qua `?ma=<mã>`. Thanh bên: thương hiệu, công tắc Trực tiếp, bộ lọc của trang, danh sách theo dõi.
-- Rộng tối đa 1360px; ô nền trắng là container có `key` bắt đầu bằng `panel`; dải chỉ số 4 ô (`.kpis`) chia bằng vạch mảnh.
+  **Chi tiết mã** (`/ma?ma=<mã>`). Các trang nối nhau qua `?ma=<mã>`. Thanh bên (đóng mặc định): thương hiệu, công tắc Trực tiếp (trừ Tổng quan và Radar, có công tắc riêng ở trang), danh sách theo dõi. Bộ lọc và Radar đặt điều khiển ở bảng bên trái trong trang (`panel_ctl` ở Radar, `panel_filters` ở Bộ lọc), không để trong thanh bên.
+- Rộng tối đa 1360px (Tổng quan và Radar tràn viền, lề 24px); ô nền trắng là container có `key` bắt đầu bằng `panel`; dải chỉ số 4 ô (`.kpis`) chia bằng vạch mảnh.
 - Chữ, nút, nhãn: tiếng Việt, viết hoa đầu câu (không Title Case); biểu tượng dùng Material Symbols (`:material/...:`), hạn chế emoji.
 - Biểu đồ: Plotly với `CHART_CONFIG` và `base_layout` trong `theme.py`; ẩn giờ nghỉ trưa bằng `hide_lunch`.
 - **Màu bảng giá:** tím = trần, xanh dương = sàn, vàng = tham chiếu, xanh lá = tăng, đỏ = giảm; ô vừa đổi được tô nền theo màu mức giá.
