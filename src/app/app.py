@@ -112,7 +112,7 @@ def _watchlist_sidebar() -> None:
 
 LIVE_HELP = "Tự đọc lại dữ liệu khi có bản ghi mới. Dữ liệu được chụp mỗi phút nên trễ tối đa khoảng 1 phút."
 st.session_state.setdefault("live", os.environ.get("NEO_LIVE") == "1")      # công tắc Trực tiếp dùng chung khóa "live" ở mọi trang
-pages = st.navigation([PAGE_OVERVIEW, PAGE_SCREEN, PAGE_RADAR, PAGE_STOCK], position="top")
+pages = st.navigation([PAGE_OVERVIEW, PAGE_RADAR, PAGE_SCREEN, PAGE_STOCK], position="top")
 with st.sidebar:
     st.html(f'<div class="brand">{BRAND_MARK}<div><b>Thị trường VN</b>'
             '<span>Dữ liệu NEO API · VPBankS</span></div></div>')
