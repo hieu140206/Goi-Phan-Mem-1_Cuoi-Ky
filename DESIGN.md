@@ -3,9 +3,9 @@
 Mô tả điều **đang đúng trong mã** (không phải mong muốn). Muốn đổi một quy ước ở đây thì hỏi sinh viên trước (xem `AGENT.md`).
 
 ## 1. Sản phẩm
-Bộ lọc cổ phiếu VN30 xây trên Radar thanh khoản, dùng NEO API của VPBankS làm nguồn chính (SSI làm nguồn phụ). Người dùng: nhà đầu tư
-cá nhân và người quản trị rủi ro. Mục tiêu: cho biết mã VN30 nào đang khó mua bán, khi nào spread hoặc độ sâu lệch khỏi mức thường lệ
-của chính mã đó, rồi xếp hạng mã qua cổng thanh khoản theo dòng tiền nước ngoài và động lượng. Chỉ đọc dữ liệu, không giao dịch.
+Bộ lọc cổ phiếu toàn HOSE và Radar thanh khoản VN30, dùng NEO API của VPBankS làm nguồn chính (SSI làm nguồn phụ: nến ngày cho động lượng). Người dùng: nhà đầu tư
+cá nhân và người quản trị rủi ro. Mục tiêu: Bộ lọc cho biết mã HOSE nào đủ thanh khoản để vào/ra vị thế (trung vị giá trị khớp mỗi ngày) rồi xếp hạng động lượng 6-1;
+Radar cho biết mã VN30 nào đang khó mua bán và khi nào spread hoặc độ sâu lệch khỏi mức thường lệ của chính mã đó. Chỉ đọc dữ liệu, không giao dịch.
 Mọi trang có dòng: "công cụ phân tích học thuật, không phải khuyến nghị đầu tư".
 
 ## 2. Kiến trúc và luồng dữ liệu
@@ -27,7 +27,7 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
   Cách tách train/test theo thời gian và nhóm đối chứng không nhìn tương lai là quy ước của phần này: đổi ngưỡng ở `config.toml` thì chạy lại script.
 - `src/model_config.py` đọc `config.toml`: nơi DUY NHẤT chứa hằng số và ngưỡng của phần phân tích; `src/status.py` chứa chuỗi trạng thái "Đủ dữ liệu" / "Chưa đủ dữ liệu";
   `src/data/special_days.py` đọc `data/special_days.csv` (ngày đặc biệt); `src/app/limits.py` dựng khối "Giới hạn cần nói thật" (số phiên đếm từ dữ liệu).
-- `src/analytics/`: `baseline.py` (cảnh báo theo khung giờ), `lrs.py` (điểm rủi ro), `screener.py` (cổng thanh khoản, yếu tố, điểm bộ lọc, bối cảnh thị trường), `anomaly.py` (cách cũ).
+- `src/analytics/`: `baseline.py` (cảnh báo theo khung giờ), `lrs.py` (điểm rủi ro), `universe.py` (Bộ lọc toàn HOSE: cổng giá trị khớp, động lượng 6-1, nước ngoài tham khảo; không import streamlit; hằng số ở `[universe]` của config.toml), `screener.py` (Bộ lọc VN30 cũ: cổng từ Radar, yếu tố trong phiên; trang không còn dùng, giữ lại), `anomaly.py` (cách cũ).
 - `src/app/`: `app.py` (cổng vào, điều hướng, công tắc Trực tiếp, danh sách theo dõi), `overview.py`, `screen_page.py`, `radar.py`, `stock.py` (4 trang), `symbol_dialog.py` (hộp thoại chi tiết mã có biểu đồ nến, mở từ bảng giá Tổng quan),
   `shared.py` (tải và phân tích dùng chung), `theme.py`, `charts.py`, `board.py`, `watchlist.py`, `flipgrid.py` (dữ liệu bản đồ nhiệt), `flipgrid_component.py` (vẽ).
 - `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `record_ws.py`, `record_ssi.py` (bộ ghi SSI dự phòng, cửa sổ riêng), `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`,

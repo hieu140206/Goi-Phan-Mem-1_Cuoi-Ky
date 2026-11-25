@@ -1,9 +1,8 @@
-# Bộ lọc cổ phiếu VN30 với Radar thanh khoản
+# Bộ lọc cổ phiếu HOSE và Radar thanh khoản VN30
 
 Đồ án cá nhân cuối kỳ, học phần Gói phần mềm ứng dụng cho tài chính 1 (Khoa Tài chính Ngân hàng, UEL).
-Bộ lọc cổ phiếu VN30 cho nhà đầu tư cá nhân (gợi ý 2 của đề), xây trên Radar thanh khoản (gợi ý 3 và 6): Radar cho biết
-mã nào đang khó mua bán và khi nào spread hoặc độ dày sổ lệnh lệch khỏi mức thường lệ của chính mã đó; bộ lọc dùng kết quả
-này làm cổng, rồi xếp hạng các mã qua cổng theo dòng tiền nước ngoài và động lượng giá so với VN30.
+Bộ lọc cổ phiếu toàn HOSE cho nhà đầu tư cá nhân (gợi ý 2 của đề): cổng thanh khoản theo trung vị giá trị khớp mỗi ngày, rồi xếp hạng động lượng 6-1.
+Radar thanh khoản (gợi ý 3 và 6) vẫn chỉ cho VN30: cho biết mã nào đang khó mua bán và khi nào spread hoặc độ dày sổ lệnh lệch khỏi mức thường lệ của chính mã đó.
 Nguồn dữ liệu chính: NEO API của VPBankS (REST, WebSocket để đối chiếu). Nguồn phụ: SSI FastConnect API (lịch phiên và số
 liệu cuối ngày để đối chiếu, và sổ lệnh dự phòng khi bộ ghi NEO không chạy đủ phiên); mọi chỗ dùng SSI đều ghi rõ nguồn trên giao diện.
 
@@ -11,7 +10,7 @@ liệu cuối ngày để đối chiếu, và sổ lệnh dự phòng khi bộ g
 | Trang | Nội dung |
 | --- | --- |
 | Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá (mọi nhóm) để mở hộp thoại chi tiết có biểu đồ nến OHLC (nguồn SSI); mã VN30 có liên kết sang hồ sơ thanh khoản |
-| Bộ lọc cổ phiếu (`screen_page.py`) | Bối cảnh thị trường; cổng thanh khoản (Đạt / Chú ý / Loại); xếp hạng theo dòng tiền ngoại và động lượng; chọn dòng để mở hồ sơ mã |
+| Bộ lọc cổ phiếu HOSE (`screen_page.py`) | Cổng thanh khoản (Đạt / Không đạt / Ít giao dịch / Thiếu dữ liệu); xếp hạng động lượng 6-1 (nến SSI); cờ Sát ngưỡng, Bước nhảy, NN vượt GT; cột Radar cho mã VN30; chọn dòng để mở biểu đồ nến |
 | Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên với bản đồ nhiệt thẻ lật |
 | Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi |
 
@@ -127,14 +126,15 @@ Chạy mọi lệnh từ thư mục gốc dự án.
     khi bật và tắt phần bù). Bản thân ngày SSI được so với mốc là các phiên NEO trước đó, tức là một phép so chéo nguồn.
   - Nhãn "· SSI" ở danh sách phiên (Radar, Chi tiết mã) và ghi chú nguồn ở Radar và Chi tiết mã. Trang Bộ lọc không dùng ngày SSI (cần giá khớp và nước ngoài của NEO).
 
-## Bộ lọc cổ phiếu (gợi ý 2 của đề), logic ở `src/analytics/screener.py`
-1. **Cổng thanh khoản** (cùng số với Radar): Loại nếu điểm thanh khoản trong phiên ≤ 33,3 (mốc "Yếu", chỉnh được);
-   Chú ý nếu có ít nhất một đợt cảnh báo; còn lại Đạt. Điểm thanh khoản là xếp hạng tương đối nên khoảng 1/3 mã luôn bị Loại.
-2. **Yếu tố** (chỉ cho mã qua cổng): dòng tiền nước ngoài = mua ròng / giá trị giao dịch; động lượng = giá khớp / tham chiếu − 1
-   trừ % thay đổi VN30 cùng thời điểm. Động lượng 5 phiên chỉ dùng giá đóng cửa hợp lệ (bảng giá chụp từ 14:45, đã có ATC).
-3. **Điểm** = trung bình thứ hạng phần trăm hai yếu tố, trọng số bằng nhau.
-4. **Bối cảnh thị trường**: số mã tăng/giảm VN-Index, % VN30, basis hợp đồng gần nhất, khối ngoại ròng VN30; chỉ nêu sự kiện.
-Đây là công cụ sàng lọc và so sánh, không dự báo giá. Chưa kiểm chứng điểm cao có đi kèm lợi suất ngày sau tốt hơn: cần thêm phiên.
+## Bộ lọc cổ phiếu HOSE (gợi ý 2 của đề), logic ở `src/analytics/universe.py`, tham số ở `config.toml` mục `[universe]`
+1. **Cổng thanh khoản**: trung vị giá trị khớp mỗi ngày (ngày không giao dịch tính 0) trên các ngày đủ (bảng giá NEO chụp sau ATC) phải từ ngưỡng T
+   = vị thế dự kiến ÷ tỷ lệ tham gia (mặc định 250 triệu ÷ 5% = 5 tỷ đồng/ngày), và có giao dịch ít nhất 80% số ngày. Mã Đạt có trung vị dưới 1,25T gắn cờ Sát ngưỡng.
+   Chỉ cổ phiếu 3 ký tự; ETF và chứng quyền bị loại.
+2. **Xếp hạng động lượng 6-1** (chỉ nhóm Đạt): lợi suất từ 6 tháng trước đến 1 tháng trước, theo mốc lịch, một ngày tham chiếu chung, từ nến ngày SSI (giá điều chỉnh cổ tức).
+   Đơn nhân tố, chưa điều chỉnh biến động. Mã Đạt thiếu nến hiện *Chưa đủ lịch sử* hoặc *Dữ liệu cũ*.
+3. **Nước ngoài** chỉ để tham khảo: tổng ròng ÷ tổng giá trị khớp cả cửa sổ; cờ khi mua hoặc bán lớn hơn giá trị khớp (nghi gồm thỏa thuận, chưa xác nhận).
+Đây là công cụ sàng lọc và so sánh, không dự báo giá. 6-1 và 5 tỷ là mặc định có lý do, chưa phải kết luận từ dữ liệu; chưa kiểm chứng xếp hạng cao có đi kèm lợi suất sau đó tốt hơn.
+Bộ lọc VN30 cũ (cổng từ Radar, `screener.py`) còn trong mã nhưng trang không dùng nữa.
 
 ## Cấu trúc
 ```
@@ -146,7 +146,7 @@ src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng,
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu (screener.py)
 config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          342 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
+tests/          396 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
 scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi, fetch_ssi_candles), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
                 dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn

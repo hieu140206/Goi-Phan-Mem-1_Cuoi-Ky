@@ -6,18 +6,19 @@ Sản phẩm: ứng dụng Python + Streamlit dùng **NEO API của VPBankS** l�
 Chuỗi giá trị: NEO API -> thu thập -> chuẩn hóa/lưu (SQLite) -> logic tài chính -> phân tích -> dashboard -> người dùng.
 Chấm 100 điểm; **trần 60 điểm nếu không chạy được, 50 nếu NEO không phải nguồn lõi**.
 
-Định vị (2/11): **Bộ lọc cổ phiếu VN30** (gợi ý 2) xây trên **Radar thanh khoản** (gợi ý 3, 6): Radar làm cổng thanh khoản,
-xếp hạng theo dòng tiền nước ngoài và động lượng so VN30; 4 trang Tổng quan, Bộ lọc, Radar, Chi tiết mã nối qua `?ma=<mã>`.
+Định vị (2/11, đổi 25/11): **Bộ lọc cổ phiếu** (gợi ý 2) chạy trên **toàn HOSE** (~412 mã): cổng thanh khoản theo trung vị giá trị khớp mỗi ngày, rồi xếp hạng động lượng 6-1
+(nến SSI); **Radar thanh khoản** (gợi ý 3, 6) vẫn chỉ cho VN30 và không còn là cổng của Bộ lọc (mã VN30 có cột Radar tham khảo); 4 trang Tổng quan, Bộ lọc, Radar, Chi tiết mã.
 Lõi phân tích: **Radar thanh khoản VN30** (spread tương đối bps, độ sâu, mất cân bằng mua/bán, z-score trượt, cảnh báo bất thường, điểm LRS).
 Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nhóm, độ sâu, độ rộng, thanh khoản) là phần mở rộng.
 
 ## Luật làm việc, thiết kế (đọc và tuân thủ, nguồn gốc duy nhất)
 - **Luật làm việc, phạm vi sửa, vòng test và commit, giao thức câu hỏi:** @AGENT.md
 - **Thiết kế, kiến trúc, quy ước giao diện và quy tắc dữ liệu:** @DESIGN.md
-- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **355 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
+- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **396 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
 - Ba tệp mâu thuẫn nhau thì luật an toàn và dữ liệu trong AGENT.md thắng; còn lại hỏi sinh viên.
 - **24/11/2026: nâng cấp phần mơ hồ và trường hợp biên** (A1 đến A5, B1 đến B7), xem `CHANGELOG.md`: mọi hằng số ở `config.toml`; mốc nền cần **5 phiên** (5 phiên đầu: "Chưa đủ dữ liệu"),
   khung 9:15-9:30 riêng, cổng có nhãn "Chưa đánh giá", Radar có điểm 30 phút và thống kê chất lượng dữ liệu, ngày đặc biệt ở `data/special_days.csv`. Việc còn mở và lỗi logic đã thấy nằm cuối CHANGELOG.
+- **25/11/2026: Bộ lọc toàn HOSE** (`src/analytics/universe.py`, `shared.hose_universe`, mục `[universe]` ở `config.toml`, 23 test ở `tests/test_universe.py`). Cổng: trung vị giá trị khớp mỗi ngày (ngày không giao dịch tính 0, ngày vắng ảnh chụp tính 0) trên **12 ngày đủ** (ảnh chụp cuối ngày từ 14:50; 29/10, 3, 4, 9, 10, 11, 13, 16 đến 20/11; khối lượng 29/10 và 9/11 khớp nến SSI 100%) từ T = 250 triệu / 5% = **5 tỷ**, cần >= 80% số ngày có giao dịch; cờ Sát ngưỡng [T, 1,25T). Nhãn: Đạt, Không đạt thanh khoản, Ít giao dịch, Thiếu dữ liệu, Chưa đủ lịch sử, Dữ liệu cũ. Động lượng 6-1 theo mốc lịch, một ngày tham chiếu chung, dung sai 10 ngày, nến cũ > 3 phiên thì Dữ liệu cũ, cờ bước nhảy > 7,5%. Nước ngoài chỉ để tham khảo (tổng ròng / tổng giá trị; cờ khi mua hoặc bán > giá trị khớp). Kết quả thật: 130/412 mã qua cổng (128 có xếp hạng, 2 chưa đủ lịch sử), 217 không đạt, 65 ít giao dịch. Đã kiểm: mua − bán = ròng 0 dòng sai/6.539; 19/4.488 dòng nước ngoài vượt giá trị khớp (nghi gồm thỏa thuận, CHƯA xác nhận); khối lượng nước ngoài trống = bên đó không giao dịch (0 ngoại lệ); chuỗi nến SSI liền mạch (70/98.583 cặp ngày liền kề có bước nhảy > 7,5%, 13 mã, nghi do chuyển sàn hoặc điều chỉnh). Mặc định 6-1 và 5 tỷ chưa phải kết luận từ dữ liệu. Chưa làm: cờ sát room (chưa rõ đơn vị `foreign_room`/`foreign_remain`), trạng thái giao dịch (board không có), đối chiếu tổng ròng với số công bố. Lưu ý: `ATC_DONE = 14:45` ở screener.py coi ảnh chụp 14:45:00 (2/11) là đã qua ATC nhưng khối lượng ngày đó chỉ khớp SSI ~20%: chưa sửa (ngoài phạm vi). `screener.py` và `shared.screen_for_day` (Bộ lọc VN30 cũ) giữ nguyên, trang không còn dùng.
 - **25/11/2026: kiểm chứng cảnh báo** (`report/kiem-chung/KET_QUA.md`, `scripts/validate_alerts.py`): độ sâu tăng dần trong ngày (0,48 lúc 9:15 lên 1,18 lúc 14:00), spread gần phẳng (chữ U rất yếu);
   cảnh báo độ sâu mỏng kéo dài >= 30 phút, cảnh báo spread chủ yếu thoáng qua; từ đó đổi z độ sâu 3 thành 2,5 và spread tối thiểu 2 thành 2,5. Bằng chứng sơ bộ (6 phiên train, 5 test).
 
