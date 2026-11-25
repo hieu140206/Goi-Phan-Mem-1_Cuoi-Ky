@@ -27,7 +27,8 @@ from watchlist import load_watchlist  # noqa: E402
 
 LIVE_EVERY_SECONDS = 15  # cứ 15 giây xem bộ ghi có ghi thêm gì chưa; bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa ~1 phút
 
-st.set_page_config(page_title="Thị trường VN · NEO API", page_icon=":material/radar:", layout="wide")
+# Thanh bên mặc định thu gọn để nội dung tràn hết bề ngang (bấm mũi tên >> ở góc trên bên trái để mở: công tắc Trực tiếp, danh sách theo dõi, ngày và bộ lọc của trang).
+st.set_page_config(page_title="Thị trường VN · NEO API", page_icon=":material/radar:", layout="wide", initial_sidebar_state="collapsed")
 
 
 @st.cache_resource(show_spinner="Đang chuẩn bị dữ liệu…")
