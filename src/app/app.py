@@ -52,12 +52,13 @@ def _theme_watch(seen_dark: bool) -> None:
 _theme_watch(is_dark())
 
 
-# Streamlit mặc định theo cài đặt hệ thống của người xem và tự ghi "System" vào trình duyệt ngay lần đầu. Dự án muốn mặc định NỀN SÁNG: khi lựa chọn
-# đang là "System" (hoặc chưa có) thì đổi thành Light và tải lại một lần. Người xem đã chọn Light hoặc Dark (nút mặt trăng/mặt trời ở Tổng quan)
-# thì lựa chọn được giữ. Streamlit lưu lựa chọn ở localStorage, khóa stActiveTheme-<đường dẫn>-v2.
+# Streamlit nhớ lựa chọn nền sáng/tối của người xem trong trình duyệt (localStorage, khóa stActiveTheme-<đường dẫn>-v2) và mặc định theo hệ thống.
+# Dự án muốn MỖI LẦN MỞ app (tab mới) là NỀN SÁNG: lần đầu trong một tab (sessionStorage chưa có dấu dsInit) thì đặt Light và tải lại một lần.
+# Sau đó trong cùng tab, chọn nền tối bằng nút ở Tổng quan hoặc bấm F5 đều giữ nguyên lựa chọn (không còn ép lại).
 _DEFAULT_LIGHT_SCRIPT = (
-    "<script>try{var p=window.parent,k='stActiveTheme-'+p.location.pathname+'-v2',v=p.localStorage.getItem(k);"
-    "if(v===null||v==='\"System\"'){p.localStorage.setItem(k,'\"Light\"');p.location.reload();}}catch(e){}</script>")
+    "<script>try{var p=window.parent,k='stActiveTheme-'+p.location.pathname+'-v2',ss=p.sessionStorage;"
+    "if(!ss.getItem('dsInit')){ss.setItem('dsInit','1');if(p.localStorage.getItem(k)!=='\"Light\"')"
+    "{p.localStorage.setItem(k,'\"Light\"');p.location.reload();}}}catch(e){}</script>")
 
 st.iframe(_DEFAULT_LIGHT_SCRIPT, height=1)
 settings = get_settings()
