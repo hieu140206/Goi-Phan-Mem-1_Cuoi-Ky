@@ -4,6 +4,7 @@ Chạy (kích hoạt .venv trước):
   python scripts/fetch_ssi_candles.py --limit 30            # ĐO tốc độ: 30 mã đầu, in thời gian và số lần gọi, rồi ước tính cho cả danh sách
   python scripts/fetch_ssi_candles.py                       # nến ngày cho mọi cổ phiếu và ETF trong bảng giá + nến trong phiên cho VN30
   python scripts/fetch_ssi_candles.py --symbols VNM,FPT --frames 1d,5m
+  python scripts/fetch_ssi_candles.py --full --frames 5m      # kéo dài lịch sử nến trong phiên (lấy lại từ đầu)
   python scripts/fetch_ssi_candles.py --stats               # xem tệp đang có gì (không gọi mạng)
 
 Nến ngày nạp lại cả chuỗi mỗi lần (SSI điều chỉnh giá cũ khi chia cổ tức); nến trong phiên chỉ lấy phần mới rồi cộng dồn.
@@ -95,6 +96,7 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=0, help="chỉ lấy N mã đầu (để đo tốc độ)")
     ap.add_argument("--symbols", default="", help="danh sách mã cách nhau bằng dấu phẩy (thay cho danh sách từ bảng board)")
     ap.add_argument("--frames", default="1d,1h,15m,5m", help="các khung nến (mặc định: 1d cho mọi mã; 1h,15m,5m chỉ cho VN30)")
+    ap.add_argument("--full", action="store_true", help="nến trong phiên: lấy lại từ đầu thay vì chỉ phần mới (dùng khi muốn kéo dài lịch sử)")
     ap.add_argument("--stats", action="store_true", help="xem nội dung tệp candles.db, không gọi mạng")
     ap.add_argument("--db", default=str(DEFAULT_PATH))
     a = ap.parse_args()
@@ -124,12 +126,12 @@ def main() -> None:
         t0, c0 = time.perf_counter(), client.calls
         for i, sym in enumerate(syms, 1):
             frm = today - dt.timedelta(days=DAILY_DAYS if frame == "1d" else INTRADAY_DAYS)
-            if frame != "1d":                                           # nến trong phiên: chỉ lấy phần mới (lùi 1 ngày cho chắc)
+            if frame != "1d" and not a.full:                            # nến trong phiên: chỉ lấy phần mới (lùi 1 ngày cho chắc)
                 prev = last_ts(out, frame, sym)
                 if prev is not None:
                     frm = max(frm, prev.date() - dt.timedelta(days=1))
             try:
-                df = fetch_ohlc(client, sym, frm.strftime("%Y/%m/%d"), today.strftime("%Y/%m/%d"), frame, max_pages=30)
+                df = fetch_ohlc(client, sym, frm.strftime("%Y/%m/%d"), today.strftime("%Y/%m/%d"), frame, max_pages=100)
             except (SsiError, ValueError) as exc:
                 fails += 1
                 print(f"  [{frame} {i}/{len(syms)}] {sym}: LỖI {type(exc).__name__}: {exc}")

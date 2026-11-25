@@ -1,6 +1,7 @@
 """Hộp thoại chi tiết một mã ở trang Tổng quan: giá hiện tại và biểu đồ nến OHLC kèm khối lượng.
 
-Nguồn nến: SSI (nguồn phụ, chỉ đọc, có đến 1 năm nến ngày và nến trong phiên của MỌI mã), có nhãn "SSI" trên giao diện. Giá SSI của ngày cũ có thể
+Nguồn nến: SSI (nguồn phụ, chỉ đọc), có nhãn "SSI" trên giao diện. Ưu tiên đọc kho nến đã nạp sẵn (data/candles.db, scripts/fetch_ssi_candles.py: hiện ngay,
+không chờ SSI); mã hoặc khung chưa có trong kho thì gọi SSI trực tiếp. Giá SSI của ngày cũ có thể
 đã điều chỉnh cổ tức nên chỉ để HIỂN THỊ, không đưa vào tính điểm. Không gọi được SSI thì dùng nến ngày NEO đã ghi (bảng board) và nói rõ.
 Hàm `candle_figure` không đọc dữ liệu, kiểm thử được.
 """
@@ -17,6 +18,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from board import fmt_px, fmt_qty, _vn
+from data.candle_store import DEFAULT_PATH as CANDLE_DB, load_candles
 from data.candles import neo_daily_candles
 from data.ssi import SsiClient, fetch_ohlc
 from theme import CHART_CONFIG, INK, MUTED, NEG, POS, base_layout
@@ -63,6 +65,11 @@ def candle_figure(df: pd.DataFrame, intraday: bool, height: int = 460) -> go.Fig
     fig.update_layout(bargap=0.15, hovermode="x unified")
     if len(d) > 90:   # mở đầu chỉ hiện đoạn cuối cho dễ nhìn; vẫn kéo và lăn chuột để xem phần còn lại
         fig.update_xaxes(range=[d["ts"].iloc[-90], d["ts"].iloc[-1] + (d["ts"].iloc[-1] - d["ts"].iloc[-2]) * 2])
+        vis = d.iloc[-90:]                       # trục giá và khối lượng bám đoạn đang hiện (Plotly mặc định tính theo cả lịch sử nên nến bị nén)
+        lo, hi = float(vis["low"].min()), float(vis["high"].max())
+        pad = (hi - lo) * 0.06 or hi * 0.01
+        fig.update_yaxes(range=[lo - pad, hi + pad], row=1, col=1)
+        fig.update_yaxes(range=[0, float(vis["volume"].max()) * 1.1], row=2, col=1)
     return fig
 
 
@@ -73,9 +80,13 @@ def _load_ssi(symbol: str, timeframe: str, days: int) -> pd.DataFrame:
     return fetch_ohlc(SsiClient(), symbol, (today - dt.timedelta(days=days)).strftime("%Y/%m/%d"), today.strftime("%Y/%m/%d"), timeframe)
 
 
-def get_candles(symbol: str, label: str, db_path: Path) -> tuple[pd.DataFrame, str, str]:
-    """(nến, nguồn, ghi chú). Nguồn "SSI" hoặc "NEO". Thiếu dữ liệu thì bảng rỗng kèm ghi chú lý do, không đoán."""
+def get_candles(symbol: str, label: str, db_path: Path, candle_db: Path = CANDLE_DB) -> tuple[pd.DataFrame, str, str]:
+    """(nến, nguồn, ghi chú). Nguồn "SSI" hoặc "NEO". Thiếu dữ liệu thì bảng rỗng kèm ghi chú lý do, không đoán.
+    Thứ tự: kho nến đã nạp (candles.db) -> gọi SSI trực tiếp -> nến ngày NEO."""
     tf, days = FRAMES[label]
+    stored = load_candles(candle_db, tf, symbol)
+    if not stored.empty:
+        return stored, "SSI", f"Kho nến đã nạp, mới nhất {stored['ts'].max():%d/%m/%Y}. " + SSI_NOTE
     try:
         df = _load_ssi(symbol, tf, days)
     except Exception as exc:          # noqa: BLE001  (mạng, thiếu khóa, giới hạn tần suất: không để làm hỏng trang)

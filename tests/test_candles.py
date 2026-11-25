@@ -115,3 +115,37 @@ def test_board_symbol_opens_dialog_link_on_same_page_for_every_group():
     html_dialog = bd.board_html(_board(), dialog=True)
     assert 'href="?xem=' in html_dialog and 'target="_self"' in html_dialog and "ma?ma=" not in html_dialog
     assert 'href="?xem=' not in bd.board_html(_board())                          # mặc định không gắn liên kết
+
+
+# ---- thứ tự nguồn của hộp thoại: kho nến -> SSI trực tiếp -> NEO ----
+def test_get_candles_prefers_stored_history_and_does_not_call_ssi(tmp_path, monkeypatch):
+    import symbol_dialog as sd
+    from data.candle_store import save_candles
+    db = tmp_path / "c.db"
+    save_candles(db, "1d", "VNM", pd.DataFrame({"ts": pd.to_datetime(["2026-01-05", "2026-11-23"]), "open": 1.0, "high": 2.0, "low": 0.5,
+                                                "close": 1.5, "volume": 10.0}), "t", replace=True)
+    monkeypatch.setattr(sd, "_load_ssi", lambda *a: (_ for _ in ()).throw(AssertionError("không được gọi SSI khi kho đã có")))
+    df, source, note = sd.get_candles("VNM", "Ngày", tmp_path / "khong_co.db", candle_db=db)
+    assert source == "SSI" and len(df) == 2 and "23/11/2026" in note             # giữ cả lịch sử cũ trong kho, ghi ngày mới nhất
+
+
+def test_get_candles_falls_back_to_live_ssi_then_neo_when_store_is_empty(tmp_path, monkeypatch):
+    import symbol_dialog as sd
+    live = pd.DataFrame({"ts": pd.to_datetime(["2026-11-20"]), "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.5, "volume": 10.0})
+    monkeypatch.setattr(sd, "_load_ssi", lambda *a: live)
+    df, source, _ = sd.get_candles("VNM", "Ngày", tmp_path / "khong_co.db", candle_db=tmp_path / "khong_co2.db")
+    assert source == "SSI" and len(df) == 1
+    monkeypatch.setattr(sd, "_load_ssi", lambda *a: (_ for _ in ()).throw(RuntimeError("mạng")))
+    df, source, note = sd.get_candles("VNM", "Ngày", _board_db(tmp_path), candle_db=tmp_path / "khong_co2.db")
+    assert source == "NEO" and len(df) == 2 and "RuntimeError" in note
+    assert sd.get_candles("VNM", "5 phút", tmp_path / "khong_co.db", candle_db=tmp_path / "khong_co2.db")[0].empty       # khung trong phiên không có dự phòng NEO
+
+
+def test_candle_figure_fits_price_axis_to_the_visible_window_not_all_history():
+    import symbol_dialog as sd
+    d = _candles(200, "2025-01-01")
+    d.loc[:100, ["open", "high", "low", "close"]] *= 3                       # lịch sử cũ giá cao gấp 3: không được kéo trục giá của đoạn cuối
+    fig = sd.candle_figure(d, intraday=False)
+    lo, hi = fig.layout.yaxis.range
+    tail = d.iloc[-90:]
+    assert lo <= tail["low"].min() / 1000 and hi >= tail["high"].max() / 1000 and hi < d["high"].max() / 1000 / 2

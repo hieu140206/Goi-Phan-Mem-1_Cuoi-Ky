@@ -53,6 +53,7 @@ python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi
 python scripts/validate_alerts.py   # kiểm chứng cảnh báo (chữ U, event study, độ nhạy ngưỡng), ghi vào report/kiem-chung/ (chỉ đọc market.db)
 python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
 python scripts/fetch_ssi_history.py --check   # đối chiếu số cuối ngày của SSI với NEO (không gọi mạng)
+python scripts/fetch_ssi_candles.py           # nạp nến OHLC từ SSI vào data/candles.db (tệp riêng) cho biểu đồ nến ở trang Tổng quan; chạy lại sau 15:00 để thêm nến mới
 python scripts/generate_sample_data.py   # tạo lại dữ liệu mô phỏng (chỉ để kiểm thử, giao diện không dùng)
 ```
 Chạy mọi lệnh từ thư mục gốc dự án.
@@ -146,7 +147,7 @@ src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), đi�
 config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
 tests/          342 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, bản đồ nhiệt
-scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
+scripts/        ghi dữ liệu (run_live, record_rest, record_ws, record_ssi, fetch_ssi_candles), kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check),
                 dựng lại phiên từ dữ liệu gốc (restore_session), xuất dữ liệu, tạo dữ liệu mô phỏng
 data_sample/    dữ liệu mô phỏng (KHÔNG phải giá thị trường) và danh sách sự kiện bất thường cài sẵn
 docs/, report/  tài liệu và báo cáo
