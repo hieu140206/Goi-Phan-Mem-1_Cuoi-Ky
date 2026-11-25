@@ -151,8 +151,7 @@ days = [pd.Timestamp(d).date() for d in data_days(db_path)]
 if not days:
     st.title("Tổng quan thị trường", anchor=False)
     st.toggle("Trực tiếp: tự cập nhật", key="live", help="Bật thì trang tự hiện khi bộ ghi ghi xong phút đầu tiên.")   # chưa có thanh đầu trang: giữ công tắc ở đây
-    st.info("Chưa có dữ liệu thị trường. Chạy `python scripts/run_live.py` trong giờ giao dịch (hoặc "
-            "`python scripts/record_rest.py`) để bộ ghi lưu dữ liệu từ NEO. Bật công tắc Trực tiếp thì trang tự hiện "
+    st.info("Chưa có dữ liệu thị trường. Cần bật bộ ghi dữ liệu NEO trong giờ giao dịch. Bật công tắc Trực tiếp thì trang tự hiện "
             "khi bộ ghi ghi xong phút đầu tiên.")
     st.stop()
 
@@ -219,8 +218,7 @@ with st.container(key="topctl", horizontal=True, horizontal_alignment="right", v
     st.button("", icon=":material/light_mode:" if is_dark() else ":material/dark_mode:", key="theme_btn", width="content",
               help="Chuyển sang nền sáng" if is_dark() else "Chuyển sang nền tối", on_click=_on_theme_button)
     st.toggle("Trực tiếp", key="live",
-              help="Tự đọc lại dữ liệu khi bộ ghi ghi thêm. Bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa khoảng 1 phút. "
-                   "Chạy cả bộ ghi và trang bằng: python scripts/run_live.py")
+              help="Tự đọc lại dữ liệu khi có bản ghi mới. Dữ liệu được chụp mỗi phút nên trễ tối đa khoảng 1 phút.")
 _theme_to_set = st.session_state.pop(THEME_SET_KEY, None)
 if _theme_to_set:          # Streamlit chỉ đọc chủ đề lúc tải trang: ghi lựa chọn vào trình duyệt rồi tải lại (công tắc Trực tiếp quay về mặc định)
     st.iframe(

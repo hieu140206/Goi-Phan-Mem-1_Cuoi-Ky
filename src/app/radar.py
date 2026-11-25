@@ -95,7 +95,7 @@ with st.sidebar:
 if source is None:
     st.title("Radar thanh khoản VN30", anchor=False)
     st.error(
-        "Chưa tìm thấy dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py` (hoặc `python scripts/record_rest.py`). "
+        "Chưa tìm thấy dữ liệu. Cần bật bộ ghi dữ liệu NEO trong giờ giao dịch. "
         "Đang bật chế độ Trực tiếp thì trang tự hiện dữ liệu khi bộ ghi ghi xong phút đầu tiên.",
         title="Chưa có dữ liệu",
     )
@@ -148,8 +148,7 @@ with st.sidebar:
                                "(z bền vững tính bằng trung vị và MAD). Leys và cộng sự (2013) gợi ý 2,5; 3 thận trọng hơn.")
     max_sessions = st.slider("Số phiên trước làm mốc (tối đa)", MIN_BASELINE, 20, max(MIN_BASELINE, int(p0["max_sessions"])), 1,
                              help="Mức thường lệ của một mã ở khung 30 phút = các lần chụp cùng khung giờ trong tối đa "
-                                  f"chừng này phiên gần nhất TRƯỚC phiên đang xét. Cần ít nhất {MIN_BASELINE} phiên trước mới đánh giá "
-                                  "(đặt ở config.toml).")
+                                  f"chừng này phiên gần nhất TRƯỚC phiên đang xét. Cần ít nhất {MIN_BASELINE} phiên trước mới đánh giá.")
     with st.expander("Trọng số điểm rủi ro LRS"):
         raw_w = [
             st.slider("Spread", 0.0, 1.0, float(p0["w_spread"]), 0.05),
@@ -293,7 +292,7 @@ if no_base_days:
         f"{len(no_base_days)} phiên chưa đủ dữ liệu mốc nền",
         '<div class="notice">Phiên ' + ", ".join(f"{d:%d/%m}" for d in no_base_days)
         + f" ở trạng thái Chưa đủ dữ liệu: cần ít nhất {MIN_BASELINE} phiên trước và {MIN_OBS_BUCKET} lần chụp hợp lệ cùng khung giờ "
-        "(đặt ở config.toml), nên chưa có cảnh báo và điểm LRS. "
+        "nên chưa có cảnh báo và điểm LRS. "
         "Xếp hạng thanh khoản và biểu đồ spread, độ sâu vẫn dùng được.</div>"))
 
 # Ngày đặc biệt (đáo hạn phái sinh, cơ cấu ETF...): vẫn tính bình thường nhưng nói rõ và không dùng làm mốc nền.
@@ -303,7 +302,7 @@ if len(sp_in_view):
         "ngày đặc biệt " + ", ".join(f"{d:%d/%m}" for d in sp_in_view.index),
         '<div class="notice">Ngày đặc biệt: ' + "; ".join(f"{d:%d/%m} ({describe(t)})" for d, t in sp_in_view.items())
         + ". Chỉ số và cảnh báo vẫn tính như thường, nhưng thanh khoản hôm đó có thể khác thường nên không dùng làm mốc so sánh "
-        "cho các ngày khác (config.toml, special_days.exclude_from_baseline).</div>"))
+        "cho các ngày khác.</div>"))
 
 # Ngày nghỉ giao dịch (data/special_days.csv, type market_holiday) từ đầu khoảng đang xem đến hôm nay: giải thích vì sao không có phiên và không có dữ liệu.
 _today = pd.Timestamp.now(tz=TZ).date()
@@ -313,7 +312,7 @@ if _hol:
         "ngày nghỉ giao dịch " + ", ".join(f"{h:%d/%m}" for h in _hol),
         '<div class="notice">Ngày nghỉ giao dịch: ' + ", ".join(f"{h:%d/%m/%Y}" for h in _hol)
         + ". Sàn không có phiên nên không có dữ liệu (bảng giá không nhấp nháy như mọi ngày); không phải lỗi của bộ ghi. "
-        "Danh sách này lấy từ data/special_days.csv do sinh viên ghi, chưa đối chiếu lịch chính thức của HOSE.</div>"))
+        "Danh sách này do sinh viên tự ghi, chưa đối chiếu lịch chính thức của HOSE.</div>"))
 
 # Khóa trần/sàn: một bên sổ lệnh trống nên không tính được spread; báo riêng thay vì bỏ im lặng.
 locked = report["limit_locked"]
@@ -608,7 +607,7 @@ khối lượng khớp; đây chỉ là dấu hiệu, không chứng minh có h�
 
 **Chất lượng dữ liệu và ngày đặc biệt.** Dòng không dùng được cho spread (khóa trần/sàn, giá tốt nhất chạm trần/sàn, sổ chéo, giá lỗi) bị loại khỏi
 xếp hạng, cảnh báo và mốc nền; tỷ lệ theo mã ở mục "Chất lượng dữ liệu theo mã". Lần chụp đứng sau khoảng trống > 90 giây hoặc nghi dữ liệu
-cũ chỉ bị đánh cờ. Ngày đặc biệt (data/special_days.csv) vẫn được tính nhưng không làm mốc nền cho ngày khác.
+cũ chỉ bị đánh cờ. Ngày đặc biệt vẫn được tính nhưng không làm mốc nền cho ngày khác.
 
 **Phát lại** dựng lại một phiên đã ghi từng bước. Mọi phép tính, kể cả ngưỡng LRS, chỉ dùng dữ liệu đến thời
 điểm đang xem.

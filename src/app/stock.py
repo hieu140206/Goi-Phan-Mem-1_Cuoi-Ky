@@ -54,7 +54,7 @@ def signed(v, d: int = 2, suffix: str = "") -> str:
 source = current_source()
 if source is None:
     st.title("Chi tiết mã", anchor=False)
-    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py`.",
+    st.error("Chưa có dữ liệu. Cần bật bộ ghi dữ liệu NEO trong giờ giao dịch.",
              title="Chưa có dữ liệu")
     st.stop()
 
@@ -225,7 +225,7 @@ with st.container(border=True, key="panel_foreign"):
                      "ratio": num("foreign_net_val") / num("total_value") * 100 if num("total_value") else float("nan"),
                      "at": ts.strftime("%H:%M") + ("" if ts.time() >= pd.Timestamp("14:45").time() else " (trước ATC)")})
     if not rows:
-        st.caption("Chưa có bảng giá cuối ngày nào cho mã này. Bộ ghi lưu bảng giá mỗi ngày khi chạy `run_live.py`.")
+        st.caption("Chưa có bảng giá cuối ngày nào cho mã này. Bộ ghi lưu bảng giá mỗi ngày khi đang chạy.")
     else:
         fdf = pd.DataFrame(rows[::-1])
         st.dataframe(

@@ -51,7 +51,7 @@ how_to_read(
 
 source = current_source()
 if source is None:
-    st.error("Chưa có dữ liệu. Ghi dữ liệu NEO bằng `python scripts/run_live.py`.", title="Chưa có dữ liệu")
+    st.error("Chưa có dữ liệu. Cần bật bộ ghi dữ liệu NEO trong giờ giao dịch.", title="Chưa có dữ liệu")
     st.stop()
 
 info = hose_universe()
@@ -77,7 +77,7 @@ st.html(
     f'<div class="kpi"><div class="l">Không qua cổng</div><div class="v">{len(r) - n_gate}<small>mã</small></div>'
     f'<div class="s">{n.get(U.FAIL, 0)} không đạt · {n.get(U.FEW, 0)} ít giao dịch · {n.get(U.MISSING, 0)} thiếu dữ liệu</div></div>'
     f'<div class="kpi"><div class="l">Ngưỡng thanh khoản</div><div class="v">{vn(T / 1e9, 1)}<small>tỷ đ/ngày</small></div>'
-    '<div class="s">vị thế dự kiến ÷ tỷ lệ tham gia (config.toml)</div></div>'
+    '<div class="s">vị thế dự kiến ÷ tỷ lệ tham gia</div></div>'
     f'<div class="kpi"><div class="l">Mẫu giá trị khớp</div><div class="v">{len(days)}<small>ngày đủ</small></div>'
     f'<div class="s">{fmt_day(days[0])} đến {fmt_day(days[-1])}, bảng giá NEO sau ATC</div></div>'
     "</div>")
@@ -178,7 +178,7 @@ with st.expander("Phương pháp và giới hạn", icon=":material/menu_book:")
     st.markdown(
         f"""
 **1. Cổng thanh khoản.** Ngưỡng T = vị thế dự kiến ÷ tỷ lệ tham gia tối đa vào giá trị khớp một phiên (hiện {vn(T / 1e9, 1)} tỷ đồng/ngày,
-đặt ở `config.toml`, mục `[universe]`: 250 triệu đồng và 5%; đổi hai số này thì ngưỡng đổi). Mỗi mã lấy **trung vị** giá trị khớp mỗi ngày trên {len(days)} ngày đủ;
+tính từ vị thế dự kiến 250 triệu đồng và tỷ lệ tham gia tối đa 5%; đổi hai số này thì ngưỡng đổi). Mỗi mã lấy **trung vị** giá trị khớp mỗi ngày trên {len(days)} ngày đủ;
 ngày mã không giao dịch và ngày mã không có trong ảnh chụp đều tính là 0 (không bỏ khỏi mẫu), nên mã khớp lai rai không trông thanh khoản hơn thực tế.
 Trung vị từ T trở lên (đúng bằng T cũng được) và có giao dịch ít nhất 80% số ngày thì *Đạt*. *Sát ngưỡng* là cờ cho mã Đạt có trung vị dưới 1,25 lần T.
 Mã không thuộc dạng cổ phiếu 3 ký tự (ETF, chứng quyền) bị loại khỏi tập đánh giá.
@@ -192,7 +192,7 @@ có giao dịch (đã kiểm: mọi dòng khối lượng trống đều có gi�
 
 **Giới hạn**
 - **Chỉ {len(days)} ngày đủ** để tính giá trị khớp (mẫu ngắn): một phiên đột biến (cơ cấu ETF, đáo hạn phái sinh) vẫn có thể ảnh hưởng, dù đã dùng trung vị. Ngày chụp bảng giá giữa phiên hoặc trước khớp ATC bị loại.
-- **Giá nến SSI là giá điều chỉnh cổ tức**, chỉ dùng tỷ lệ trong cùng mã; không trộn với giá NEO. Nến chỉ cập nhật khi chạy `python scripts/fetch_ssi_candles.py`, nên động lượng có thể cũ vài ngày: trang ghi ngày tham chiếu.
+- **Giá nến SSI là giá điều chỉnh cổ tức**, chỉ dùng tỷ lệ trong cùng mã; không trộn với giá NEO. Nến chỉ cập nhật khi nạp lại dữ liệu nến SSI, nên động lượng có thể cũ vài ngày: trang ghi ngày tham chiếu.
 - 6-1 là cửa sổ mặc định phổ biến, **chưa kiểm trên dữ liệu của dự án** (chỉ khoảng 13 tháng nến). Chưa kiểm chứng xếp hạng cao có đi kèm lợi suất sau đó tốt hơn hay không.
 - Xếp hạng động lượng là **đơn nhân tố**, chưa điều chỉnh biến động và chưa phải điểm tổng hợp.
 - Giá trị nước ngoài **có thể gồm cả thỏa thuận** (19 trong 4.488 dòng mã x ngày có mua hoặc bán lớn hơn giá trị khớp: suy ra, chưa xác nhận); chưa đối chiếu tổng ròng với số công bố của sàn.
