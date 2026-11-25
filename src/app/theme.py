@@ -79,6 +79,8 @@ def inject_css() -> None:
         f"""
     <style>
     .stApp {{ font-variant-numeric: tabular-nums; }}
+    /* Ẩn thanh công cụ góc phải trên (Fork, GitHub, menu ba chấm) mà Streamlit Cloud thêm vào; KHÔNG ẩn cả stToolbar vì menu điều hướng trang nằm trong đó. */
+    [data-testid="stToolbarActions"], [data-testid="stAppDeployButton"], [data-testid="stMainMenu"], .stDeployButton {{ display: none !important; }}
     [data-testid="stMainBlockContainer"] {{ max-width: 1360px; padding-left: 40px; padding-right: 40px; }}
 
     /* Ô nền trắng: mọi container có key bắt đầu bằng "panel" */
