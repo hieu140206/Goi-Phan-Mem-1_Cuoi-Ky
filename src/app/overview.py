@@ -71,7 +71,10 @@ MAX_BOARD_ROWS = 300       # bảng HTML quá dài thì trình duyệt chậm; t
 st.html(
     f"""<style>
 [data-testid="stMainBlockContainer"] {{ max-width: none; padding-left: 24px; padding-right: 24px; }}
-.bar-title {{ font-size: 20px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; color: {INK}; }}
+.sr-only {{ position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; padding: 0; }}
+.st-key-topctl {{ position: fixed; top: 9px; right: 20px; z-index: 1000000; width: auto; max-width: calc(100vw - 780px); flex-wrap: nowrap; }}
+@media (min-width: 1351px) {{ .st-key-topctl, .stElementContainer:has(> .sr-only) {{ margin-bottom: -16px; }} }}   /* hai khối không chiếm chỗ: bù khoảng cách giữa các phần tử */
+@media (max-width: 1350px) {{ .st-key-topctl {{ position: static; max-width: none; justify-content: flex-end; flex-wrap: wrap; }} }}
 .ov-head {{ margin: 4px 0 2px; }}
 .ov-head h1 {{ font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin: 0; line-height: 1.25; }}
 .ov-sub {{ font-size: 15px; color: {MUTED}; margin: 6px 0 12px; }}
@@ -206,21 +209,18 @@ def _on_theme_button() -> None:
     st.session_state[THEME_SET_KEY] = "Light" if is_dark() else "Dark"
 
 
-# Thanh đầu trang như web NEO Invest: tên trang và giờ phiên bên trái; Làm mới, nút sáng/tối, công tắc Trực tiếp bên phải.
-bar_l, bar_r = st.columns([8.2, 3.8], gap="small", vertical_alignment="center")
-with bar_l:
-    with st.container(horizontal=True, horizontal_alignment="left", vertical_alignment="center", gap="medium"):
-        st.html('<span class="bar-title">Tổng quan thị trường</span>')
-        render_chips(trade_day, day, bool(st.session_state.get("live")))
-with bar_r:
-    with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center", gap="small"):
-        st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
-                  help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
-        st.button("", icon=":material/light_mode:" if is_dark() else ":material/dark_mode:", key="theme_btn", width="content",
-                  help="Chuyển sang nền sáng" if is_dark() else "Chuyển sang nền tối", on_click=_on_theme_button)
-        st.toggle("Trực tiếp", key="live",
-                  help="Tự đọc lại dữ liệu khi bộ ghi ghi thêm. Bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa khoảng 1 phút. "
-                       "Chạy cả bộ ghi và trang bằng: python scripts/run_live.py")
+# Điều khiển nằm CÙNG HÀNG với thanh điều hướng trên cùng (như web NEO Invest): giờ phiên, Làm mới, nút sáng/tối, công tắc Trực tiếp.
+# Container có key "topctl" được CSS ghim (position: fixed) lên đúng thanh điều hướng, ở bên phải; màn hình hẹp thì rơi về dòng thường.
+st.html('<h1 class="sr-only">Tổng quan thị trường</h1>')
+with st.container(key="topctl", horizontal=True, horizontal_alignment="right", vertical_alignment="center", gap="small"):
+    render_chips(trade_day, day, bool(st.session_state.get("live")))
+    st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
+              help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
+    st.button("", icon=":material/light_mode:" if is_dark() else ":material/dark_mode:", key="theme_btn", width="content",
+              help="Chuyển sang nền sáng" if is_dark() else "Chuyển sang nền tối", on_click=_on_theme_button)
+    st.toggle("Trực tiếp", key="live",
+              help="Tự đọc lại dữ liệu khi bộ ghi ghi thêm. Bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa khoảng 1 phút. "
+                   "Chạy cả bộ ghi và trang bằng: python scripts/run_live.py")
 _theme_to_set = st.session_state.pop(THEME_SET_KEY, None)
 if _theme_to_set:          # Streamlit chỉ đọc chủ đề lúc tải trang: ghi lựa chọn vào trình duyệt rồi tải lại (công tắc Trực tiếp quay về mặc định)
     st.iframe(

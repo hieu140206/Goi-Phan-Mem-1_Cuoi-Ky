@@ -75,5 +75,5 @@ gatherUsageStats = false
 headless = true
 
 [client]
-# viewer: hiện menu góc phải trên (có mục Settings để đổi nền sáng/tối) nhưng ẩn các mục dành cho người phát triển.
-toolbarMode = "viewer"
+# minimal: ẩn menu ba chấm dọc ở góc phải trên. Nền sáng/tối đổi bằng nút mặt trăng/mặt trời ở thanh đầu trang Tổng quan.
+toolbarMode = "minimal"
