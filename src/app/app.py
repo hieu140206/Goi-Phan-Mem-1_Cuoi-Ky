@@ -16,6 +16,33 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+
+def _drop_stale_modules() -> None:
+    """Sau mỗi lần cập nhật mã, nạp lại các mô-đun của dự án (data, analytics, finance, theme, shared...).
+
+    Chạy trên Streamlit Cloud, tiến trình sống tiếp sau khi cập nhật mã: các tệp trang (radar.py...) chạy lại bản mới nhưng mô-đun đã nạp
+    (candle_store.py, theme.py...) giữ bản cũ, nên một import mới có thể báo ImportError cho tới khi khởi động lại app. Ở đây so dấu thời gian
+    lớn nhất của các tệp .py trong src với lần trước; đổi thì bỏ các mô-đun của dự án khỏi bộ nhớ để lần import sau đọc bản mới (không đụng tệp nào)."""
+    src = Path(__file__).resolve().parents[1]
+    token = max((f.stat().st_mtime for f in src.rglob("*.py")), default=0.0)
+    if getattr(sys, "_ds_src_token", None) == token:
+        return
+    sys._ds_src_token = token
+    me = Path(__file__).resolve()
+    for name, mod in list(sys.modules.items()):
+        f = getattr(mod, "__file__", None)
+        if not f or name == "__main__":
+            continue
+        try:
+            path = Path(f).resolve()
+        except OSError:
+            continue
+        if src in path.parents and path != me:
+            del sys.modules[name]
+
+
+_drop_stale_modules()
+
 import streamlit as st  # noqa: E402
 
 from data.storage import live_stamp  # noqa: E402
