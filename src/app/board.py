@@ -139,14 +139,14 @@ def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | No
 
 def board_css(border: str, grid: str, muted: str, ink: str, up: str, dn: str) -> str:
     return f"""<style>
-.board-wrap {{ overflow: auto; max-height: 640px; border: 1px solid {border}; border-radius: 8px; background: #ffffff; }}
-.board {{ border-collapse: separate; border-spacing: 0; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }}
-.board th {{ position: sticky; top: 0; z-index: 3; background: #f7f8fa; color: {muted}; font-weight: 600; padding: 0 9px;
+.board-wrap {{ overflow: auto; container-type: inline-size; max-height: calc(100vh - 230px); min-height: 420px; border: 1px solid {border}; border-radius: 8px; background: #ffffff; }}
+.board {{ border-collapse: separate; border-spacing: 0; width: 100%; font-size: clamp(9.5px, calc(100cqw / 116), 13px); font-variant-numeric: tabular-nums; }}  /* chữ co theo bề ngang khung để vừa hết các cột, không cuộn ngang */
+.board th {{ position: sticky; top: 0; z-index: 3; background: #f7f8fa; color: {muted}; font-weight: 600; padding: 0 0.5em;
             text-align: right; border-bottom: 1px solid {border}; height: 32px; line-height: 32px; box-sizing: border-box;
             white-space: nowrap; }}
 .board th.c {{ text-align: center; color: {ink}; }}
 .board tr.r2 th {{ top: 32px; }}
-.board td {{ padding: 5px 9px; text-align: right; border-bottom: 1px solid {grid}; white-space: nowrap; }}
+.board td {{ padding: 0.35em 0.5em; text-align: right; border-bottom: 1px solid {grid}; white-space: nowrap; }}
 .board .g {{ border-left: 1px solid {border}; }}
 .board th.sym, .board td.sym {{ text-align: left; position: sticky; left: 0; z-index: 4; font-weight: 700;
                                 background: #ffffff; border-right: 1px solid {border}; border-left: none; }}

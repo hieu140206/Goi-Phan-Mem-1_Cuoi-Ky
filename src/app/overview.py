@@ -71,6 +71,7 @@ FLAT = "#b5bac1"
 
 st.html(
     f"""<style>
+[data-testid="stMainBlockContainer"] {{ max-width: none; padding-left: 24px; padding-right: 24px; }}
 .ov-head {{ margin: 4px 0 2px; }}
 .ov-head h1 {{ font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin: 0; line-height: 1.25; }}
 .ov-sub {{ font-size: 15px; color: #3d3d3d; margin: 6px 0 12px; }}
@@ -79,16 +80,16 @@ st.html(
         border-radius: 999px; background: #ffffff; font-size: 12.5px; font-weight: 500; color: {INK}; }}
 .chip .dot {{ width: 7px; height: 7px; border-radius: 50%; background: {POS}; display: inline-block; }}
 .chip .dot.off {{ background: {FAINT}; }}
-.idx-cards {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 14px; }}
+.idx-cards {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px; }}
 @media (max-width: 1100px) {{ .idx-cards {{ grid-template-columns: repeat(2, 1fr); }} }}
 @media (max-width: 560px) {{ .idx-cards {{ grid-template-columns: 1fr; }} }}
-.idx-card {{ background: #ffffff; border: 1px solid {BORDER}; border-radius: 12px; padding: 14px 16px 14px; min-width: 0; }}
+.idx-card {{ background: #ffffff; border: 1px solid {BORDER}; border-radius: 10px; padding: 10px 14px 10px; min-width: 0; }}
 .idx-card .top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }}
 .idx-card .name {{ font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2a2a2a; }}
 .idx-card .date {{ font-size: 12px; font-weight: 600; color: {MUTED}; }}
-.idx-card .val {{ font-size: 28px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; margin-top: 6px; }}
+.idx-card .val {{ font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; margin-top: 6px; }}
 .idx-card .chg {{ font-size: 14px; font-weight: 600; margin-top: 2px; }}
-.idx-card .spark {{ display: block; width: 100%; height: 56px; margin-top: 8px; }}
+.idx-card .spark {{ display: block; width: 100%; height: 44px; margin-top: 6px; }}
 .idx-card .row {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 12px; color: {MUTED};
                  margin-top: 8px; line-height: 1.5; }}
 .idx-card .row b {{ color: {INK}; font-weight: 600; }}
@@ -99,6 +100,9 @@ st.html(
 .idx-card .ce {{ color: #7c3aed; font-weight: 500; }}
 .idx-card .fo {{ color: #1d5fbf; font-weight: 500; }}
 .idx-card .status {{ color: {INK}; font-weight: 600; }}
+.bd-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }}
+.bd-title {{ font-size: 18px; font-weight: 700; color: {INK}; }}
+.bd-head .lg {{ font-size: 12px; font-weight: 600; white-space: nowrap; }}
 </style>"""
 )
 
@@ -284,9 +288,13 @@ def _board_panel(day, live: bool) -> None:
     """Khung bảng giá. Ở chế độ Trực tiếp khối này tự chạy lại mỗi 5 giây và đọc thẳng bảng board (bộ ghi làm mới VN30 mỗi
     5 giây, các sàn khác mỗi phút); ô nào đổi so với lần cập nhật trước thì tô nền theo màu mức giá."""
     with st.container(border=True, key="panel_board"):
-        st.subheader("Bảng giá", anchor=False)
-        grp = st.segmented_control("Nhóm bảng giá", BOARD_GROUPS, default="VN30", key="board_grp",
-                                   label_visibility="collapsed", format_func=lambda g: GROUP_LABELS[g]) or "VN30"
+        h1, h2, h3, h4 = st.columns([3.0, 7.6, 1.6, 2.2], gap="small", vertical_alignment="center")   # một hàng: tên + chú giải màu | nhóm | tìm mã | sắp xếp
+        h1.html('<div class="bd-head"><span class="bd-title">Bảng giá</span><span class="lg" style="color:#7c3aed">■ Trần</span>'
+                '<span class="lg" style="color:#1d5fbf">■ Sàn</span><span class="lg" style="color:#b7791f">■ Tham chiếu</span>'
+                f'<span class="lg" style="color:{POS}">■ Tăng</span><span class="lg" style="color:{NEG}">■ Giảm</span></div>')
+        with h2:
+            grp = st.segmented_control("Nhóm bảng giá", BOARD_GROUPS, default="VN30", key="board_grp",
+                                       label_visibility="collapsed", format_func=lambda g: GROUP_LABELS[g]) or "VN30"
         day_str = f"{day:%Y-%m-%d}"
         view, snap_ts, kind = pd.DataFrame(), None, "stock"
         if grp == "FU":
@@ -324,9 +332,8 @@ def _board_panel(day, live: bool) -> None:
 
         shown_board = view
         if kind == "stock":
-            f1, f2, _ = st.columns([2, 2, 5], gap="small", vertical_alignment="bottom")
-            query = f1.text_input("Tìm mã", placeholder="Nhập mã tìm kiếm", key=f"board_q_{grp}").strip().upper()
-            order = f2.selectbox("Sắp xếp", list(SORTS), index=0 if grp == "VN30" else 2, key=f"board_sort_{grp}")
+            query = h3.text_input("Tìm mã", placeholder="Tìm mã", key=f"board_q_{grp}", label_visibility="collapsed").strip().upper()
+            order = h4.selectbox("Sắp xếp", list(SORTS), index=0 if grp == "VN30" else 2, key=f"board_sort_{grp}", label_visibility="collapsed")
             if query:
                 shown_board = shown_board[shown_board["symbol"].str.contains(query, regex=False)]
             col, asc = SORTS[order]
@@ -335,10 +342,10 @@ def _board_panel(day, live: bool) -> None:
         flash_note = (" Ô tô nền là giá trị vừa đổi so với lần cập nhật trước: xanh lá nếu giá trên TC, đỏ nếu dưới TC, "
                       "vàng nếu bằng TC.")
         if kind == "future":
-            st.caption(f"Lần chụp {snap_ts:%H:%M:%S}. Giá tính bằng điểm chỉ số. Basis = giá khớp trừ điểm VN30 (âm: hợp đồng "
+            cap = (f"Lần chụp {snap_ts:%H:%M:%S}. Giá tính bằng điểm chỉ số. Basis = giá khớp trừ điểm VN30 (âm: hợp đồng "
                        "rẻ hơn chỉ số). KL mở (OI) là số hợp đồng đang mở." + flash_note)
         else:
-            st.caption(f"Lần chụp {snap_ts:%H:%M:%S}. Giá tính bằng nghìn đồng, khối lượng bằng cổ phiếu. Màu chữ: tím là giá trần, "
+            cap = (f"Lần chụp {snap_ts:%H:%M:%S}. Giá tính bằng nghìn đồng, khối lượng bằng cổ phiếu. Màu chữ: tím là giá trần, "
                        "xanh dương là giá sàn, vàng là tham chiếu, xanh lá là tăng, đỏ là giảm." + flash_note
                        + (" VN30 làm mới mỗi 5 giây ở chế độ Trực tiếp." if grp == "VN30" else
                           " Bảng giá các sàn là ảnh chụp mới nhất của ngày, cập nhật mỗi phút."))
@@ -350,7 +357,8 @@ def _board_panel(day, live: bool) -> None:
             # Bấm mã mở hộp thoại chi tiết có biểu đồ nến (mọi sàn); hồ sơ thanh khoản đầy đủ chỉ có cho mã VN30.
             st.html(board_html(shown_board.head(MAX_BOARD_ROWS), kind, state["prev"], dialog=kind == "stock"))
             if kind == "stock":
-                st.caption("Bấm vào mã để xem biểu đồ nến và chi tiết của mã đó.")
+                cap += " Bấm vào mã để xem biểu đồ nến và chi tiết của mã đó."
+        st.caption(cap)
 
 
 st.fragment(run_every=CARD_REFRESH_SECONDS if _live else None)(_board_panel)(day, _live)
