@@ -25,7 +25,9 @@ def test_dashboard_command_headless_and_port():
     assert cmd[:4] == [sys.executable, "-m", "streamlit", "run"]
     assert cmd[4].endswith("app.py")
     assert "8600" in cmd and "--server.headless" in cmd
-    assert "--server.headless" not in mod.dashboard_command(8501, open_browser=True)
+    assert cmd[cmd.index("--server.headless") + 1] == "true"
+    opened = mod.dashboard_command(8501, open_browser=True)
+    assert opened[opened.index("--server.headless") + 1] == "false"         # mở trình duyệt: ghi đè headless = true của config.toml
 
 
 def test_dashboard_gets_live_env(monkeypatch):

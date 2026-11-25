@@ -36,8 +36,8 @@ APP = ROOT / "src" / "app" / "app.py"
 def dashboard_command(port: int, open_browser: bool = True) -> list[str]:
     cmd = [sys.executable, "-m", "streamlit", "run", str(APP), "--server.port", str(port),
            "--browser.gatherUsageStats", "false"]
-    if not open_browser:
-        cmd += ["--server.headless", "true"]
+    # .streamlit/config.toml đặt headless = true (để bản web không treo ở câu hỏi email), nên muốn mở trình duyệt phải nói rõ headless = false.
+    cmd += ["--server.headless", "false" if open_browser else "true"]
     return cmd
 
 
