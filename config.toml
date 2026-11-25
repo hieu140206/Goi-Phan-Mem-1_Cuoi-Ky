@@ -65,3 +65,17 @@ use_lrs = false                # false: chỉ ĐỢT CẢNH BÁO quyết định
 
 [screener]
 atc_done = "14:45"             # từ giờ này giá đã qua ATC, coi là giá đóng cửa chính thức
+
+[universe]           # Bộ lọc toàn HOSE (analytics/universe.py). Mọi số dưới đây là MẶC ĐỊNH chọn có lý do, chưa phải kết luận từ dữ liệu
+position_vnd = 250_000_000     # vị thế dự kiến vào/ra mỗi mã (VND); đổi số này hoặc max_participation thì ngưỡng thanh khoản tự đổi
+max_participation = 0.05       # tối đa chiếm chừng này giá trị khớp một phiên; ngưỡng T = position_vnd / max_participation = 5 tỷ
+near_factor = 1.25             # mã Đạt có trung vị trong [T, near_factor x T) gắn cờ "Sát ngưỡng" (cờ cảnh báo, không đổi nhãn)
+min_days_ratio = 0.8           # cần ít nhất chừng này tỷ lệ số ngày đủ có giao dịch, ít hơn là "Ít giao dịch" (12 ngày: tối thiểu 10)
+full_day_after = "14:50"       # ngày chỉ tính là ĐỦ khi lần chụp bảng giá cuối của ngày từ giờ này (đã có khớp ATC); 14:45:00 vẫn chưa có ATC
+momentum_window_months = 6     # động lượng 6-1: lợi suất từ T-6 tháng đến T-1 tháng (mặc định phổ biến, chưa kiểm trên dữ liệu dự án)
+momentum_skip_months = 1
+momentum_ref_months = 3        # cột tham khảo: lợi suất 3 tháng, KHÔNG vào xếp hạng
+max_gap_days = 10              # giá gần nhất không muộn hơn mốc mà cách mốc quá chừng này ngày lịch thì coi là không đủ lịch sử
+max_stale_sessions = 3         # nến cuối của mã cách ngày tham chiếu quá chừng này phiên thị trường thì "Dữ liệu cũ", không tính
+jump_pct = 0.075               # |lợi suất 1 ngày| trên mức này giữa hai phiên liền kề thì gắn cờ "chuỗi giá có bước nhảy" (biên độ HOSE 7%)
+market_day_min_symbols = 150   # ngày là "phiên thị trường" khi có nến của ít nhất chừng này mã (tránh ngày lẻ tẻ)
