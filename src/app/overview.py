@@ -20,6 +20,7 @@ from plotly.subplots import make_subplots  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from board import board_css, board_html  # noqa: E402
+from theme import palette  # noqa: E402
 from data.market_board import GROUP_LABELS  # noqa: E402
 from data.overview import (INDEX_NAMES, board_view, breadth_frame, day_range, futures_view, index_cards,  # noqa: E402
                            index_series, load_market_json, market_depth, market_depth_group, price_board,
@@ -32,8 +33,8 @@ from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from data.special_days import no_data_message  # noqa: E402
 from symbol_dialog import open_symbol_dialog  # noqa: E402
-from theme import (BORDER, CHART_CONFIG, FAINT, GRID, HUE, INK, MUTED, NEG, base_layout, group, hide_lunch, how_to_read,  # noqa: E402
-                   naive_vn, vn)
+from theme import (BORDER, CE, CHART_CONFIG, FAINT, FLAT, FLR, GRID, HUE, INK, MUTED, NEG, PANEL, POS, REF, SPARK,  # noqa: E402
+                   base_layout, group, hide_lunch, how_to_read, naive_vn, vn)
 
 def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
     """Chèn dòng trống vào chỗ dữ liệu đứt quãng (nghỉ trưa) để biểu đồ không nối thẳng qua khoảng nghỉ."""
@@ -66,26 +67,24 @@ CARD_REFRESH_SECONDS = 5   # thẻ chỉ số hỏi lại cơ sở dữ liệu m
 BOARD_GROUPS = ["VN30", "HOSE", "HNX", "UPCOM", "ETF", "CW", "FU"]
 DEPTH_SCOPES = ["VN30", "HOSE", "HNX", "UPCOM"]
 MAX_BOARD_ROWS = 300       # bảng HTML quá dài thì trình duyệt chậm; tìm mã để xem mã ngoài 300 dòng đầu
-POS = "#2e7d32"  # tăng; giảm dùng đỏ NEG của giao diện; đứng giá dùng xám
-FLAT = "#b5bac1"
 
 st.html(
     f"""<style>
 [data-testid="stMainBlockContainer"] {{ max-width: none; padding-left: 24px; padding-right: 24px; }}
 .ov-head {{ margin: 4px 0 2px; }}
 .ov-head h1 {{ font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin: 0; line-height: 1.25; }}
-.ov-sub {{ font-size: 15px; color: #3d3d3d; margin: 6px 0 12px; }}
+.ov-sub {{ font-size: 15px; color: {MUTED}; margin: 6px 0 12px; }}
 .chips {{ display: flex; flex-wrap: wrap; gap: 8px; }}
 .chip {{ display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border: 1px solid {BORDER};
-        border-radius: 999px; background: #ffffff; font-size: 12.5px; font-weight: 500; color: {INK}; }}
+        border-radius: 999px; background: {PANEL}; font-size: 12.5px; font-weight: 500; color: {INK}; }}
 .chip .dot {{ width: 7px; height: 7px; border-radius: 50%; background: {POS}; display: inline-block; }}
 .chip .dot.off {{ background: {FAINT}; }}
 .idx-cards {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px; }}
 @media (max-width: 1100px) {{ .idx-cards {{ grid-template-columns: repeat(2, 1fr); }} }}
 @media (max-width: 560px) {{ .idx-cards {{ grid-template-columns: 1fr; }} }}
-.idx-card {{ background: #ffffff; border: 1px solid {BORDER}; border-radius: 10px; padding: 10px 14px 10px; min-width: 0; }}
+.idx-card {{ background: {PANEL}; border: 1px solid {BORDER}; border-radius: 10px; padding: 10px 14px 10px; min-width: 0; }}
 .idx-card .top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }}
-.idx-card .name {{ font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2a2a2a; }}
+.idx-card .name {{ font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: {INK}; }}
 .idx-card .date {{ font-size: 12px; font-weight: 600; color: {MUTED}; }}
 .idx-card .val {{ font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; margin-top: 6px; }}
 .idx-card .chg {{ font-size: 14px; font-weight: 600; margin-top: 2px; }}
@@ -96,9 +95,9 @@ st.html(
 .idx-card .row.sep {{ border-top: 1px solid {GRID}; padding-top: 8px; }}
 .idx-card .up {{ color: {POS}; font-weight: 600; }}
 .idx-card .dn {{ color: {NEG}; font-weight: 600; }}
-.idx-card .fl {{ color: #b7791f; font-weight: 600; }}
-.idx-card .ce {{ color: #7c3aed; font-weight: 500; }}
-.idx-card .fo {{ color: #1d5fbf; font-weight: 500; }}
+.idx-card .fl {{ color: {REF}; font-weight: 600; }}
+.idx-card .ce {{ color: {CE}; font-weight: 500; }}
+.idx-card .fo {{ color: {FLR}; font-weight: 500; }}
 .idx-card .status {{ color: {INK}; font-weight: 600; }}
 .bd-head {{ display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }}
 .bd-title {{ font-size: 18px; font-weight: 700; color: {INK}; }}
@@ -281,7 +280,7 @@ _live = bool(st.session_state.get("live"))
 st.fragment(run_every=CARD_REFRESH_SECONDS if _live else None)(_cards_block)(day, market_json, _live)
 
 # ---------- bảng giá ----------
-st.html(board_css(BORDER, GRID, MUTED, INK, POS, NEG))
+st.html(board_css(BORDER, GRID, MUTED, INK, POS, NEG, palette()))
 st.html("<style>.board .mat{margin-left:6px}</style>")
 st.write("")
 def _board_panel(day, live: bool) -> None:
@@ -289,8 +288,8 @@ def _board_panel(day, live: bool) -> None:
     5 giây, các sàn khác mỗi phút); ô nào đổi so với lần cập nhật trước thì tô nền theo màu mức giá."""
     with st.container(border=True, key="panel_board"):
         h1, h2, h3, h4 = st.columns([3.0, 7.6, 1.6, 2.2], gap="small", vertical_alignment="center")   # một hàng: tên + chú giải màu | nhóm | tìm mã | sắp xếp
-        h1.html('<div class="bd-head"><span class="bd-title">Bảng giá</span><span class="lg" style="color:#7c3aed">■ Trần</span>'
-                '<span class="lg" style="color:#1d5fbf">■ Sàn</span><span class="lg" style="color:#b7791f">■ Tham chiếu</span>'
+        h1.html(f'<div class="bd-head"><span class="bd-title">Bảng giá</span><span class="lg" style="color:{CE}">■ Trần</span>'
+                f'<span class="lg" style="color:{FLR}">■ Sàn</span><span class="lg" style="color:{REF}">■ Tham chiếu</span>'
                 f'<span class="lg" style="color:{POS}">■ Tăng</span><span class="lg" style="color:{NEG}">■ Giảm</span></div>')
         with h2:
             grp = st.segmented_control("Nhóm bảng giá", BOARD_GROUPS, default="VN30", key="board_grp",
@@ -458,7 +457,7 @@ with st.container(border=True, key="panel_liquidity"):
                             subplot_titles=[f"{lb}{_last(c)}" for c, lb in series])
         for i, (col, label) in enumerate(series, start=1):
             fig.add_scatter(x=x, y=tv_plot[col], name=label, mode="lines", line=dict(color=HUE, width=1.8),
-                            fill="tozeroy", fillcolor="rgba(29,95,191,0.07)", showlegend=False,
+                            fill="tozeroy", fillcolor=SPARK, showlegend=False,
                             hovertemplate="%{x|%H:%M} · %{y:,.0f} tỷ<extra>" + label + "</extra>", row=1, col=i)
         fig.update_xaxes(gridcolor=GRID, tickformat="%H:%M", nticks=4)
         fig.update_yaxes(gridcolor=GRID, ticksuffix=" tỷ", rangemode="tozero", nticks=5)

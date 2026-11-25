@@ -22,7 +22,7 @@ from data.storage import live_stamp  # noqa: E402
 from data.web_data import ensure_web_data  # noqa: E402
 from neo_api.config import get_settings  # noqa: E402
 from shared import WATCHLIST_PATH, analyzed_data, current_source, screen_for_day  # noqa: E402
-from theme import BRAND_MARK, group, inject_css  # noqa: E402
+from theme import BRAND_MARK, group, inject_css, is_dark  # noqa: E402
 from watchlist import load_watchlist  # noqa: E402
 
 LIVE_EVERY_SECONDS = 15  # cứ 15 giây xem bộ ghi có ghi thêm gì chưa; bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa ~1 phút
@@ -38,6 +38,28 @@ def _prepare_web_data() -> list[str]:
 
 _prepare_web_data()
 inject_css()
+
+
+@st.fragment(run_every=2)
+def _theme_watch(seen_dark: bool) -> None:
+    """Người xem đổi nền sáng/tối ở menu Settings: Streamlit không chạy lại trang, nên cứ 2 giây hỏi lại và chạy lại cả trang khi chủ đề đổi
+    (màu của phần HTML tự vẽ chỉ đúng sau khi chạy lại)."""
+    if is_dark() != seen_dark:
+        st.rerun()
+
+
+_theme_watch(is_dark())
+
+
+# Streamlit mặc định theo cài đặt hệ thống của người xem (và tự ghi "System" ngay lần đầu). Dự án muốn mặc định NỀN SÁNG: lần đầu mở một địa chỉ
+# (chưa có dấu dsLightInit của địa chỉ đó trong trình duyệt) thì ghi dấu, đặt Light rồi tải lại một lần. Từ đó ai chọn System hoặc Dark ở menu
+# Settings thì lựa chọn được giữ. (Streamlit lưu lựa chọn ở localStorage, khóa stActiveTheme-<đường dẫn>-v2.)
+_DEFAULT_LIGHT_SCRIPT = (
+    "<script>try{var p=window.parent,k='stActiveTheme-'+p.location.pathname+'-v2',f='dsLightInit-'+p.location.pathname;"
+    "if(!p.localStorage.getItem(f)){p.localStorage.setItem(f,'1');p.localStorage.setItem(k,'\"Light\"');p.location.reload();}}catch(e){}</script>")
+
+
+st.components.v1.html(_DEFAULT_LIGHT_SCRIPT, height=0)
 settings = get_settings()
 
 

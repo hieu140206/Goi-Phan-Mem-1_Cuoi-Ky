@@ -21,7 +21,7 @@ from board import fmt_px, fmt_qty, _vn
 from data.candle_store import DEFAULT_PATH as CANDLE_DB, load_candles
 from data.candles import neo_daily_candles
 from data.ssi import SsiClient, fetch_ohlc
-from theme import CHART_CONFIG, INK, MUTED, NEG, POS, base_layout
+from theme import CHART_CONFIG, NEG, POS, base_layout, palette
 
 # nhãn hiển thị -> (khung nến SSI, số ngày lịch lấy về)
 FRAMES = {"Ngày": ("1d", 365), "1 giờ": ("1h", 45), "15 phút": ("15m", 14), "5 phút": ("5m", 7)}
@@ -41,6 +41,8 @@ def missing_weekdays(ts: pd.Series) -> list[str]:
 def candle_figure(df: pd.DataFrame, intraday: bool, height: int = 460) -> go.Figure:
     """Nến OHLC (giá nghìn đồng) và cột khối lượng bên dưới. Xanh lá là đóng cửa không thấp hơn mở cửa, đỏ là thấp hơn.
     Ẩn cuối tuần, ngày không có nến, và với nến trong phiên thì ẩn cả giờ nghỉ trưa và ngoài giờ giao dịch (chỉ đổi cách vẽ, không đổi số)."""
+    pal = palette()
+    up_c, dn_c = pal["POS"], pal["NEG"]            # màu nến theo chủ đề sáng/tối
     d = df.copy()
     for c in ("open", "high", "low", "close"):
         d[c] = d[c] / 1000.0
@@ -48,9 +50,9 @@ def candle_figure(df: pd.DataFrame, intraday: bool, height: int = 460) -> go.Fig
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.76, 0.24], vertical_spacing=0.03)
     fig.add_trace(go.Candlestick(
         x=d["ts"], open=d["open"], high=d["high"], low=d["low"], close=d["close"], name="Giá",
-        increasing=dict(line=dict(color=POS), fillcolor=POS), decreasing=dict(line=dict(color=NEG), fillcolor=NEG),
+        increasing=dict(line=dict(color=up_c), fillcolor=up_c), decreasing=dict(line=dict(color=dn_c), fillcolor=dn_c),
         showlegend=False), row=1, col=1)
-    fig.add_trace(go.Bar(x=d["ts"], y=d["volume"], marker_color=[POS if u else NEG for u in up], opacity=0.55, name="Khối lượng",
+    fig.add_trace(go.Bar(x=d["ts"], y=d["volume"], marker_color=[up_c if u else dn_c for u in up], opacity=0.55, name="Khối lượng",
                          showlegend=False, hovertemplate="KL %{y:,.0f}<extra></extra>"), row=2, col=1)
     breaks = [dict(bounds=["sat", "mon"])]
     gone = missing_weekdays(d["ts"])
@@ -58,8 +60,8 @@ def candle_figure(df: pd.DataFrame, intraday: bool, height: int = 460) -> go.Fig
         breaks.append(dict(values=gone, dvalue=86_400_000))
     if intraday:
         breaks += [dict(bounds=[11.5, 13], pattern="hour"), dict(bounds=[15, 9], pattern="hour")]
-    fig.update_xaxes(rangebreaks=breaks, rangeslider_visible=False, showgrid=False, linecolor="#e3e6ea")
-    fig.update_yaxes(gridcolor="#eceef1", zeroline=False, hoverformat=".2f")
+    fig.update_xaxes(rangebreaks=breaks, rangeslider_visible=False, showgrid=False, linecolor=pal["BORDER"])
+    fig.update_yaxes(gridcolor=pal["GRID"], zeroline=False, hoverformat=".2f")
     fig.update_yaxes(title_text="nghìn đồng", row=1, col=1)
     base_layout(fig, height)
     fig.update_layout(bargap=0.15, hovermode="x unified")
@@ -126,7 +128,10 @@ def _head_html(symbol: str, row: pd.Series | None, group_label: str) -> str:
         + _stat("Tổng KL", fmt_qty(row["total_vol"])) + _stat("Nước ngoài ròng", net_txt, "up" if net > 0 else "dn" if net < 0 else "") + "</div>")
 
 
-SD_CSS = f"""<style>
+def _sd_css() -> str:
+    p = palette()
+    INK, MUTED, POS, NEG = p["INK"], p["MUTED"], p["POS"], p["NEG"]
+    return f"""<style>
 .sd-head {{ display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }}
 .sd-sym {{ font-size:22px; font-weight:700; color:{INK}; }} .sd-grp {{ font-size:12px; color:{MUTED}; }}
 .sd-px {{ font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }} .sd-chg {{ font-size:14px; font-variant-numeric:tabular-nums; }}
@@ -137,7 +142,7 @@ SD_CSS = f"""<style>
 
 
 def _body(symbol: str, row: pd.Series | None, group_label: str, db_path: Path, stock_page: str | None) -> None:
-    st.html(SD_CSS + _head_html(symbol, row, group_label))
+    st.html(_sd_css() + _head_html(symbol, row, group_label))
     label = st.segmented_control("Khung nến", list(FRAMES), default="Ngày", key=f"sd_frame_{symbol}", label_visibility="collapsed") or "Ngày"
     with st.spinner("Đang tải nến…"):
         df, source, note = get_candles(symbol, label, db_path)

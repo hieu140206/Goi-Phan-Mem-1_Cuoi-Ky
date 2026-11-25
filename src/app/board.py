@@ -137,11 +137,17 @@ def board_html(board: pd.DataFrame, kind: str = "stock", prev: pd.DataFrame | No
     return f'<div class="board-wrap"><table class="board">{head}<tbody>{"".join(rows)}</tbody></table></div>'
 
 
-def board_css(border: str, grid: str, muted: str, ink: str, up: str, dn: str) -> str:
+# Màu mặc định (nền sáng) của các phần ngoài 6 tham số đầu của board_css; trang truyền bảng màu theo chủ đề vào tham số `p`.
+_LIGHT = {"PANEL": "#ffffff", "HEAD": "#f7f8fa", "HOVER": "#f7f9fc", "CE": "#7c3aed", "FLR": "#1d5fbf", "REF": "#b7791f", "FLAT": "#b5bac1",
+          "F_UP": "#d7f0da", "F_DN": "#fbdcdd", "F_RF": "#fdeccb", "F_CE": "#e9ddfb", "F_FL": "#d9e7fb"}
+
+
+def board_css(border: str, grid: str, muted: str, ink: str, up: str, dn: str, p: dict | None = None) -> str:
+    c = {**_LIGHT, **(p or {})}
     return f"""<style>
-.board-wrap {{ overflow: auto; container-type: inline-size; max-height: calc(100vh - 230px); min-height: 420px; border: 1px solid {border}; border-radius: 8px; background: #ffffff; }}
+.board-wrap {{ overflow: auto; container-type: inline-size; max-height: calc(100vh - 230px); min-height: 420px; border: 1px solid {border}; border-radius: 8px; background: {c['PANEL']}; }}
 .board {{ border-collapse: separate; border-spacing: 0; width: 100%; font-size: clamp(9.5px, calc(100cqw / 116), 13px); font-variant-numeric: tabular-nums; }}  /* chữ co theo bề ngang khung để vừa hết các cột, không cuộn ngang */
-.board th {{ position: sticky; top: 0; z-index: 3; background: #f7f8fa; color: {muted}; font-weight: 600; padding: 0 0.5em;
+.board th {{ position: sticky; top: 0; z-index: 3; background: {c['HEAD']}; color: {muted}; font-weight: 600; padding: 0 0.5em;
             text-align: right; border-bottom: 1px solid {border}; height: 32px; line-height: 32px; box-sizing: border-box;
             white-space: nowrap; }}
 .board th.c {{ text-align: center; color: {ink}; }}
@@ -149,16 +155,16 @@ def board_css(border: str, grid: str, muted: str, ink: str, up: str, dn: str) ->
 .board td {{ padding: 0.35em 0.5em; text-align: right; border-bottom: 1px solid {grid}; white-space: nowrap; }}
 .board .g {{ border-left: 1px solid {border}; }}
 .board th.sym, .board td.sym {{ text-align: left; position: sticky; left: 0; z-index: 4; font-weight: 700;
-                                background: #ffffff; border-right: 1px solid {border}; border-left: none; }}
-.board th.sym {{ background: #f7f8fa; z-index: 5; }}
+                                background: {c['PANEL']}; border-right: 1px solid {border}; border-left: none; }}
+.board th.sym {{ background: {c['HEAD']}; z-index: 5; }}
 .board td.sym a {{ color: inherit; text-decoration: none; }}
 .board td.sym a:hover {{ text-decoration: underline; }}
-.board tbody tr:hover td {{ background: #f7f9fc; }}
-.board tbody tr:hover td.sym {{ background: #f7f9fc; }}
-.board .ce {{ color: #7c3aed; }} .board .fl {{ color: #1d5fbf; }} .board .rf {{ color: #b7791f; }}
-.board .f-up {{ background: #d7f0da; }} .board .f-dn {{ background: #fbdcdd; }} .board .f-rf {{ background: #fdeccb; }}
-.board .f-ce {{ background: #e9ddfb; }} .board .f-fl {{ background: #d9e7fb; }}
+.board tbody tr:hover td {{ background: {c['HOVER']}; }}
+.board tbody tr:hover td.sym {{ background: {c['HOVER']}; }}
+.board .ce {{ color: {c['CE']}; }} .board .fl {{ color: {c['FLR']}; }} .board .rf {{ color: {c['REF']}; }}
+.board .f-up {{ background: {c['F_UP']}; }} .board .f-dn {{ background: {c['F_DN']}; }} .board .f-rf {{ background: {c['F_RF']}; }}
+.board .f-ce {{ background: {c['F_CE']}; }} .board .f-fl {{ background: {c['F_FL']}; }}
 .board .mat {{ font-weight: 400; font-size: 11px; color: {muted}; margin-left: 4px; }}
-.board .up {{ color: {up}; }} .board .dn {{ color: {dn}; }} .board .na {{ color: #b5bac1; }}
+.board .up {{ color: {up}; }} .board .dn {{ color: {dn}; }} .board .na {{ color: {c['FLAT']}; }}
 .board .ar {{ font-size: 9px; margin-left: 3px; }}
 </style>"""

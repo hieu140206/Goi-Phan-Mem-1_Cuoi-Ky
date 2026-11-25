@@ -1,19 +1,7 @@
 # Giao diện "sổ cái không màu": khung chữ đen trên nền xám xanh nhạt,
 # một màu xanh duy nhất cho dữ liệu chính, đỏ chỉ dành cho cảnh báo.
 [theme]
-base = "light"
-primaryColor = "#141414"
-backgroundColor = "#f3f5f8"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#0a0a0a"
-borderColor = "#e3e6ea"
-linkColor = "#1d5fbf"
-linkUnderline = false
-redColor = "#c4242a"
-greenColor = "#2e7d32"
-blueColor = "#1d5fbf"
-orangeColor = "#92400e"
-grayColor = "#6b6b6b"
+# Phần dùng chung cho cả hai chủ đề: phông, cỡ chữ, bo góc, khoảng cách.
 font = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
 headingFont = "Geist:https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
 codeFont = "'Geist Mono':https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&display=swap"
@@ -26,16 +14,56 @@ showWidgetBorder = true
 showSidebarBorder = true
 paddingTop = "1.5rem"
 paddingBottom = "3rem"
+linkUnderline = false
+
+# Nền SÁNG (mặc định của dự án): chữ và khung không màu, một màu xanh cho dữ liệu chính, đỏ chỉ dành cho cảnh báo.
+[theme.light]
+primaryColor = "#141414"
+backgroundColor = "#f3f5f8"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0a0a0a"
+borderColor = "#e3e6ea"
+linkColor = "#1d5fbf"
+redColor = "#c4242a"
+greenColor = "#2e7d32"
+blueColor = "#1d5fbf"
+orangeColor = "#92400e"
+grayColor = "#6b6b6b"
 dataframeBorderColor = "#eceef1"
 dataframeHeaderBackgroundColor = "#ffffff"
 chartCategoricalColors = ["#1d5fbf", "#141414", "#8a8a8a", "#c4242a"]
 
-[theme.sidebar]
+[theme.light.sidebar]
 backgroundColor = "#f3f5f8"
 secondaryBackgroundColor = "#ffffff"
 textColor = "#0a0a0a"
 borderColor = "#dfe2e7"
 primaryColor = "#141414"
+paddingTop = "0.5rem"
+
+# Nền TỐI: người xem chọn ở menu góc phải trên, mục Settings.
+[theme.dark]
+primaryColor = "#e8eaed"
+backgroundColor = "#0f1217"
+secondaryBackgroundColor = "#171b22"
+textColor = "#e8eaed"
+borderColor = "#2b313b"
+linkColor = "#6ea8fe"
+redColor = "#f2777a"
+greenColor = "#4cc16a"
+blueColor = "#6ea8fe"
+orangeColor = "#e0a15a"
+grayColor = "#9aa3ad"
+dataframeBorderColor = "#222831"
+dataframeHeaderBackgroundColor = "#171b22"
+chartCategoricalColors = ["#6ea8fe", "#e8eaed", "#8a93a0", "#f2777a"]
+
+[theme.dark.sidebar]
+backgroundColor = "#0f1217"
+secondaryBackgroundColor = "#171b22"
+textColor = "#e8eaed"
+borderColor = "#2b313b"
+primaryColor = "#e8eaed"
 paddingTop = "0.5rem"
 
 [browser]
@@ -47,4 +75,5 @@ gatherUsageStats = false
 headless = true
 
 [client]
-toolbarMode = "minimal"
+# viewer: hiện menu góc phải trên (có mục Settings để đổi nền sáng/tối) nhưng ẩn các mục dành cho người phát triển.
+toolbarMode = "viewer"
