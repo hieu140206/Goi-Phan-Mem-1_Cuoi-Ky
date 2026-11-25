@@ -34,7 +34,7 @@ from neo_api.config import TZ, get_settings  # noqa: E402
 from data.special_days import no_data_message  # noqa: E402
 from symbol_dialog import open_symbol_dialog  # noqa: E402
 from theme import (BORDER, CE, CHART_CONFIG, FAINT, FLAT, FLR, GRID, HUE, INK, MUTED, NEG, PANEL, POS, REF, SPARK,  # noqa: E402
-                   base_layout, group, hide_lunch, how_to_read, naive_vn, vn)
+                   base_layout, group, hide_lunch, how_to_read, is_dark, naive_vn, vn)
 
 def with_gaps(df: pd.DataFrame, minutes: int = 10) -> pd.DataFrame:
     """Chèn dòng trống vào chỗ dữ liệu đứt quãng (nghỉ trưa) để biểu đồ không nối thẳng qua khoảng nghỉ."""
@@ -71,6 +71,7 @@ MAX_BOARD_ROWS = 300       # bảng HTML quá dài thì trình duyệt chậm; t
 st.html(
     f"""<style>
 [data-testid="stMainBlockContainer"] {{ max-width: none; padding-left: 24px; padding-right: 24px; }}
+.bar-title {{ font-size: 20px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; color: {INK}; }}
 .ov-head {{ margin: 4px 0 2px; }}
 .ov-head h1 {{ font-size: 28px; font-weight: 700; letter-spacing: -0.01em; margin: 0; line-height: 1.25; }}
 .ov-sub {{ font-size: 15px; color: {MUTED}; margin: 6px 0 12px; }}
@@ -86,7 +87,10 @@ st.html(
 .idx-card .top {{ display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }}
 .idx-card .name {{ font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: {INK}; }}
 .idx-card .date {{ font-size: 12px; font-weight: 600; color: {MUTED}; }}
-.idx-card .val {{ font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; margin-top: 6px; }}
+.idx-card .mid {{ display: flex; align-items: center; gap: 10px; margin-top: 4px; }}
+.idx-card .mid .l {{ flex: 0 0 auto; }}
+.idx-card .mid .spark {{ flex: 1 1 auto; min-width: 0; height: 52px; margin-top: 0; }}
+.idx-card .val {{ font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; margin-top: 2px; }}
 .idx-card .chg {{ font-size: 14px; font-weight: 600; margin-top: 2px; }}
 .idx-card .spark {{ display: block; width: 100%; height: 44px; margin-top: 6px; }}
 .idx-card .row {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; font-size: 12px; color: {MUTED};
@@ -143,6 +147,7 @@ days = [pd.Timestamp(d).date() for d in data_days(db_path)]
 
 if not days:
     st.title("Tổng quan thị trường", anchor=False)
+    st.toggle("Trực tiếp: tự cập nhật", key="live", help="Bật thì trang tự hiện khi bộ ghi ghi xong phút đầu tiên.")   # chưa có thanh đầu trang: giữ công tắc ở đây
     st.info("Chưa có dữ liệu thị trường. Chạy `python scripts/run_live.py` trong giờ giao dịch (hoặc "
             "`python scripts/record_rest.py`) để bộ ghi lưu dữ liệu từ NEO. Bật công tắc Trực tiếp thì trang tự hiện "
             "khi bộ ghi ghi xong phút đầu tiên.")
@@ -194,24 +199,36 @@ def render_chips(trade_day, day, live: bool) -> None:
 
 
 trade_day = trading_date(pd.Timestamp.now(tz=TZ))
-with st.container(horizontal=True, vertical_alignment="top", gap="medium"):
-    with st.container(width="stretch"):
-        st.html('<div class="ov-head"><h1>Tổng quan thị trường</h1></div>'
-                '<div class="ov-sub">Toàn cảnh chứng khoán Việt Nam: chỉ số, bảng giá, độ sâu, độ rộng và thanh khoản. '
-                'Dành cho nhà đầu tư cá nhân và chuyên viên phân tích muốn nắm nhanh trạng thái thị trường trong phiên.</div>')
+THEME_SET_KEY = "_theme_to_set"
+
+
+def _on_theme_button() -> None:
+    st.session_state[THEME_SET_KEY] = "Light" if is_dark() else "Dark"
+
+
+# Thanh đầu trang như web NEO Invest: tên trang và giờ phiên bên trái; Làm mới, nút sáng/tối, công tắc Trực tiếp bên phải.
+bar_l, bar_r = st.columns([8.2, 3.8], gap="small", vertical_alignment="center")
+with bar_l:
+    with st.container(horizontal=True, horizontal_alignment="left", vertical_alignment="center", gap="medium"):
+        st.html('<span class="bar-title">Tổng quan thị trường</span>')
         render_chips(trade_day, day, bool(st.session_state.get("live")))
-    st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
-              help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
-    st.page_link("screen_page.py", label="Lọc cổ phiếu VN30", icon=":material/filter_alt:")
-how_to_read(
-    "**Bốn thẻ chỉ số** (VN-Index, VN30, HNX-Index, UPCoM-Index): giá trị, mức thay đổi và đường diễn biến trong phiên.",
-    "**Bảng giá** theo nhóm. Màu giá: tím là trần, xanh dương là sàn, vàng là tham chiếu, xanh lá là tăng, đỏ là giảm; mũi tên ▲▼ cạnh con số cho người "
-    "không phân biệt được màu. Bấm một mã để xem biểu đồ nến và chi tiết của mã đó ngay trên trang.",
-    "**Độ sâu, độ rộng, thanh khoản**: thị trường đang dày hay mỏng, bao nhiêu mã tăng và giảm.",
-    "Số lấy từ lần ghi gần nhất. Bật **Trực tiếp** ở thanh bên để trang tự cập nhật khi bộ ghi đang chạy.")
+with bar_r:
+    with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center", gap="small"):
+        st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
+                  help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
+        st.button("", icon=":material/light_mode:" if is_dark() else ":material/dark_mode:", key="theme_btn", width="content",
+                  help="Chuyển sang nền sáng" if is_dark() else "Chuyển sang nền tối", on_click=_on_theme_button)
+        st.toggle("Trực tiếp", key="live",
+                  help="Tự đọc lại dữ liệu khi bộ ghi ghi thêm. Bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa khoảng 1 phút. "
+                       "Chạy cả bộ ghi và trang bằng: python scripts/run_live.py")
+_theme_to_set = st.session_state.pop(THEME_SET_KEY, None)
+if _theme_to_set:          # Streamlit chỉ đọc chủ đề lúc tải trang: ghi lựa chọn vào trình duyệt rồi tải lại (công tắc Trực tiếp quay về mặc định)
+    st.iframe(
+        "<script>try{var p=window.parent,k='stActiveTheme-'+p.location.pathname+'-v2';"
+        f"p.localStorage.setItem(k,'\"{_theme_to_set}\"');p.location.reload();}}catch(e){{}}</script>", height=1)
 if day != trade_day:
     msg = no_data_message(trade_day, day, days)
-    st.html(f'<div class="notice" style="margin-top:10px">{msg}</div>')
+    st.html(f'<div class="notice" style="margin:4px 0 8px">{msg}</div>')
 
 
 # ---------- 4 thẻ chỉ số ----------
@@ -249,9 +266,9 @@ def card_html(r: pd.Series, idx: pd.DataFrame, day, market_json: dict) -> str:
     fo = f' <span class="fo">({vn(r["floors"])})</span>' if not pd.isna(r["floors"]) else ""
     return (f'<div class="idx-card"><div class="top"><span class="name">{INDEX_NAMES.get(code, code)}</span>'
             f'<span class="date">{day:%d/%m/%Y}</span></div>'
-            f'<div class="val">{vn(r["index_value"], 2)}</div>'
-            f'<div class="chg {tone(chg)}">{arrow} {signed(chg)} ({signed(r["pct_change"], 2, "%")})</div>'
-            f'{sparkline(series["value"], color)}{low_high}'
+            f'<div class="mid"><div class="l"><div class="val">{vn(r["index_value"], 2)}</div>'
+            f'<div class="chg {tone(chg)}">{arrow} {signed(chg)} ({signed(r["pct_change"], 2, "%")})</div></div>'
+            f'{sparkline(series["value"], color)}</div>{low_high}'
             f'<div class="row sep"><span><b>{vol}</b></span><span><b>{val}</b></span>'
             f'<span class="status">{status_label(r["status"], r["ts"])}</span></div>'
             f'<div class="row"><span class="up">▲ {adv}{ce}</span><span class="fl">● {flat}</span>'
@@ -270,8 +287,6 @@ def _cards_block(day, market_json: dict, live: bool) -> None:
     shown = list(cards_now["index_code"])
     missing = [INDEX_NAMES[c] for c in ("VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX") if c not in shown]
     st.html('<div class="idx-cards">' + "".join(card_html(r, idx_now, day, market_json) for _, r in cards_now.iterrows()) + "</div>")
-    st.caption("Trong ngoặc: số mã trần (tím) và số mã sàn (xanh). Khối lượng và giá trị là lũy kế cả sàn/rổ trong ngày, "
-               "do NEO tính; thường cao hơn tổng các mã trong bảng giá vài phần trăm (có thể do giao dịch thỏa thuận, chưa xác nhận).")
     if missing:
         st.caption("Chưa có dữ liệu: " + ", ".join(missing) + ".")
 
@@ -361,6 +376,15 @@ def _board_panel(day, live: bool) -> None:
 
 
 st.fragment(run_every=CARD_REFRESH_SECONDS if _live else None)(_board_panel)(day, _live)
+
+how_to_read(
+    "**Bốn thẻ chỉ số** (VN-Index, VN30, HNX-Index, UPCoM-Index): giá trị, mức thay đổi và đường diễn biến trong phiên. Trong ngoặc: số mã trần (tím) và số mã sàn (xanh).",
+    "**Bảng giá** theo nhóm. Màu giá: tím là trần, xanh dương là sàn, vàng là tham chiếu, xanh lá là tăng, đỏ là giảm; mũi tên ▲▼ cạnh con số cho người "
+    "không phân biệt được màu. Bấm một mã để xem biểu đồ nến và chi tiết của mã đó ngay trên trang.",
+    "**Độ sâu, độ rộng, thanh khoản**: thị trường đang dày hay mỏng, bao nhiêu mã tăng và giảm.",
+    "Khối lượng và giá trị ở thẻ chỉ số là lũy kế cả sàn hoặc rổ trong ngày, do NEO tính; thường cao hơn tổng các mã trong bảng giá vài phần trăm "
+    "(có thể do giao dịch thỏa thuận, chưa xác nhận).",
+    "Số lấy từ lần ghi gần nhất. Bật **Trực tiếp** ở góc phải thanh đầu trang để trang tự cập nhật khi bộ ghi đang chạy; nút mặt trăng hoặc mặt trời đổi nền tối và sáng.")
 
 # Bấm một mã trên bảng giá -> `?xem=<mã>`: xóa tham số ngay (đóng hộp thoại rồi tải lại trang thì không tự mở lại) rồi mở hộp thoại.
 _xem = str(st.query_params.get("xem", "")).strip().upper()

@@ -60,7 +60,7 @@ _DEFAULT_LIGHT_SCRIPT = (
     "if(!p.localStorage.getItem(f)){p.localStorage.setItem(f,'1');p.localStorage.setItem(k,'\"Light\"');p.location.reload();}}catch(e){}</script>")
 
 
-st.components.v1.html(_DEFAULT_LIGHT_SCRIPT, height=0)
+st.iframe(_DEFAULT_LIGHT_SCRIPT, height=1)
 settings = get_settings()
 
 
@@ -110,18 +110,18 @@ def _watchlist_sidebar() -> None:
                      icon=":material/warning:" if note else ":material/star:")
 
 
+LIVE_HELP = ("Tự đọc lại dữ liệu khi bộ ghi (scripts/record_rest.py) ghi thêm. Bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa khoảng 1 phút. "
+             "Chạy cả hai cùng lúc bằng: python scripts/run_live.py")
+st.session_state.setdefault("live", os.environ.get("NEO_LIVE") == "1")      # công tắc Trực tiếp dùng chung khóa "live" ở mọi trang
+pages = st.navigation([PAGE_OVERVIEW, PAGE_SCREEN, PAGE_RADAR, PAGE_STOCK], position="top")
 with st.sidebar:
     st.html(f'<div class="brand">{BRAND_MARK}<div><b>Thị trường VN</b>'
             '<span>Dữ liệu NEO API · VPBankS</span></div></div>')
-    group("Cập nhật")
-    live = st.toggle("Trực tiếp: tự cập nhật", value=os.environ.get("NEO_LIVE") == "1", key="live",
-                     help="Tự đọc lại dữ liệu khi bộ ghi (scripts/record_rest.py) ghi thêm. "
-                          "Bộ ghi chụp mỗi phút nên dữ liệu trễ tối đa khoảng 1 phút. "
-                          "Chạy cả hai cùng lúc bằng: python scripts/run_live.py")
-    if live:
-        _live_watch(settings.db_path, _db_stamp(settings.db_path))
-
-pages = st.navigation([PAGE_OVERVIEW, PAGE_SCREEN, PAGE_RADAR, PAGE_STOCK], position="top")
+    if pages.title != PAGE_OVERVIEW.title:           # Tổng quan đặt công tắc này ở thanh đầu trang
+        group("Cập nhật")
+        st.toggle("Trực tiếp: tự cập nhật", key="live", help=LIVE_HELP)
+if st.session_state.get("live"):
+    _live_watch(settings.db_path, _db_stamp(settings.db_path))
 with st.sidebar:
     _watchlist_sidebar()
 pages.run()
