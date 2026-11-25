@@ -86,3 +86,22 @@ def last_ts(db_path: Path, frame: str, symbol: str) -> pd.Timestamp | None:
     finally:
         conn.close()
     return pd.Timestamp(row[0]) if row and row[0] else None
+
+
+def load_daily_closes(db_path: Path, frame: str = "1d") -> pd.DataFrame:
+    """Giá đóng cửa của MỌI mã trong một lần đọc: cột symbol, day (Timestamp, 00:00), close, volume. Chỉ đọc; thiếu tệp hoặc chưa có: bảng rỗng.
+    Giá là giá SSI đã điều chỉnh cổ tức (chỉ dùng tỷ lệ trong cùng mã, cùng một lần nạp chuỗi)."""
+    empty = pd.DataFrame(columns=["symbol", "day", "close", "volume"])
+    conn = _connect_ro(db_path)
+    if conn is None:
+        return empty
+    try:
+        df = pd.read_sql_query("SELECT symbol, ts, close, volume FROM candles WHERE frame = ? ORDER BY symbol, ts", conn, params=(frame,))
+    except (sqlite3.Error, pd.errors.DatabaseError):
+        return empty
+    finally:
+        conn.close()
+    if df.empty:
+        return empty
+    df["day"] = pd.to_datetime(df.pop("ts")).dt.normalize()
+    return df[["symbol", "day", "close", "volume"]]

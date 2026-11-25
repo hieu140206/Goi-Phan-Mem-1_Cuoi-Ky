@@ -24,6 +24,8 @@ from data.schema import limit_lock_side, normalize_quotes
 from data.special_days import (exclude_from_baseline, load_special_days, special_day_map,  # noqa: E402
                                special_days_path)
 from data.ssi import load_ssi_daily, load_ssi_minute_quotes, ssi_quote_days  # noqa: E402
+from analytics.universe import screen_universe  # noqa: E402
+from data.candle_store import DEFAULT_PATH as CANDLE_DB, load_daily_closes  # noqa: E402
 from analytics.screener import (ATC_DONE, daily_closes_from_board, intraday_factors, liquidity_gate,  # noqa: E402
                                 market_context, momentum, screen)
 from data.overview import (breadth_frame, futures_view, index_cards, load_market_json)  # noqa: E402
@@ -282,6 +284,30 @@ def screen_for_day(source: str, day, min_score: float = GATE_MIN_SCORE, horizon:
     ctx = market_context(cards, breadth_frame(cards) if not cards.empty else None, fut_v, snap)
     return {"result": result, "factors_used": result.attrs.get("factors", []), "snap_ts": snap_ts,
             "snap_kind": snap_kind, "vn30_pct": vn30_pct, "mom5_ok": mom5_ok, "context": ctx}
+
+
+@st.cache_data(show_spinner="Đang tính bộ lọc toàn HOSE...")
+def _hose_universe(db_path: str, version: float, candle_path: str, candle_version: float) -> dict:
+    db = Path(db_path)
+    frames = [load_board(db, d, "HOSE") for d in board_days(db)]
+    frames = [f for f in frames if not f.empty]
+    board = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    closes = load_daily_closes(Path(candle_path))
+    if board.empty:
+        return {"result": pd.DataFrame(), "days": [], "threshold": None, "ref_day": None, "board_days": 0, "candle_symbols": 0}
+    res = screen_universe(board, closes)
+    return {"result": res, "days": list(res.attrs.get("days", [])), "threshold": res.attrs.get("threshold"),
+            "ref_day": res.attrs.get("ref_day"), "board_days": int(board["day"].nunique()),
+            "candle_symbols": int(closes["symbol"].nunique()) if not closes.empty else 0}
+
+
+def hose_universe() -> dict:
+    """Bộ lọc toàn HOSE (cổng giá trị khớp, động lượng 6-1 từ nến SSI, nước ngoài tham khảo): mọi trang dùng cùng một kết quả.
+    Trả dict: result (mỗi mã một dòng), days (ngày đủ dùng làm mẫu), threshold (VND), ref_day (ngày nến tham chiếu chung),
+    board_days (số ngày bảng giá đã ghi), candle_symbols (số mã có nến). Chưa có bảng giá HOSE: result rỗng."""
+    cp = Path(CANDLE_DB)
+    cv = cp.stat().st_mtime if cp.exists() else 0.0
+    return _hose_universe(str(get_settings().db_path), db_version(), str(cp), cv)
 
 
 def liquidity_ranking(view: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:

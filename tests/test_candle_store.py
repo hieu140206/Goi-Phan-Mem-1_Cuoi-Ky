@@ -1,7 +1,7 @@
 """Kho nến riêng data/candles.db: ghi, nạp lại, cộng dồn, và không bao giờ xóa dữ liệu khi nhận bảng rỗng."""
 import pandas as pd
 
-from data.candle_store import last_ts, load_candles, save_candles
+from data.candle_store import last_ts, load_candles, load_daily_closes, save_candles
 
 
 def _df(days, base=100.0):
@@ -45,3 +45,14 @@ def test_empty_frame_never_deletes_stored_data_even_with_replace(tmp_path):
     save_candles(db, "1d", "VNM", _df(["2026-11-19"]), "t1", replace=True)
     assert save_candles(db, "1d", "VNM", pd.DataFrame(columns=["ts", "open", "high", "low", "close", "volume"]), "t2", replace=True) == 0
     assert len(load_candles(db, "1d", "VNM")) == 1                  # SSI trả rỗng hoặc lỗi mạng: giữ nguyên cái đã có
+
+
+def test_load_daily_closes_reads_every_symbol_of_one_frame_in_one_go(tmp_path):
+    db = tmp_path / "c.db"
+    save_candles(db, "1d", "VNM", _df(["2026-11-19", "2026-11-20"], 100.0), "t1", replace=True)
+    save_candles(db, "1d", "FPT", _df(["2026-11-20"], 200.0), "t1", replace=True)
+    save_candles(db, "5m", "VNM", _df(["2026-11-20 09:15"], 50.0), "t1")                    # khung khác không lẫn vào
+    df = load_daily_closes(db)
+    assert sorted(zip(df["symbol"], df["day"].dt.strftime("%Y-%m-%d"), df["close"])) == [
+        ("FPT", "2026-11-20", 201.0), ("VNM", "2026-11-19", 101.0), ("VNM", "2026-11-20", 101.0)]
+    assert load_daily_closes(tmp_path / "khong_co.db").empty and not (tmp_path / "khong_co.db").exists()
