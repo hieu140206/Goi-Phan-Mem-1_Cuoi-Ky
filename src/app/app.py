@@ -58,13 +58,14 @@ LIVE_EVERY_SECONDS = 15  # cứ 15 giây xem bộ ghi có ghi thêm gì chưa; b
 st.set_page_config(page_title="Thị trường VN · NEO API", page_icon=":material/radar:", layout="wide", initial_sidebar_state="collapsed")
 
 
-@st.cache_resource(show_spinner="Đang chuẩn bị dữ liệu…")
-def _prepare_web_data() -> list[str]:
-    """Bản web: giải nén dữ liệu rút gọn (data/web) lần đầu. Ở laptop có market.db thật thì không làm gì (không bao giờ ghi đè)."""
+@st.cache_resource(show_spinner="Đang chuẩn bị dữ liệu…", max_entries=1)
+def _prepare_web_data(version: float) -> list[str]:
+    """Bản web: giải nén dữ liệu rút gọn (data/web) lúc khởi động và mỗi khi bản nén đổi (version = dấu thời gian mới nhất của data/web),
+    nên đẩy dữ liệu mới lên là web tự nạp, không cần khởi động lại. Ở laptop có market.db thật thì không làm gì (không bao giờ ghi đè)."""
     return ensure_web_data(ROOT)
 
 
-_prepare_web_data()
+_prepare_web_data(max((p.stat().st_mtime for p in (ROOT / "data" / "web").glob("*.gz")), default=0.0))
 inject_css()
 # Ẩn Fork, GitHub, Share và menu ba chấm mà Streamlit Cloud thêm vào góc phải trên. Đặt ở app.py (chạy lại mỗi lần tải trang) chứ không ở theme.py:
 # trên Cloud, mô-đun đã nạp như theme.py giữ bản cũ cho tới khi khởi động lại app. KHÔNG ẩn cả stToolbar vì menu điều hướng trang nằm trong đó.

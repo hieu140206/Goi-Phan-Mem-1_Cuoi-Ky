@@ -12,3 +12,6 @@ data/raw/
 data/raw_samples/
 data/export/
 data/watchlist.json
+data/web/.unpacked.json
+data/web/_tmp*
+sao-luu/
