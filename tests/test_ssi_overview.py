@@ -143,3 +143,17 @@ def test_fetch_refuses_a_day_that_is_not_closed(tmp_path):
     mod = load_script()
     with pytest.raises(SystemExit):
         mod.main(["--day", "2999-01-01", "--db", str(tmp_path / "m.db")])
+
+
+@pytest.mark.parametrize("flag,backups", [([], 1), (["--khong-sao-luu"], 0)])
+def test_fetch_backs_up_unless_the_caller_already_did(tmp_path, monkeypatch, flag, backups):
+    mod = load_script()
+    db = tmp_path / "m.db"
+    put_quote(db, f"{D}T14:59:55+07:00", "FPT")
+    (tmp_path / "ma.txt").write_text("FPT\n", encoding="utf-8")
+    monkeypatch.setattr(mod, "SsiClient", FakeClient)
+    made = []
+    monkeypatch.setattr(mod, "backup_db", lambda *a: made.append(a) or tmp_path / "bk.db")
+    monkeypatch.setattr(mod.dt, "datetime", type("T", (mod.dt.datetime,), {"now": classmethod(lambda cls, tz=None: mod.dt.datetime(2026, 11, 26, 15, 10, tzinfo=tz))}))
+    assert mod.main(["--day", D, "--db", str(db), "--candles", str(tmp_path / "c.db"), "--symbols", str(tmp_path / "ma.txt"), *flag]) == 0
+    assert len(made) == backups

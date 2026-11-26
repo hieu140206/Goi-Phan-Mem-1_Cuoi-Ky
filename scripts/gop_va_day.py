@@ -6,6 +6,7 @@ Mặc định: thư mục ghi là D:\\Pycharm\\ghi-du-lieu, dự án chính là 
   1. Tìm ngày mà thư mục ghi có dữ liệu nhiều hơn dự án chính.
   2. Sao lưu market.db chính vào <thư mục ghi>/sao-luu/, rồi gộp (chỉ thêm, không xóa, chạy lại không trùng), chép data/raw, sessions.csv.
   3. Nạp nến SSI mới vào candles.db chính (vài phút).
+     Ngày NEO không ghi được mà SSI có sổ lệnh: nạp thêm 4 chỉ số và VN30 của SSI (scripts/fetch_ssi_overview.py) để trang Tổng quan hiện được.
   4. Xuất data/web trong thư mục ghi.
   5. In số liệu kiểm tra và hỏi "Đẩy lên GitHub?". Chỉ đẩy khi bạn gõ c. Commit đẩy lên chỉ chứa data/web.
 """
@@ -24,6 +25,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from data.merge import MergeError, backup_db, day_counts, merge_days, merge_raw, merge_sessions, new_days  # noqa: E402
 from data.publish import PublishError, build_data_commit, push_commit  # noqa: E402
+from data.ssi import ssi_quote_days  # noqa: E402
+from data.ssi_overview import ssi_overview_complete  # noqa: E402
+from data.storage import data_days  # noqa: E402
 from data.web_data import export_web_data  # noqa: E402
 
 VN = ZoneInfo("Asia/Ho_Chi_Minh")
@@ -53,6 +57,25 @@ def report(counts: dict, days: list[str]) -> list[str]:
             warnings.append(f"{day}: sổ lệnh NEO chỉ {q} dòng (phiên đủ khoảng 6750). Bộ ghi NEO có thể đã dừng giữa phiên.")
         if not counts.get("ssi_quotes", {}).get(day):
             warnings.append(f"{day}: không có dữ liệu SSI.")
+    return warnings
+
+
+def ssi_days_to_load(db: Path, days: list[str]) -> list[str]:
+    """Trong `days`, những ngày NEO không ghi được, SSI có sổ lệnh và chưa nạp đủ số cho trang Tổng quan."""
+    neo, ssi = set(data_days(db)), set(ssi_quote_days(db))
+    return sorted(d for d in set(days) if d in ssi and d not in neo and not ssi_overview_complete(db, d))
+
+
+def load_ssi_figures(db: Path, candles: Path, days: list[str], backed_up: bool) -> list[str]:
+    """Nạp 4 chỉ số và VN30 của SSI cho từng ngày. Lỗi không làm dừng việc gộp và xuất; trả danh sách cảnh báo."""
+    warnings = []
+    for day in days:
+        print(f"\nNEO không ghi được ngày {day}: nạp số SSI cho trang Tổng quan ...")
+        cmd = [sys.executable, str(ROOT / "scripts" / "fetch_ssi_overview.py"), "--day", day, "--db", str(db), "--candles", str(candles)]
+        p = subprocess.run(cmd + (["--khong-sao-luu"] if backed_up else []), cwd=ROOT)
+        if p.returncode != 0 or not ssi_overview_complete(db, day):
+            warnings.append(f"{day}: chưa nạp đủ số SSI cho trang Tổng quan. Sau 15:05 chạy lại: python scripts/gop_va_day.py "
+                            f"(ngày khác hôm nay: python scripts/fetch_ssi_overview.py --day {day} --db \"{db}\" --candles \"{candles}\").")
     return warnings
 
 
@@ -105,11 +128,14 @@ def main(argv: list[str] | None = None) -> int:
         if p.returncode != 0:
             print("LƯU Ý: nạp nến SSI lỗi, dùng nến đã có.")
 
+    todo = ssi_days_to_load(dst_db, [*days, now.strftime("%Y-%m-%d")])     # gồm hôm nay: chạy lại lệnh là nạp lại được
+    ssi_warnings = load_ssi_figures(dst_db, candles, todo, backed_up=bool(days))
+
     print("\nXuất dữ liệu web ...")
     for name, size in export_web_data(dst_db, candles, main_dir / "data" / "raw", rec / "data" / "web").items():
         print(f"  {name}: {size / 1e6:.1f} MB")
 
-    warnings = report(day_counts(dst_db), days)
+    warnings = report(day_counts(dst_db), days) + ssi_warnings
     big = [p.name for p in (rec / "data" / "web").glob("*.gz") if p.stat().st_size > 95e6]
     if big:
         sys.exit(f"Tệp {big} vượt 95 MB, GitHub sẽ từ chối. Không đẩy.")

@@ -46,6 +46,16 @@ def ssi_overview_days(db_path: Path, neo_days: list[str]) -> list[str]:
     return sorted((set(ssi_quote_days(Path(db_path))) & full) - set(neo_days))
 
 
+def ssi_overview_complete(db_path: Path, day: str) -> bool:
+    """Ngày đã nạp đủ số cho trang Tổng quan: tổng kết của 4 chỉ số VÀ của mọi mã có sổ lệnh SSI ngày đó. Chỉ đọc."""
+    idx = load_ssi_index(Path(db_path))
+    if idx.empty or not set(MAIN_INDICES) <= set(idx.loc[idx["day"] == day, "index_code"]):
+        return False
+    book = ssi_last_book(db_path, dt.date.fromisoformat(day))
+    daily = load_ssi_daily(Path(db_path))
+    return set(book["symbol"]) <= set(daily.loc[daily["day"] == day, "symbol"])
+
+
 def load_index_minutes(candle_db: Path, day: dt.date) -> pd.DataFrame:
     """Nến 1 phút trong ngày của 4 chỉ số, cùng dạng bảng market_index tối thiểu: ts (UTC+7), index_code, index_value, low, high."""
     parts = []

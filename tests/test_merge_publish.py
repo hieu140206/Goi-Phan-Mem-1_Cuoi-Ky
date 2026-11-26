@@ -204,3 +204,49 @@ def test_end_of_day_asks_before_pushing(tmp_path, dbs, monkeypatch, answer, push
     assert bool(calls) is pushed
     assert rows(main_dir / "data" / "market.db", f"SELECT COUNT(*) FROM quotes WHERE ts LIKE '{D2}%'") == [(2,)]   # gộp dù có đẩy hay không
     assert list((rec / "sao-luu").glob("market_*.db")) and (rec / "data" / "web" / "market_web.db.gz").exists()
+
+
+# ---- bước nạp số SSI cho ngày NEO không ghi được
+SSI_DAY = "2026-11-27"
+
+
+def put_index(db, day, codes=("VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX")):
+    for code in codes:
+        put(db, "ssi_index_daily", day=day, index_code=code, index_value=1.0)
+
+
+def test_ssi_days_to_load_are_only_new_days_neo_missed_and_not_yet_loaded(dbs):
+    mod = load_script()
+    _, db = dbs                                                      # D1 có sổ lệnh NEO
+    for day in (D1, "2026-11-25", D2, SSI_DAY):
+        put(db, "ssi_quotes", ts=f"{day}T14:59:55+07:00", symbol="FPT")
+    put_index(db, D2)                                                # D2 đã nạp đủ chỉ số và mã
+    put(db, "ssi_daily", day=D2, symbol="FPT", close=1.0)
+    put_index(db, SSI_DAY)                                           # 27/11 mới có chỉ số, thiếu mã: nạp lại
+    assert mod.ssi_days_to_load(db, [D1, D2, SSI_DAY, "2026-11-30"]) == [SSI_DAY]     # 25/11 không nằm trong đợt gộp
+
+
+@pytest.mark.parametrize("loads,warned", [(True, False), (False, True)])
+def test_end_of_day_loads_ssi_figures_when_neo_recorded_nothing(tmp_path, dbs, monkeypatch, capsys, loads, warned):
+    src, dst = dbs
+    put(src, "ssi_quotes", ts=f"{SSI_DAY}T14:59:55+07:00", symbol="FPT")
+    rec, main_dir = folders(tmp_path, (src, dst))
+    mod = load_script()
+    calls = []
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        if loads:                                                    # giả lập scripts/fetch_ssi_overview.py ghi thành công
+            db = Path(cmd[cmd.index("--db") + 1])
+            put_index(db, SSI_DAY)
+            put(db, "ssi_daily", day=SSI_DAY, symbol="FPT", close=1.0)
+        return subprocess.CompletedProcess(cmd, 0 if loads else 1)
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod.dt, "datetime", type("T", (mod.dt.datetime,), {"now": classmethod(lambda cls, tz=None: mod.dt.datetime(2026, 11, 27, 15, 10, tzinfo=tz))}))
+    assert mod.main(["--ghi", str(rec), "--chinh", str(main_dir), "--bo-qua-nen", "--khong-day"]) == 0
+    assert len(calls) == 1 and calls[0][1].endswith("fetch_ssi_overview.py")           # chỉ ngày 27/11 (26/11 NEO đã ghi)
+    assert calls[0][calls[0].index("--day") + 1] == SSI_DAY
+    assert calls[0][calls[0].index("--db") + 1] == str(main_dir.resolve() / "data" / "market.db")
+    assert "--khong-sao-luu" in calls[0]                                              # lần chạy này đã sao lưu trước khi gộp
+    assert (f"chưa nạp đủ số SSI cho trang Tổng quan" in capsys.readouterr().out) is warned

@@ -4,6 +4,7 @@ Chạy SAU 15:05 của ngày đó (hoặc ngày sau), vài phút:
   python scripts/fetch_ssi_overview.py --day 2026-11-26
 
 Ghi vào bảng ssi_index_daily, ssi_daily (market.db, không đụng bảng NEO) và nến khung 1m trong candles.db. Trước khi ghi, sao lưu market.db vào sao-luu/.
+scripts/gop_va_day.py tự chạy lệnh này cho ngày NEO không ghi được.
 Chỉ ĐỌC từ SSI. Cần SSI_API_KEY và SSI_API_SECRET trong .env. Sổ lệnh SSI của ngày đó phải đã được bộ ghi scripts/record_ssi.py lưu.
 """
 from __future__ import annotations
@@ -71,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--db", type=Path, default=None, help="market.db (mặc định theo cấu hình dự án)")
     ap.add_argument("--candles", type=Path, default=CANDLE_DB)
     ap.add_argument("--symbols", type=Path, default=ROOT / "data" / "symbols_VN30.txt")
+    ap.add_argument("--khong-sao-luu", action="store_true", help="không sao lưu (chỉ dùng khi vừa sao lưu xong, như gop_va_day.py)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
 
@@ -88,8 +90,9 @@ def main(argv: list[str] | None = None) -> int:
         sys.exit(f"Lỗi SSI: {exc}")
     if data["index"].empty:
         sys.exit(f"SSI không có tổng kết chỉ số ngày {args.day} (ngày nghỉ?). Không ghi gì.")
-    saved = backup_db(db, ROOT / "sao-luu", f"{now:%Y%m%d_%H%M%S}")
-    print(f"Đã sao lưu: {saved}")
+    if not args.khong_sao_luu:
+        saved = backup_db(db, ROOT / "sao-luu", f"{now:%Y%m%d_%H%M%S}")
+        print(f"Đã sao lưu: {saved}")
     print("Đã ghi: " + ", ".join(f"{k} {v}" for k, v in store(data, args.day, db, args.candles).items()))
     return 0
 
