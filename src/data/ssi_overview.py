@@ -35,12 +35,15 @@ AFTER_CLOSE = dt.time(14, 45)     # sổ lệnh chỉ coi là cuối ngày khi t
 
 
 def ssi_overview_days(db_path: Path, neo_days: list[str]) -> list[str]:
-    """Ngày hiện được bằng SSI: NEO không có dữ liệu, có sổ lệnh SSI VÀ đã nạp tổng kết VN-Index. YYYY-MM-DD, tăng dần."""
+    """Ngày hiện được bằng SSI: NEO không có dữ liệu, có sổ lệnh SSI VÀ đã nạp tổng kết của ĐỦ 4 chỉ số (ngày mới có vài chỉ số từ lần lấy
+    lịch sử cũ thì không hiện, để trang không thiếu thẻ và đường trong ngày). YYYY-MM-DD, tăng dần."""
     idx = load_ssi_index(Path(db_path))
-    have_index = set(idx.loc[idx["index_code"] == "VNINDEX", "day"]) if not idx.empty else set()
-    if not have_index:
+    if idx.empty:
         return []
-    return sorted((set(ssi_quote_days(Path(db_path))) & have_index) - set(neo_days))
+    main = idx[idx["index_code"].isin(MAIN_INDICES)]
+    have = main.groupby("day")["index_code"].nunique()
+    full = set(have[have == len(MAIN_INDICES)].index)
+    return sorted((set(ssi_quote_days(Path(db_path))) & full) - set(neo_days))
 
 
 def load_index_minutes(candle_db: Path, day: dt.date) -> pd.DataFrame:

@@ -97,11 +97,14 @@ def test_ssi_days_need_no_neo_data_and_both_quotes_and_index(tmp_path):
     assert so.ssi_overview_days(db, []) == []
     for day in ("2026-11-20", D, "2026-11-27"):
         put_quote(db, f"{day}T09:15:00+07:00", "FPT")
-    old = index_rows(tradingDate="2026/11/19")
-    assert ssi.save_ssi_index(ssi.parse_index([{"tradingDate": "2026/11/20", "indexValue": "1"}], "VNINDEX", "2026-11-20"), db) == 1
-    ssi.save_ssi_index(index_rows(), db)
-    assert old.empty
-    # 20/11 có NEO nên giữ NEO; 27/11 chưa nạp tổng kết chỉ số nên chưa hiện
+    def save(day, codes):
+        for code in codes:
+            ssi.save_ssi_index(ssi.parse_index([{"tradingDate": day.replace("-", "/"), "indexValue": "1"}], code, day), db)
+
+    save("2026-11-20", so.MAIN_INDICES)
+    save(D, so.MAIN_INDICES)
+    save("2026-11-27", ["VNINDEX", "VN30"])              # như ngày 12/11 thật: mới có 2 chỉ số từ lần lấy lịch sử cũ
+    # 20/11 có NEO nên giữ NEO; 27/11 chưa đủ 4 chỉ số nên chưa hiện
     assert so.ssi_overview_days(db, ["2026-11-20"]) == [D]
 
 
