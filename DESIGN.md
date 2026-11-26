@@ -3,7 +3,7 @@
 Mô tả điều **đang đúng trong mã** (không phải mong muốn). Muốn đổi một quy ước ở đây thì hỏi sinh viên trước (xem `AGENT.md`).
 
 ## 1. Sản phẩm
-Bộ lọc cổ phiếu toàn HOSE và Radar thanh khoản VN30, dùng NEO API của VPBankS làm nguồn chính (SSI làm nguồn phụ: nến ngày cho động lượng). Người dùng: nhà đầu tư
+Bộ lọc cổ phiếu toàn HOSE và Radar thanh khoản VN30, dùng NEO API của VPBankS làm nguồn chính (SSI làm nguồn phụ: nến ngày cho động lượng, bù ngày NEO không ghi được). Người dùng: nhà đầu tư
 cá nhân và người quản trị rủi ro. Mục tiêu: Bộ lọc cho biết mã HOSE nào đủ thanh khoản để vào/ra vị thế (trung vị giá trị khớp mỗi ngày) rồi xếp hạng động lượng 6-1;
 Radar cho biết mã VN30 nào đang khó mua bán và khi nào spread hoặc độ sâu lệch khỏi mức thường lệ của chính mã đó. Chỉ đọc dữ liệu, không giao dịch.
 Mọi trang có dòng: "công cụ phân tích học thuật, không phải khuyến nghị đầu tư".
@@ -17,8 +17,15 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - **Bộ ghi và bảng điều khiển là hai phần riêng.** Bộ ghi giữ mật khẩu trong bộ nhớ và ghi dữ liệu; bảng điều khiển chỉ ĐỌC `market.db`.
 - **Bộ ghi SSI chạy song song, không nằm trong `run_live.py`:** `scripts/record_ssi.py` mở ở cửa sổ riêng để có sổ lệnh dự phòng khi NEO mất kết nối
   hoặc dừng giữa phiên; ghi vào bảng `ssi_quotes`, không đụng bảng của NEO. `run_live.py` không có cờ `--ssi` (quyết định 24/11).
+- **Ghi ở thư mục riêng, gộp cuối ngày (26/11):** `scripts/ghi_hang_ngay.py` chạy từ một bản clone đóng băng (không phải thư mục đang sửa web), mở hai bộ ghi;
+  `scripts/gop_va_day.py` sao lưu `market.db` chính, gộp **chỉ thêm** trong một giao dịch (`data/merge.py`; riêng `board` giữ ảnh chụp mới nhất; tệp raw
+  không bao giờ bị ghi đè), nạp số SSI cho ngày NEO không ghi được, xuất `data/web` và **hỏi rồi mới đẩy**. Commit dữ liệu chỉ chứa `data/web`
+  (`data/publish.py`: dựng trên đỉnh nhánh ở máy chủ, không force, không đụng mã).
+- **Bản web (Streamlit Community Cloud):** chỉ để xem, không có bộ ghi. `scripts/export_web_data.py` (`data/web_data.py`) nén các bảng dashboard đọc vào
+  `data/web/`; lúc khởi động `app.py` gọi `ensure_web_data` để giải nén (không bao giờ ghi đè dữ liệu nó không tự giải nén) và nạp lại mô-đun dự án khi mã đổi.
+  Nút Fork, GitHub và menu ba chấm được ẩn bằng CSS trong `app.py`; không ẩn cả `stToolbar` vì thanh điều hướng nằm trong đó.
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), giới hạn tần suất, stream WebSocket (nhị phân Avro).
-- `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`; nến OHLC `fetch_ohlc` chỉ để hiển thị, không lưu), `candles.py` (nến ngày NEO dự phòng từ bảng `board`), `candle_store.py` (kho nến SSI ở tệp riêng `data/candles.db`: bảng `candles`, `candle_meta`; KHÔNG nằm trong market.db), `schema.py` (cột chuẩn,
+- `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`; nến OHLC `fetch_ohlc` chỉ để hiển thị), `ssi_overview.py` (số SSI cho Tổng quan ở ngày NEO không ghi được), `candles.py` (nến ngày NEO dự phòng từ bảng `board`), `candle_store.py` (kho nến SSI ở tệp riêng `data/candles.db`: bảng `candles`, `candle_meta`, gồm khung `1m` của 4 chỉ số; KHÔNG nằm trong market.db), `merge.py`, `publish.py`, `web_data.py` (gộp, đẩy dữ liệu, bản web), `schema.py` (cột chuẩn,
   làm sạch), `storage.py` (SQLite), `rest_recorder.py`, `ws_recorder.py` và `ssi_recorder.py` (bộ ghi), `market_board.py` (bảng giá nhiều sàn, phái sinh),
   `overview.py` (hàm dữ liệu trang Tổng quan), `backfill.py`, `market_day.py`, `simulator.py`.
 - `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng, điểm cửa sổ trượt 30 lần chụp), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng),
@@ -33,7 +40,8 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - `scripts/`: `run_live.py` (một lệnh: ghi + dashboard), `record_rest.py`, `record_ws.py`, `record_ssi.py` (bộ ghi SSI dự phòng, cửa sổ riêng), `probe_market.py`, `export_data.py`, `check_boards.py`, `close_snapshot.py`,
   `backfill_extra.py`, `fetch_day_index.py`, `fetch_ssi_history.py` (lịch sử theo ngày từ SSI; `--check` đối chiếu với NEO), `probe_ssi.py` (thử SSI: `rest`, `stream`),
   `probe_ssi_channels.py`, `probe_ws_schema.py`, `compare_ws_rest.py`, `inspect_ws_lunch.py`, `generate_sample_data.py`, `restore_session.py` (dựng lại MỘT phiên vào
-  market.db từ `data/raw/<ngày>/`, không gọi mạng; `--only trades` lấy lại riêng các lần khớp WebSocket).
+  market.db từ `data/raw/<ngày>/`, không gọi mạng; `--only trades` lấy lại riêng các lần khớp WebSocket), `ghi_hang_ngay.py`, `gop_va_day.py`,
+  `fetch_ssi_overview.py` (số SSI một ngày cho Tổng quan; sao lưu trước khi ghi), `export_web_data.py`.
 - **Cùng một con số trên mọi trang:** tải và phân tích đi qua `shared.py`. Trang không tự tính lại số tài chính; logic tài chính ở `finance/` và `analytics/`.
 - Bảng SQLite: `quotes` (sổ lệnh VN30 mỗi phút), `market_index`, `board` (ảnh chụp mới nhất mỗi ngày), `depth_market`, `futures`, `ws_quotes`,
   `ws_trades`, `ssi_daily`, `ssi_index_daily`, `ssi_quotes`.
@@ -46,6 +54,10 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
 - **Đơn vị:** giá lưu bằng đồng, hiển thị bằng nghìn đồng; khối lượng bằng cổ phiếu; số kiểu Việt (dấu chấm nghìn, dấu phẩy thập phân) qua `vn()` trong `theme.py`.
 - **Nguồn:** NEO là nguồn chính; SSI là phụ. Ngày NEO không có lần chụp nào trong phiên liên tục mà SSI có sổ lệnh thì dùng SSI (lấy mẫu mỗi phút,
   cùng các phút với NEO) và **dán nhãn "SSI"**. Ngày có NEO luôn dùng NEO. Không trộn hai nguồn thành một số mà không có nhãn.
+- **Tổng quan ở ngày SSI:** chỉ ngày NEO không có dữ liệu nào, có sổ lệnh SSI và đã nạp **đủ 4 chỉ số**. Hiện 4 thẻ chỉ số, đường 1 phút, bảng giá và độ sâu
+  VN30, độ rộng VN-Index (tăng gồm trần, giảm gồm sàn), tổng giá trị cuối ngày từng sàn (gồm thỏa thuận). Giá khớp, thay đổi, khối lượng, giá trị lấy từ tổng
+  kết ngày của SSI; sổ lệnh là thanh SSI mới nhất và để trống nếu bộ ghi dừng trước 14:45. Giá trần/sàn, khối lượng khớp cuối, nước ngoài ròng, bảng sàn khác,
+  phái sinh để trống (không tự tính). Trang ghi rõ nguồn, nhãn "SSI" ở danh sách ngày và chú thích độ lệch UPCoM-Index.
 - **Mốc nền cần đủ phiên:** cảnh báo, LRS và tỷ lệ hấp thụ chỉ có khi mã có ít nhất `min_baseline_sessions` (hiện 5, config.toml) phiên trước cùng khung giờ; chưa đủ thì ghi
   "Chưa đủ dữ liệu" kèm lý do (không để trống, không coi là bình thường). Ở cổng của Bộ lọc, mã chưa có mốc nền là "Chưa đánh giá" (sau Đạt/Chú ý, trước Loại, không có điểm),
   không bao giờ mặc định "Đạt". Khung đầu 9:15-9:30 tách riêng. "Hai lần chụp liên tiếp" của đợt cảnh báo là hai lần chụp hợp lệ kề nhau cách không quá 90 giây.
@@ -75,7 +87,7 @@ Không thêm màu mới ngoài bảng dưới đây khi chưa hỏi.
 
 - Cấu hình chủ đề đặt ở `.streamlit/config.toml` (phông Geist, cỡ chữ gốc 15, bo góc 8px, nút 6px). CSS chỉ dành cho phần tự vẽ, nằm ở `theme.py`
   (`inject_css`); thêm CSS cho một phần tử thì đặt `key=` và nhắm lớp `st-key-<key>`, không dựa vào lớp nội bộ của Streamlit.
-- Bố cục: 4 trang, điều hướng ở đầu trang (`st.navigation(position="top")`): **Tổng quan** (`/tong-quan`), **Bộ lọc** (`/bo-loc`), **Radar** (`/radar`),
+- Bố cục: 4 trang, điều hướng ở đầu trang (`st.navigation(position="top")`): **Tổng quan** (trang mặc định, địa chỉ gốc `/`), **Radar** (`/radar`), **Bộ lọc** (`/bo-loc`),
   **Chi tiết mã** (`/ma?ma=<mã>`). Các trang nối nhau qua `?ma=<mã>`. Thanh bên (đóng mặc định): thương hiệu, công tắc Trực tiếp (trừ Tổng quan và Radar, có công tắc riêng ở trang), danh sách theo dõi. Bộ lọc và Radar đặt điều khiển ở bảng bên trái trong trang (`panel_ctl` ở Radar, `panel_filters` ở Bộ lọc), không để trong thanh bên.
 - Rộng tối đa 1360px (Tổng quan và Radar tràn viền, lề 24px); ô nền trắng là container có `key` bắt đầu bằng `panel`; dải chỉ số 4 ô (`.kpis`) chia bằng vạch mảnh.
 - Chữ, nút, nhãn: tiếng Việt, viết hoa đầu câu (không Title Case); biểu tượng dùng Material Symbols (`:material/...:`), hạn chế emoji.
