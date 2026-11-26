@@ -1,6 +1,7 @@
 """Trang "Tổng quan thị trường": 4 chỉ số, bảng giá VN30, độ rộng, độ sâu và thanh khoản thị trường.
 
 Dữ liệu đọc từ market.db và data/raw/<ngày>/market.json, không gọi NEO trực tiếp nên trang không giữ mật khẩu hay token.
+Ngày NEO không ghi được mà đã nạp số SSI (scripts/fetch_ssi_overview.py) thì hiện 4 chỉ số và VN30 từ SSI, có nhãn "SSI".
 Thẻ chỉ số cập nhật theo vòng hỏi nhanh của bộ ghi (mặc định 5 giây); sổ lệnh, bảng giá và độ sâu theo chu kỳ 1 phút.
 """
 from __future__ import annotations
@@ -32,6 +33,9 @@ from finance.liquidity import add_liquidity_metrics  # noqa: E402
 from finance.sessions import filter_continuous  # noqa: E402
 from neo_api.config import TZ, get_settings  # noqa: E402
 from data.special_days import no_data_message  # noqa: E402
+from data.candle_store import DEFAULT_PATH as CANDLE_DB  # noqa: E402
+from data.ssi import load_ssi_minute_quotes  # noqa: E402
+from data.ssi_overview import load_ssi_overview, ssi_overview_days  # noqa: E402
 from symbol_dialog import open_symbol_dialog  # noqa: E402
 from theme import (BORDER, CE, CHART_CONFIG, FAINT, FLAT, FLR, GRID, HUE, INK, MUTED, NEG, PANEL, POS, REF, SPARK,  # noqa: E402
                    base_layout, group, hide_lunch, how_to_read, is_dark, naive_vn, vn)
@@ -141,12 +145,28 @@ def load_extras(path: str, version: float) -> tuple[pd.DataFrame, pd.DataFrame]:
     return load_depth_market(Path(path)), load_futures(Path(path))
 
 
+@st.cache_data(show_spinner=False)
+def load_ssi_days(path: str, version: float, neo_days: tuple[str, ...]) -> list[str]:
+    return ssi_overview_days(Path(path), list(neo_days))
+
+
+@st.cache_data(show_spinner=False)
+def load_ssi_page(path: str, version: float, candle_version: float, day_str: str) -> tuple[dict, pd.DataFrame]:
+    """Số SSI của một ngày NEO không ghi được, và sổ lệnh VN30 theo phút (làm sạch như NEO) để vẽ độ sâu."""
+    data = load_ssi_overview(Path(path), CANDLE_DB, pd.Timestamp(day_str).date())
+    minute, _ = normalize_quotes(load_ssi_minute_quotes(Path(path), [day_str]))
+    minute, _ = filter_continuous(minute)
+    return data, add_liquidity_metrics(minute)
+
+
 try:
     version = db_path.stat().st_mtime
 except OSError:
     version = 0.0
 quotes = load_quotes_clean(str(db_path), version)
-days = [pd.Timestamp(d).date() for d in data_days(db_path)]
+neo_days = data_days(db_path)
+ssi_days = {pd.Timestamp(d).date() for d in load_ssi_days(str(db_path), version, tuple(neo_days))}
+days = sorted({pd.Timestamp(d).date() for d in neo_days} | ssi_days)
 
 if not days:
     st.title("Tổng quan thị trường", anchor=False)
@@ -157,12 +177,20 @@ if not days:
 
 with st.sidebar:
     group("Tổng quan")
-    day = st.selectbox("Ngày giao dịch", sorted(days, reverse=True), format_func=lambda d: d.strftime("%d/%m/%Y"))
+    day = st.selectbox("Ngày giao dịch", sorted(days, reverse=True),
+                       format_func=lambda d: d.strftime("%d/%m/%Y") + (" · SSI" if d in ssi_days else ""))
 
-idx = load_idx_day(str(db_path), version, f"{day:%Y-%m-%d}")
-market_json = load_market_json(ROOT / "data", day)
-cards = index_cards(idx, day, market_json)
-board = price_board(quotes, day)
+is_ssi = day in ssi_days
+ssi_ts = None            # giờ của số SSI mới nhất (chỉ có ở ngày SSI)
+if is_ssi:
+    candle_version = CANDLE_DB.stat().st_mtime if CANDLE_DB.exists() else 0.0
+    ssi_data, quotes = load_ssi_page(str(db_path), version, candle_version, f"{day:%Y-%m-%d}")
+    idx, market_json, cards, board, ssi_ts = ssi_data["minutes"], {}, ssi_data["cards"], ssi_data["board"], ssi_data["book_ts"]
+else:
+    idx = load_idx_day(str(db_path), version, f"{day:%Y-%m-%d}")
+    market_json = load_market_json(ROOT / "data", day)
+    cards = index_cards(idx, day, market_json)
+    board = price_board(quotes, day)
 depth_all, fut_all = load_extras(str(db_path), version)
 
 
@@ -175,14 +203,14 @@ def tone(x: float) -> str:
     return "up" if x > 0 else "dn" if x < 0 else ""
 
 
-def _chips_html(trade_day, data_ts, live: bool, fast: bool = False) -> str:
+def _chips_html(trade_day, data_ts, live: bool, fast: bool = False, source: str = "") -> str:
     """Chip đầu trang tính theo ĐỒNG HỒ THẬT mỗi lần vẽ: phiên hiện tại, giờ hiện tại, giờ của bản ghi cuối, kết nối."""
     now = pd.Timestamp.now(tz=TZ)
     out = [f'<span class="chip">Phiên {trade_day:%d/%m/%Y}</span>', f'<span class="chip">{now:%H:%M:%S}</span>']
     if data_ts is not None:
         when = f"{data_ts:%H:%M}" + ("" if data_ts.date() == now.date() else f" ngày {data_ts:%d/%m}")
-        out.append(f'<span class="chip">Dữ liệu lúc {when}</span>')
-        if data_ts.date() == now.date():
+        out.append(f'<span class="chip">Dữ liệu {source + " " if source else ""}lúc {when}</span>')
+        if data_ts.date() == now.date() and source != "SSI":     # ngày SSI nạp sau phiên: không có trạng thái "đang nhận"
             age = max((now - data_ts).total_seconds() / 60, 0)
             if age <= 5:
                 ago = f"cách {age * 60:.0f} giây" if age < 1.5 else f"cách {age:.0f} phút"
@@ -194,10 +222,13 @@ def _chips_html(trade_day, data_ts, live: bool, fast: bool = False) -> str:
 
 
 @st.fragment(run_every=1)
-def render_chips(trade_day, day, live: bool) -> None:
+def render_chips(trade_day, day, live: bool, ssi_ts=None) -> None:
     """Chạy lại mỗi giây chỉ riêng khối chip để đồng hồ chạy; không vẽ lại cả trang. Giờ "Dữ liệu lúc" đọc thẳng từ
     cơ sở dữ liệu mỗi lần vẽ nên đổi theo từng bản ghi mới của bộ ghi."""
-    st.html(_chips_html(trade_day, latest_ts(db_path, f"{day:%Y-%m-%d}"), live))
+    if ssi_ts is not None:                      # ngày SSI: không có bản ghi NEO để hỏi giờ
+        st.html(_chips_html(trade_day, ssi_ts, False, source="SSI"))
+    else:
+        st.html(_chips_html(trade_day, latest_ts(db_path, f"{day:%Y-%m-%d}"), live))
 
 
 trade_day = trading_date(pd.Timestamp.now(tz=TZ))
@@ -212,7 +243,7 @@ def _on_theme_button() -> None:
 # Container có key "topctl" được CSS ghim (position: fixed) lên đúng thanh điều hướng, ở bên phải; màn hình hẹp thì rơi về dòng thường.
 st.html('<h1 class="sr-only">Tổng quan thị trường</h1>')
 with st.container(key="topctl", horizontal=True, horizontal_alignment="right", vertical_alignment="center", gap="small"):
-    render_chips(trade_day, day, bool(st.session_state.get("live")))
+    render_chips(trade_day, day, bool(st.session_state.get("live")), ssi_ts)
     st.button("Làm mới", icon=":material/refresh:", key="ov_reload", width="content",
               help="Đọc lại cơ sở dữ liệu để lấy các bản ghi mới nhất.")
     st.button("", icon=":material/light_mode:" if is_dark() else ":material/dark_mode:", key="theme_btn", width="content",
@@ -227,6 +258,10 @@ if _theme_to_set:          # Streamlit chỉ đọc chủ đề lúc tải trang
 if day != trade_day:
     msg = no_data_message(trade_day, day, days)
     st.html(f'<div class="notice" style="margin:4px 0 8px">{msg}</div>')
+if is_ssi:
+    st.html(f'<div class="notice" style="margin:4px 0 8px"><b>Phiên {day:%d/%m/%Y} lấy từ SSI</b> vì NEO không ghi được. Có 4 chỉ số và '
+            "VN30. SSI không có giá trần, sàn, bảng giá HOSE/HNX/UPCoM, phái sinh và số mã tăng giảm ngoài VN-Index: các chỗ đó để trống. "
+            "Khối lượng và giá trị chỉ số gồm cả thỏa thuận. UPCoM-Index của SSI từng lệch số chốt NEO tới 0,72 điểm.</div>")
 
 
 # ---------- 4 thẻ chỉ số ----------
@@ -255,7 +290,10 @@ def card_html(r: pd.Series, idx: pd.DataFrame, day, market_json: dict) -> str:
     color = POS if chg > 0 else NEG if chg < 0 else MUTED
     arrow = "▲" if chg > 0 else "▼" if chg < 0 else "■"
     series = index_series(idx, day, code, market_json)
-    rng = day_range(series)
+    if "low" in r:                       # ngày SSI: đáy và đỉnh lấy từ nến 1 phút (thiếu nến thì không hiện)
+        rng = None if pd.isna(r["low"]) else (float(r["low"]), float(r["high"]))
+    else:
+        rng = day_range(series)
     low_high = (f'<div class="row"><span>Thấp–Cao <b>{vn(rng[0], 1)} – {vn(rng[1], 1)}</b></span></div>' if rng else "")
     vol = f"{vn(r['sum_volume'])} CP" if not pd.isna(r["sum_volume"]) else "–"
     val = f"{vn(r['sum_value'] / 1e9, 2)} tỷ" if not pd.isna(r["sum_value"]) else "–"
@@ -276,8 +314,8 @@ def card_html(r: pd.Series, idx: pd.DataFrame, day, market_json: dict) -> str:
 def _cards_block(day, market_json: dict, live: bool) -> None:
     """4 thẻ chỉ số. Ở chế độ Trực tiếp khối này tự chạy lại mỗi 5 giây và đọc lại chỉ số của ngày từ cơ sở dữ liệu;
     phần còn lại của trang chỉ chạy lại khi bộ ghi ghi thêm sổ lệnh/bảng giá (mỗi phút)."""
-    idx_now = load_market_index(db_path, f"{day:%Y-%m-%d}") if live else idx
-    cards_now = index_cards(idx_now, day, market_json)
+    idx_now = load_market_index(db_path, f"{day:%Y-%m-%d}") if live and not is_ssi else idx
+    cards_now = cards if is_ssi else index_cards(idx_now, day, market_json)
     if cards_now.empty:
         st.caption("Chưa có dữ liệu chỉ số (NEO 4.3) cho ngày này. Bộ ghi bản mới lưu chỉ số liên tục; "
                    "các ngày ghi trước đó chỉ có chỉ số cuối ngày nếu bộ ghi đã chạy tới hết phiên.")
@@ -309,7 +347,12 @@ def _board_panel(day, live: bool) -> None:
                                        label_visibility="collapsed", format_func=lambda g: GROUP_LABELS[g]) or "VN30"
         day_str = f"{day:%Y-%m-%d}"
         view, snap_ts, kind = pd.DataFrame(), None, "stock"
-        if grp == "FU":
+        if is_ssi:
+            if grp != "VN30":
+                st.caption(f"Phiên này lấy từ SSI, chỉ có bảng giá VN30: chưa có {GROUP_LABELS[grp]}.")
+                return
+            view, snap_ts = board, ssi_ts
+        elif grp == "FU":
             kind = "future"
             fut_now = load_futures(db_path) if live else fut_all
             fut_day = fut_now[fut_now["ts"].dt.date == day] if not fut_now.empty else fut_now
@@ -353,7 +396,11 @@ def _board_panel(day, live: bool) -> None:
         total = len(shown_board)
         flash_note = (" Ô tô nền là giá trị vừa đổi so với lần cập nhật trước: xanh lá nếu giá trên TC, đỏ nếu dưới TC, "
                       "vàng nếu bằng TC.")
-        if kind == "future":
+        if is_ssi:
+            cap = (f"Sổ lệnh SSI lúc {snap_ts:%H:%M:%S}; giá khớp, thay đổi và tổng khối lượng là tổng kết ngày của SSI. Giá tính bằng nghìn "
+                   "đồng, khối lượng bằng cổ phiếu. Giá trần, sàn, khối lượng khớp lần cuối và nước ngoài ròng không có số đã đối chiếu nên "
+                   "để trống. Sổ lệnh để trống nếu bộ ghi dừng trước 14:45.")
+        elif kind == "future":
             cap = (f"Lần chụp {snap_ts:%H:%M:%S}. Giá tính bằng điểm chỉ số. Basis = giá khớp trừ điểm VN30 (âm: hợp đồng "
                        "rẻ hơn chỉ số). KL mở (OI) là số hợp đồng đang mở." + flash_note)
         else:
@@ -403,10 +450,13 @@ c1, c2 = st.columns(2, gap="medium")
 with c2, st.container(border=True, key="panel_breadth"):
     st.subheader("Độ rộng thị trường", anchor=False)
     b = breadth_frame(cards)
+    if is_ssi and not b.empty:
+        b = b.dropna(subset=["adv_pct"])
     if b.empty:
         st.caption("Chưa có dữ liệu độ rộng.")
     else:
-        st.caption("Tỷ lệ số mã tăng, đứng giá, giảm của từng chỉ số (NEO 4.3).")
+        st.caption("Tỷ lệ số mã tăng, đứng giá, giảm (SSI, chỉ có VN-Index; tăng gồm trần, giảm gồm sàn)." if is_ssi
+                   else "Tỷ lệ số mã tăng, đứng giá, giảm của từng chỉ số (NEO 4.3).")
         names = [INDEX_NAMES.get(c, c) for c in b["index_code"]]
         fig = go.Figure()
         for col, label, color in (("adv_pct", "Tăng", POS), ("flat_pct", "Đứng giá", FLAT), ("dec_pct", "Giảm", NEG)):
@@ -436,12 +486,14 @@ with c1, st.container(border=True, key="panel_depth"):
     depth = market_depth(quotes, day) if scope == "VN30" else market_depth_group(depth_all, day, scope)
     if depth.empty:
         st.caption("Chưa có sổ lệnh cho ngày này." if scope == "VN30" else
+                   f"Phiên này lấy từ SSI, chỉ có độ sâu VN30: chưa có {GROUP_LABELS[scope]}." if is_ssi else
                    f"Chưa có độ sâu {GROUP_LABELS[scope]} cho ngày này. Bộ ghi bản mới lưu độ sâu theo sàn mỗi phút "
                    "trong phiên khớp lệnh liên tục; các ngày ghi trước đó chỉ có VN30.")
     else:
         n = "30" if scope == "VN30" else vn(depth["n_symbols"].iloc[-1])
         st.caption(f"Tổng giá trị đang chờ khớp ở 3 mức giá tốt nhất của {n} mã, bên mua và bên bán (tỷ đồng). "
-                   "Đường mua và bán càng cao thì thị trường càng sâu, một lệnh lớn càng ít làm giá chạy.")
+                   "Đường mua và bán càng cao thì thị trường càng sâu, một lệnh lớn càng ít làm giá chạy."
+                   + (" Sổ lệnh SSI lấy mẫu mỗi phút." if is_ssi else ""))
         depth = with_gaps(depth)
         x = naive_vn(depth["ts"])
         fig = go.Figure()
@@ -464,8 +516,13 @@ with c1, st.container(border=True, key="panel_depth"):
 # ---------- thanh khoản ----------
 with st.container(border=True, key="panel_liquidity"):
     st.subheader("Thanh khoản thị trường", anchor=False)
-    tv = traded_value(idx, day)
-    if not tv.empty:
+    tv = pd.DataFrame() if is_ssi else traded_value(idx, day)
+    if is_ssi:
+        totals = [f"{label}: {vn(v / 1e9)} tỷ đồng" for code, label in (("VNINDEX", "HOSE"), ("HNXINDEX", "HNX"), ("UPCOMINDEX", "UPCoM"))
+                  for v in cards.loc[cards["index_code"] == code, "sum_value"] if not pd.isna(v)]
+        st.caption("SSI chỉ có tổng giá trị giao dịch cuối ngày (gồm cả thỏa thuận), không có diễn biến trong phiên. "
+                   + (" · ".join(totals) if totals else "Chưa có số."))
+    elif not tv.empty:
         st.caption("Giá trị giao dịch lũy kế trong ngày của từng sàn (tỷ đồng, NEO 4.3). Mỗi sàn một ô với thang đo riêng, "
                    "vì HOSE lớn gấp nhiều lần HNX và UPCoM nên vẽ chung thì hai sàn nhỏ nằm sát đáy.")
         tv_plot = with_gaps(tv)
@@ -516,6 +573,9 @@ with st.container(border=True, key="panel_liquidity"):
             st.plotly_chart(fig, config=CHART_CONFIG, theme=None, key="ov_liq_vol")
 
 st.html(
+    '<p class="note">Dữ liệu phiên này từ SSI (nguồn phụ, chỉ đọc), dùng thay vì NEO không ghi được. Đây là công cụ phân tích học thuật phục vụ '
+    "đồ án, không phải khuyến nghị đầu tư; ứng dụng chỉ đọc dữ liệu thị trường, không gửi, sửa hay hủy lệnh giao dịch.</p>"
+    if is_ssi else
     '<p class="note">Dữ liệu từ NEO API (REST 4.3, 4.6, 4.7, 4.9). Chỉ số cập nhật theo vòng hỏi nhanh của bộ ghi (5 giây); '
     "bảng giá, sổ lệnh và độ sâu cập nhật mỗi phút nên chưa phải từng giây. Đây là công cụ phân tích học thuật phục vụ đồ án, không phải khuyến nghị đầu tư; "
     "ứng dụng chỉ đọc dữ liệu thị trường, không gửi, sửa hay hủy lệnh giao dịch.</p>"
