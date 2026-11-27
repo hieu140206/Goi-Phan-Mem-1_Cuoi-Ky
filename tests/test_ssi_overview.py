@@ -92,6 +92,45 @@ def test_board_hides_book_when_recorder_stopped_before_close_and_keeps_symbol_wi
     assert b.loc["VCB", "bid_px1"] == 45000.0 and pd.isna(b.loc["VCB", "last_px"]) and np.isnan(b.loc["VCB", "ref"])
 
 
+def test_symbol_day_is_the_same_row_as_the_overview_board(tmp_path):
+    db = tmp_path / "m.db"
+    put_quote(db, f"{D}T14:59:55+07:00", "FPT")
+    put_quote(db, f"{D}T14:59:55+07:00", "VCB", bid=60000.0, ask=60100.0)
+    book = so.ssi_last_book(db, DAY)
+    info = so.ssi_symbol_day(book, daily("FPT"), DAY, "FPT")
+    board = so.ssi_board(book, daily("FPT"), DAY).set_index("symbol").loc["FPT"]
+    # cùng số với Tổng quan (dòng có cả cột chữ "symbol" nên đổi phần số về float rồi mới so)
+    assert info["row"]["symbol"] == "FPT"
+    pd.testing.assert_series_equal(info["row"].drop("symbol").astype(float), board, check_names=False)
+    assert info["book_ts"].strftime("%H:%M:%S") == "14:59:55"
+    assert info["has_summary"] and not info["book_stale"]
+
+
+def test_symbol_day_flags_stale_book_missing_summary_and_unknown_symbol(tmp_path):
+    db = tmp_path / "m.db"
+    put_quote(db, f"{D}T11:00:00+07:00", "FPT")
+    put_quote(db, f"{D}T14:59:55+07:00", "VCB")
+    book = so.ssi_last_book(db, DAY)
+    stale = so.ssi_symbol_day(book, daily("FPT"), DAY, "FPT")
+    assert stale["book_stale"] and stale["has_summary"] and pd.isna(stale["row"]["bid_px1"])
+    missing = so.ssi_symbol_day(book, daily("FPT"), DAY, "VCB")
+    assert not missing["has_summary"] and pd.isna(missing["row"]["last_px"]) and missing["row"]["bid_px1"] == 45000.0
+    assert so.ssi_symbol_day(book, daily("FPT"), DAY, "HPG") is None
+
+
+@pytest.mark.parametrize("stale,summary,says,never", [
+    (False, True, ["tổng kết ngày của SSI", "sổ lệnh SSI lúc 14:59", "giá trần, sàn và nước ngoài để trống"], ["chưa nạp", "dừng"]),
+    (True, True, ["tổng kết ngày của SSI", "sổ lệnh để trống vì bộ ghi SSI dừng lúc 14:59"], ["chưa nạp"]),
+    (False, False, ["sổ lệnh SSI lúc 14:59", "chưa nạp tổng kết ngày của SSI"], ["dừng", "là tổng kết"]),
+    (True, False, ["bộ ghi SSI dừng lúc 14:59", "chưa nạp tổng kết ngày của SSI"], ["là tổng kết"]),
+])
+def test_symbol_note_names_the_source_and_what_is_blank(stale, summary, says, never):
+    note = so.ssi_symbol_note({"book_ts": pd.Timestamp(f"{D} 14:59:55"), "book_stale": stale, "has_summary": summary})
+    assert "NEO không ghi được phiên này" in note
+    assert all(s in note for s in says), note
+    assert not any(s in note for s in never), note
+
+
 def test_ssi_days_need_no_neo_data_and_both_quotes_and_index(tmp_path):
     db = tmp_path / "m.db"
     assert so.ssi_overview_days(db, []) == []

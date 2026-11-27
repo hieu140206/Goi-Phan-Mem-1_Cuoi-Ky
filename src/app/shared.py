@@ -6,6 +6,7 @@ Mọi trang gọi CÙNG các hàm có cache ở đây với CÙNG tham số, nê
 """
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import sys
 from pathlib import Path
@@ -24,6 +25,7 @@ from data.schema import limit_lock_side, normalize_quotes
 from data.special_days import (exclude_from_baseline, load_special_days, special_day_map,  # noqa: E402
                                special_days_path)
 from data.ssi import load_ssi_daily, load_ssi_minute_quotes, ssi_quote_days  # noqa: E402
+from data.ssi_overview import ssi_last_book, ssi_symbol_day  # noqa: E402
 from analytics.universe import screen_universe  # noqa: E402
 from data.candle_store import DEFAULT_PATH as CANDLE_DB, load_daily_closes  # noqa: E402
 from analytics.screener import (ATC_DONE, daily_closes_from_board, intraday_factors, liquidity_gate,  # noqa: E402
@@ -201,6 +203,18 @@ def _ssi_calendar(db_path: str, version: float) -> list[str]:
     if df.empty:
         return []
     return sorted(df.loc[df["symbol"].isin(["VNINDEX", "VN30"]), "day"].dropna().unique())
+
+
+@st.cache_data(show_spinner=False)
+def _ssi_day(db_path: str, version: float, day: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Sổ lệnh SSI cuối ngày của mọi mã và bảng tổng kết ngày của SSI."""
+    return ssi_last_book(Path(db_path), dt.date.fromisoformat(day)), load_ssi_daily(Path(db_path))
+
+
+def ssi_symbol_of(day: str, symbol: str) -> dict | None:
+    """Số SSI của một mã trong một ngày NEO không ghi được (data/ssi_overview.ssi_symbol_day); None nếu không có sổ lệnh."""
+    book, daily = _ssi_day(str(get_settings().db_path), db_version(), day)
+    return ssi_symbol_day(book, daily, dt.date.fromisoformat(day), symbol)
 
 
 def board_dates() -> list[str]:

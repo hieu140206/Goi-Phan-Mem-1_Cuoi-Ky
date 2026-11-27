@@ -18,8 +18,9 @@ import streamlit as st  # noqa: E402
 
 from charts import intraday_caption, intraday_figure  # noqa: E402
 from data.overview import board_view, price_board  # noqa: E402
+from data.ssi_overview import ssi_symbol_note  # noqa: E402
 from shared import (SRC_DB, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
-                    current_source, liquidity_ranking, screen_for_day)
+                    current_source, liquidity_ranking, screen_for_day, ssi_symbol_of)
 from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, POS, how_to_read, vn  # noqa: E402
 from watchlist import load_watchlist, toggle  # noqa: E402
 
@@ -91,16 +92,21 @@ st.session_state["_ma_seen"] = sym
 st.query_params["ma"] = sym          # địa chỉ trang luôn trỏ đúng mã đang xem (chia sẻ hoặc tải lại vẫn đúng)
 st.session_state["sym"] = sym        # Radar mở sẵn đúng mã này khi chuyển sang
 
-# ---------- giá: ưu tiên bảng giá cuối ngày (đã có ATC), không có thì lần chụp cuối trong phiên liên tục ----------
+# ---------- giá: ưu tiên bảng giá cuối ngày (đã có ATC); ngày NEO không ghi được thì số SSI (cùng số với Tổng quan);
+# còn lại là lần chụp cuối trong phiên liên tục ----------
 day_str = f"{day:%Y-%m-%d}"
 raw = board_of(day_str, "VN30") if use_board else pd.DataFrame()
 raw = raw[raw["symbol"] == sym] if not raw.empty else raw
+ssi = ssi_symbol_of(day_str, sym) if raw.empty and day in ssi_days else None
 if not raw.empty:
     snap = board_view(raw).iloc[0]
     snap_ts = raw["ts"].iloc[0]
     snap_note = f"bảng giá lúc {snap_ts:%H:%M}" + ("" if snap_ts.time() >= pd.Timestamp('14:45').time()
                                                    else " (trước phiên ATC, chưa phải giá đóng cửa)")
     f_buy, f_sell = raw["foreign_buy_val"].iloc[0], raw["foreign_sell_val"].iloc[0]
+elif ssi is not None:
+    snap, snap_note = ssi["row"], ssi_symbol_note(ssi)
+    f_buy = f_sell = float("nan")
 else:
     pb = price_board(analyzed, day)
     pb = pb[pb["symbol"] == sym] if not pb.empty else pb
@@ -109,10 +115,6 @@ else:
     snap_ts = last_q["ts"].iloc[-1] if not last_q.empty else None
     snap_note = (f"lần chụp sổ lệnh cuối trong phiên khớp lệnh liên tục ({snap_ts:%H:%M}), chưa gồm phiên ATC"
                  if snap_ts is not None else "")
-    if day in ssi_days:
-        snap_note = ("sổ lệnh lấy từ SSI (NEO không ghi được phiên này), mỗi phút một lần; không có giá khớp và khối lượng khớp"
-                     if snap_ts is None else f"sổ lệnh lấy từ SSI lúc {snap_ts:%H:%M} (NEO không ghi được phiên này); "
-                     "không có giá khớp, khối lượng khớp và nước ngoài")
     f_buy = last_q["foreign_buy_val"].iloc[-1] if not last_q.empty else float("nan")
     f_sell = last_q["foreign_sell_val"].iloc[-1] if not last_q.empty else float("nan")
 

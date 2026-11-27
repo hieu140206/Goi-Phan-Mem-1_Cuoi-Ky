@@ -150,6 +150,29 @@ def ssi_board(book: pd.DataFrame, daily: pd.DataFrame, day: dt.date) -> pd.DataF
     return board_view(m)
 
 
+def ssi_symbol_day(book: pd.DataFrame, daily: pd.DataFrame, day: dt.date, symbol: str) -> dict | None:
+    """Số SSI của MỘT mã trong một ngày, cho trang Chi tiết mã: đúng dòng của bảng giá Tổng quan (ssi_board).
+    Trả row, book_ts (giờ thanh sổ lệnh), book_stale (bộ ghi dừng trước 14:45 nên sổ lệnh để trống), has_summary (đã nạp
+    tổng kết ngày); None nếu mã không có sổ lệnh SSI ngày đó."""
+    one = book[book["symbol"] == symbol]
+    if one.empty:
+        return None
+    row = ssi_board(one, daily, day).iloc[0]
+    ts = one["ts"].iloc[-1]
+    return {"row": row, "book_ts": ts, "book_stale": ts.time() < AFTER_CLOSE, "has_summary": bool(pd.notna(row["last_px"]))}
+
+
+def ssi_symbol_note(info: dict) -> str:
+    """Câu ghi nguồn cho trang Chi tiết mã: số nào lấy từ SSI, số nào để trống và vì sao."""
+    at = f"{info['book_ts']:%H:%M}"
+    why = "(NEO không ghi được phiên này)"
+    if not info["has_summary"]:
+        book = (f"bộ ghi SSI dừng lúc {at} nên sổ lệnh để trống" if info["book_stale"] else f"sổ lệnh SSI lúc {at}")
+        return f"{book} {why}; chưa nạp tổng kết ngày của SSI nên giá và khối lượng để trống"
+    book = (f"sổ lệnh để trống vì bộ ghi SSI dừng lúc {at}" if info["book_stale"] else f"sổ lệnh SSI lúc {at}")
+    return f"giá và khối lượng là tổng kết ngày của SSI, {book} {why}; giá trần, sàn và nước ngoài để trống"
+
+
 def load_ssi_overview(db_path: Path, candle_db: Path, day: dt.date) -> dict:
     """Mọi thứ trang Tổng quan cần cho một ngày SSI: cards, minutes, board, book_ts (giờ thanh sổ lệnh mới nhất)."""
     minutes = load_index_minutes(candle_db, day)
