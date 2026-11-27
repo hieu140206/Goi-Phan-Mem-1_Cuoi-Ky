@@ -49,7 +49,7 @@ chưa có chữ ký của pandas (xem nhật ký Code Integrity). Cách an toàn
 ## Chạy
 ```
 streamlit run src/app/app.py     # mở bảng điều khiển tại http://localhost:8501
-python -m pytest                 # chạy kiểm thử (435 bài, khoảng 2 phút)
+python -m pytest                 # chạy kiểm thử (441 bài, khoảng 2 phút)
 python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi mật khẩu) và mở bảng điều khiển
 python scripts/validate_alerts.py   # kiểm chứng cảnh báo (chữ U, event study, độ nhạy ngưỡng), ghi vào report/kiem-chung/ (chỉ đọc market.db)
 python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
@@ -173,7 +173,7 @@ src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng,
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu toàn HOSE (universe.py)
 config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          435 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, gộp dữ liệu, bản đồ nhiệt
+tests/          441 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, gộp dữ liệu, bản đồ nhiệt
 scripts/        ghi dữ liệu (ghi_hang_ngay, gop_va_day, run_live, record_rest, record_ws, record_ssi, fetch_ssi_candles, fetch_ssi_overview),
                 kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check), dựng lại phiên từ dữ liệu gốc (restore_session),
                 xuất dữ liệu (export_web_data, export_data), tạo dữ liệu mô phỏng

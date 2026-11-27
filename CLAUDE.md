@@ -14,7 +14,7 @@ Trang đầu "Tổng quan thị trường" (4 chỉ số, bảng giá nhiều nh
 ## Luật làm việc, thiết kế (đọc và tuân thủ, nguồn gốc duy nhất)
 - **Luật làm việc, phạm vi sửa, vòng test và commit, giao thức câu hỏi:** @AGENT.md
 - **Thiết kế, kiến trúc, quy ước giao diện và quy tắc dữ liệu:** @DESIGN.md
-- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **435 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
+- Kiểm thử: `python -m pytest` bằng `.venv`, hiện **441 passed** (cập nhật con số này khi đổi). Làm xong phải test và xem giao diện trước khi báo xong.
 - Ba tệp mâu thuẫn nhau thì luật an toàn và dữ liệu trong AGENT.md thắng; còn lại hỏi sinh viên.
 - **24/11/2026: nâng cấp phần mơ hồ và trường hợp biên** (A1 đến A5, B1 đến B7), xem `CHANGELOG.md`: mọi hằng số ở `config.toml`; mốc nền cần **5 phiên** (5 phiên đầu: "Chưa đủ dữ liệu"),
   khung 9:15-9:30 riêng, cổng có nhãn "Chưa đánh giá", Radar có điểm 30 phút và thống kê chất lượng dữ liệu, ngày đặc biệt ở `data/special_days.csv`. Việc còn mở và lỗi logic đã thấy nằm cuối CHANGELOG.
