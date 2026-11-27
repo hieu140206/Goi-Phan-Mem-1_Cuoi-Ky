@@ -216,13 +216,13 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
   Cách này thay cho cửa sổ trượt cũ (so với chiều hôm trước) để không gán nhầm dạng chữ U của thanh khoản trong ngày thành bất thường.
 
 ## Giới hạn đã biết
-- Trọng số của điểm thanh khoản và LRS vẫn là giả định, chưa hiệu chỉnh. Trong bốn ngưỡng cảnh báo đã thử trên dữ liệu thật, z độ sâu và spread tối thiểu đổi thành 2,5; đuôi spread 5% và 2 lần chụp liên tiếp giữ nguyên vì không giá trị nào thắng theo tiêu chí chọn; các ngưỡng khác chưa hiệu chỉnh.
+- Trọng số của điểm thanh khoản và LRS vẫn là giả định, chưa hiệu chỉnh. Trong năm ngưỡng cảnh báo đã thử trên dữ liệu thật, z độ sâu và spread tối thiểu đã đổi thành 2,5; độ sâu tối đa 0,4 lần trung vị và 2 lần chụp liên tiếp giữ nguyên; với đuôi spread, lần chạy lại gợi ý đổi 5% thành 1% nhưng bằng chứng yếu (30 sự kiện ở phần thử) nên chưa đổi. Các ngưỡng khác chưa hiệu chỉnh.
 - Kết quả trên dữ liệu mô phỏng (bắt đủ 12/12 sự kiện cài sẵn, không báo động giả) không chứng minh hiệu quả trên thị trường thật,
   vì dữ liệu mô phỏng được tạo đơn giản.
 - Z-score kém ổn định khi spread gần như không đổi; đã thêm điều kiện tỷ lệ tối thiểu để giảm báo động giả.
 - Tài liệu NEO cho biết giá mức 1 có thể là chữ ATO/ATC hoặc chuỗi số ("29750.0"); bộ làm sạch đã xử lý cả hai và lọc thêm theo giờ, nhưng chưa kiểm tra trên dữ liệu thật.
 - Ngưỡng LRS là phân vị nên luôn có khoảng 1% lần chụp ở mức "Cao" dù thị trường yên; chỉ dùng để theo dõi xu hướng.
-- Kiểm chứng cảnh báo (report/kiem-chung/KET_QUA.md) mới là bằng chứng sơ bộ: chỉ 11 phiên đủ mốc nền (5/11 đến 20/11, trong đó 5/11 và 6/11 ghi dở), chọn ngưỡng trên 6 phiên đầu, thử trên 5 phiên sau và không phải thí nghiệm "mù" hoàn toàn. Event study chạy với ngưỡng cũ (z độ sâu 3, spread tối thiểu 2): độ sâu mỏng còn kéo dài 30 phút sau cảnh báo, spread rộng chủ yếu thoáng qua. Chưa kiểm chứng khả năng dự báo giá hay lợi suất.
+- Kiểm chứng cảnh báo (report/kiem-chung/KET_QUA.md) mới là bằng chứng sơ bộ: chỉ 11 phiên đủ mốc nền (5/11 đến 20/11, trong đó 5/11 và 6/11 ghi dở), chọn ngưỡng trên 6 phiên đầu, thử trên 5 phiên sau và không phải thí nghiệm "mù" hoàn toàn. Event study với ngưỡng đang dùng (chạy lại ngày 26/11, 431 đợt): độ sâu mỏng còn kéo dài 30 phút sau cảnh báo; cảnh báo spread điển hình còn rộng sau 5 phút, đến phút 10 hơn nửa không còn rộng hơn đối chứng. Hai ngưỡng 2,5 được chọn từ chính bộ dữ liệu này nên các số có xu hướng đẹp hơn thực tế. Chưa kiểm chứng khả năng dự báo giá hay lợi suất.
 - Tỷ lệ hấp thụ dùng `totalTradingVolume`; cần kiểm tra trên dữ liệu thật rằng đây là số lũy kế trong ngày.
 - Giả định mỗi thông điệp stockInfo là trạng thái đầy đủ của mã; nếu thật ra chỉ chứa trường thay đổi thì phải sửa `Snapshotter.update` thành gộp.
 - NEO chưa công bố giới hạn tần suất, số mã tối đa hay số kết nối tối đa của WebSocket; chưa biết theo dõi 30 mã có ổn không.
