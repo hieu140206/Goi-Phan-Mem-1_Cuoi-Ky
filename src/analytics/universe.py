@@ -248,7 +248,44 @@ def filter_universe(df: pd.DataFrame, statuses: list[str] | None = None, ranges:
     return out
 
 
-# 5. Ghép lại
+# 5. Tóm tắt một mã (trang Chi tiết mã)
+def _vn_num(x: float, d: int) -> str:
+    """Số kiểu Việt Nam (dấu phẩy thập phân); giữ ở đây để mô-đun không phải import giao diện."""
+    return f"{x:,.{d}f}".replace(",", "§").replace(".", ",").replace("§", ".")
+
+
+def symbol_note(result: pd.DataFrame, symbol: str, threshold: float | None, days: list[str], ref_day) -> tuple[str, str]:
+    """(nhãn trạng thái, câu giải thích) của MỘT mã theo đúng kết quả trang Bộ lọc (screen_universe); không tính lại số nào.
+    Bộ lọc không theo phiên nên câu luôn ghi mẫu thanh khoản và ngày tham chiếu động lượng."""
+    if result is None or result.empty or not days:
+        return "Chưa đủ dữ liệu", "Chưa có ngày nào đủ dữ liệu bảng giá HOSE để tính cổng thanh khoản."
+    ref = "chưa có ngày tham chiếu" if ref_day is None or pd.isna(ref_day) else f"tính đến {pd.Timestamp(ref_day):%d/%m}"
+    basis = (f"Không theo phiên đang chọn: giá trị khớp của {len(days)} ngày đủ ({pd.Timestamp(days[0]):%d/%m} đến "
+             f"{pd.Timestamp(days[-1]):%d/%m}), động lượng {ref}.")
+    one = result[result["symbol"] == symbol]
+    if one.empty:
+        return "Không có trong tập đánh giá", f"Bộ lọc chỉ xét cổ phiếu HOSE có trong bảng giá đã ghi. {basis}"
+    r = one.iloc[0]
+    if r["gate"] in (PASS, FAIL):
+        side = "từ ngưỡng {} tỷ trở lên" if r["gate"] == PASS else "dưới ngưỡng {} tỷ"
+        parts = [f"Giá trị khớp trung vị {_vn_num(r['median_value'] / 1e9, 2)} tỷ đồng/ngày, "
+                 f"{side.format(_vn_num(threshold / 1e9, 2))}."]
+    else:
+        parts = [f"{r['gate_reason']}."]
+    if pd.notna(r["mom_rank"]):
+        mom = ("+" if r["mom"] > 0 else "") + _vn_num(r["mom"] * 100, 1)
+        parts.append(f"Xếp hạng động lượng {r['mom_rank']:.0f}/100 (lợi suất 6-1: {mom}%).")
+    elif r["gate"] == PASS:
+        parts.append("Chưa tính được động lượng nên không có xếp hạng.")
+    else:
+        parts.append("Không xếp hạng.")
+    flags = [name for name, col in FLAG_COLUMNS.items() if r.get(col) == True]  # noqa: E712  (NaN không phải là có cờ)
+    if flags:
+        parts.append(f"Cờ: {', '.join(flags)}.")
+    return str(r["status"]), " ".join([*parts, basis])
+
+
+# 6. Ghép lại
 def screen_universe(board: pd.DataFrame, closes: pd.DataFrame, after: str | None = None) -> pd.DataFrame:
     """Bộ lọc toàn HOSE. board: các dòng bảng giá nhóm HOSE của MỌI ngày đã ghi (day, ts, symbol, total_value, foreign_*).
     closes: nến ngày SSI (symbol, day, close). Trả mỗi mã một dòng, đã sắp thứ tự; thuộc tính: days (ngày đủ), threshold, ref_day.

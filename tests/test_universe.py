@@ -290,3 +290,45 @@ def test_filters_combine_and_do_not_change_the_numbers():
     out = u.filter_universe(t, statuses=[u.PASS], ranges={"median_value": (None, 20e9)}, exclude_flags=["Bước nhảy"])
     assert list(out["symbol"]) == ["AAA"] and out.loc[0, "median_value"] == 10e9 and len(t) == 4
 
+
+# ---- câu tóm tắt một mã cho trang Chi tiết mã
+def note(**over):
+    row = {"symbol": "ACB", "status": u.PASS, "gate": u.PASS, "gate_reason": "lý do cổng", "median_value": 160.509e9, "mom": -0.019,
+           "mom_rank": 67.7, "near": False, "jump": False, "foreign_over": False, **over}
+    return u.symbol_note(pd.DataFrame([row]), "ACB", T, DAYS, pd.Timestamp("2026-11-27"))
+
+
+def test_note_of_a_ranked_symbol_shows_the_numbers_of_the_filter_page():
+    status, text = note()
+    assert status == u.PASS
+    assert "160,51 tỷ đồng/ngày, từ ngưỡng 5,00 tỷ trở lên" in text
+    assert "Xếp hạng động lượng 68/100 (lợi suất 6-1: -1,9%)" in text
+    assert "Không theo phiên đang chọn" in text and "12 ngày đủ (02/11 đến 13/11)" in text and "đến 27/11" in text
+    assert "Cờ:" not in text
+    assert "(lợi suất 6-1: +26,1%)" in note(mom=0.261)[1]
+
+
+def test_note_lists_the_flags():
+    assert "Cờ: Sát ngưỡng, NN vượt GT." in note(near=True, foreign_over=True, jump=np.nan)[1]
+
+
+@pytest.mark.parametrize("status", [u.NO_HISTORY, u.STALE])
+def test_note_of_a_passed_symbol_without_momentum_has_no_rank(status):
+    got, text = note(status=status, mom=np.nan, mom_rank=np.nan)
+    assert got == status and "Chưa tính được động lượng nên không có xếp hạng" in text and "/100" not in text
+
+
+def test_note_of_a_failed_symbol_says_why_and_never_ranks():
+    got, text = note(status=u.FAIL, gate=u.FAIL, median_value=4.996e9, mom_rank=np.nan)
+    assert got == u.FAIL and "5,00 tỷ đồng/ngày, dưới ngưỡng 5,00 tỷ" in text and "Không xếp hạng" in text
+    got, text = note(status=u.FEW, gate=u.FEW, gate_reason="Chỉ 3/12 ngày có giao dịch (cần ít nhất 10)", mom_rank=np.nan)
+    assert got == u.FEW and "Chỉ 3/12 ngày có giao dịch (cần ít nhất 10). Không xếp hạng." in text and "160,51" not in text
+
+
+def test_note_without_a_row_or_without_data_never_invents_a_result():
+    one = pd.DataFrame([{"symbol": "AAA"}])
+    assert u.symbol_note(one, "ACB", T, DAYS, pd.NaT)[0] == "Không có trong tập đánh giá"
+    status, text = u.symbol_note(pd.DataFrame(), "ACB", None, [], None)
+    assert status == "Chưa đủ dữ liệu" and "Chưa có ngày nào đủ dữ liệu bảng giá HOSE" in text
+    assert "chưa có ngày tham chiếu" in u.symbol_note(one, "ACB", T, DAYS, pd.NaT)[1]
+

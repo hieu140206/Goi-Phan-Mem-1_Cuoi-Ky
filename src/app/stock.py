@@ -16,11 +16,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from analytics.universe import symbol_note  # noqa: E402
 from charts import intraday_caption, intraday_figure  # noqa: E402
 from data.overview import board_view, price_board  # noqa: E402
 from data.ssi_overview import ssi_symbol_note  # noqa: E402
 from shared import (SRC_DB, WATCHLIST_PATH, analyzed_data, board_dates, board_of,  # noqa: E402
-                    current_source, liquidity_ranking, screen_for_day, ssi_symbol_of)
+                    current_source, hose_universe, liquidity_ranking, ssi_symbol_of)
 from theme import BORDER, CHART_CONFIG, GRID, MUTED, NEG, POS, how_to_read, vn  # noqa: E402
 from watchlist import load_watchlist, toggle  # noqa: E402
 
@@ -191,17 +192,9 @@ with c2, st.container(border=True, key="panel_liq"):
             "</div>"
         )
         st.caption(f"Hạng 1 là thanh khoản tốt nhất trong {len(ranking)} mã VN30 của phiên {day:%d/%m}.")
-        res = screen_for_day(source, day)
-        if res is not None:
-            sr = res["result"].reset_index(drop=True)
-            me = sr[sr["symbol"] == sym]
-            if not me.empty:
-                me = me.iloc[0]
-                passed = sr[sr["gate"] != "Loại"].dropna(subset=["screen_score"]).reset_index(drop=True)
-                place = (f"điểm {vn(me['screen_score'], 0)}/100, hạng {int(passed.index[passed['symbol'] == sym][0]) + 1}/"
-                         f"{len(passed)} mã qua cổng" if pd.notna(me["screen_score"]) else "không xếp hạng")
-                st.html(f'<div class="notice"><b>Bộ lọc:</b> cổng <b>{html.escape(me["gate"])}</b> '
-                        f'({html.escape(me["gate_reason"])}); {place}.</div>')
+    info = hose_universe()      # cùng kết quả với trang Bộ lọc; không phụ thuộc phiên đang chọn
+    status, detail = symbol_note(info["result"], sym, info["threshold"], info["days"], info["ref_day"])
+    st.html(f'<div class="notice"><b>Bộ lọc HOSE: {html.escape(status)}.</b> {html.escape(detail)}</div>')
 
 if not one.empty:
     with st.container(border=True, key="panel_intraday"):
