@@ -25,7 +25,7 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
   `data/web/`; lúc khởi động `app.py` gọi `ensure_web_data` để giải nén (không bao giờ ghi đè dữ liệu nó không tự giải nén) và nạp lại mô-đun dự án khi mã đổi.
   Nút Fork, GitHub và menu ba chấm được ẩn bằng CSS trong `app.py`; không ẩn cả `stToolbar` vì thanh điều hướng nằm trong đó.
 - `src/neo_api/`: auth (JWT), client REST (4.1 đến 4.9), giới hạn tần suất, stream WebSocket (nhị phân Avro).
-- `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`; nến OHLC `fetch_ohlc` chỉ để hiển thị), `ssi_overview.py` (số SSI cho Tổng quan ở ngày NEO không ghi được), `candles.py` (nến ngày NEO dự phòng từ bảng `board`), `candle_store.py` (kho nến SSI ở tệp riêng `data/candles.db`: bảng `candles`, `candle_meta`, gồm khung `1m` của 4 chỉ số; KHÔNG nằm trong market.db), `merge.py`, `publish.py`, `web_data.py` (gộp, đẩy dữ liệu, bản web), `schema.py` (cột chuẩn,
+- `src/data/`: `ssi.py` (SSI v3, nguồn phụ chỉ đọc; bảng `ssi_daily`, `ssi_index_daily`; sổ lệnh theo phút từ `ssi_quotes`; nến OHLC `fetch_ohlc` chỉ để hiển thị), `ssi_overview.py` (số SSI cho Tổng quan và Chi tiết mã ở ngày NEO không ghi được), `candles.py` (nến ngày NEO dự phòng từ bảng `board`), `candle_store.py` (kho nến SSI ở tệp riêng `data/candles.db`: bảng `candles`, `candle_meta`, gồm khung `1m` của 4 chỉ số; KHÔNG nằm trong market.db), `merge.py`, `publish.py`, `web_data.py` (gộp, đẩy dữ liệu, bản web), `schema.py` (cột chuẩn,
   làm sạch), `storage.py` (SQLite), `rest_recorder.py`, `ws_recorder.py` và `ssi_recorder.py` (bộ ghi), `market_board.py` (bảng giá nhiều sàn, phái sinh),
   `overview.py` (hàm dữ liệu trang Tổng quan), `backfill.py`, `market_day.py`, `simulator.py`.
 - `src/finance/`: `liquidity.py` (spread, độ sâu, mất cân bằng, điểm xếp hạng, điểm cửa sổ trượt 30 lần chụp), `absorption.py`, `factors.py` (yếu tố nước ngoài, động lượng),
@@ -58,6 +58,7 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
   VN30, độ rộng VN-Index (tăng gồm trần, giảm gồm sàn), tổng giá trị cuối ngày từng sàn (gồm thỏa thuận). Giá khớp, thay đổi, khối lượng, giá trị lấy từ tổng
   kết ngày của SSI; sổ lệnh là thanh SSI mới nhất và để trống nếu bộ ghi dừng trước 14:45. Giá trần/sàn, khối lượng khớp cuối, nước ngoài ròng, bảng sàn khác,
   phái sinh để trống (không tự tính). Trang ghi rõ nguồn, nhãn "SSI" ở danh sách ngày và chú thích độ lệch UPCoM-Index.
+- **Chi tiết mã ở ngày SSI:** khi ngày đó không có bảng giá NEO, ô giá, thay đổi, tham chiếu, tổng khối lượng, giá trị khớp và sổ lệnh 3 mức là đúng dòng của bảng giá VN30 ở Tổng quan (`shared.ssi_symbol_of`), cùng quy tắc để trống (sổ lệnh trống nếu bộ ghi dừng trước 14:45; chưa nạp tổng kết ngày thì giá và khối lượng trống). Trần, sàn, nước ngoài ròng để trống; dòng ghi chú nói rõ nguồn và ô nào trống. Chỉ cần tổng kết ngày của mã, không cần đủ 4 chỉ số.
 - **Mốc nền cần đủ phiên:** cảnh báo, LRS và tỷ lệ hấp thụ chỉ có khi mã có ít nhất `min_baseline_sessions` (hiện 5, config.toml) phiên trước cùng khung giờ; chưa đủ thì ghi
   "Chưa đủ dữ liệu" kèm lý do (không để trống, không coi là bình thường). Ở cổng của Bộ lọc, mã chưa có mốc nền là "Chưa đánh giá" (sau Đạt/Chú ý, trước Loại, không có điểm),
   không bao giờ mặc định "Đạt". Khung đầu 9:15-9:30 tách riêng. "Hai lần chụp liên tiếp" của đợt cảnh báo là hai lần chụp hợp lệ kề nhau cách không quá 90 giây.
@@ -65,7 +66,7 @@ SSI FastConnect (lịch ngày, sổ lệnh dự phòng) ┴→ bộ ghi → SQLi
   dữ liệu cũ chỉ bị đánh cờ. Việc này làm ở lớp phân tích (`shared.load_source`), KHÔNG đổi `normalize_quotes` vì bộ ghi dùng hàm đó để quyết định lưu gì.
 - **Ngày đặc biệt** (`data/special_days.csv`) vẫn được tính nhưng gắn cờ và không làm mốc nền (và nền ngưỡng LRS) cho ngày khác (`special_days.exclude_from_baseline`).
 - **Phiên SSI không làm mốc cho phiên NEO** và không vào nền tính ngưỡng LRS, nên số của các phiên NEO không đổi khi thêm phiên SSI (đã so từng số).
-  Phiên SSI không có giá khớp và tổng khối lượng nên các cột đó để trống, không tính tỷ lệ hấp thụ; trang Bộ lọc không dùng ngày SSI.
+  Sổ lệnh SSI không có giá khớp và tổng khối lượng nên trong khung phân tích các cột đó để trống, không tính tỷ lệ hấp thụ; trang Bộ lọc không dùng ngày SSI.
 - **Giá đóng cửa SSI có dấu hiệu là giá điều chỉnh cổ tức:** không dùng giá SSI để tính lợi suất hay động lượng khi chưa xử lý.
 - **Không nhìn trước:** cảnh báo và ngưỡng LRS tại một thời điểm chỉ dùng dữ liệu trước thời điểm đó. Cảnh báo so mỗi mã với chính nó, cùng khung 30 phút,
   tối đa 10 phiên trước (cần ít nhất 5 phiên và 20 lần chụp; ngưỡng LRS lấy tối đa 20 phiên gần nhất). Ngưỡng không đặt tùy ý: lấy từ phân vị của dữ liệu, tài liệu, hay lý luận có nêu nguồn.

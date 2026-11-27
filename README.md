@@ -14,7 +14,7 @@ Bản web để xem (không có bộ ghi): https://vn30-radar-thanh-khoan.stream
 | Tổng quan thị trường (`overview.py`) | 4 chỉ số, bảng giá nhiều sàn, độ sâu, độ rộng, giá trị giao dịch. Bấm mã trong bảng giá (mọi nhóm) để mở hộp thoại chi tiết có biểu đồ nến OHLC (nguồn SSI); mã VN30 có liên kết sang hồ sơ thanh khoản. Ngày NEO không ghi được thì hiện 4 chỉ số và VN30 từ SSI, có nhãn "SSI" |
 | Radar thanh khoản (`radar.py`) | Xếp hạng thanh khoản, đợt cảnh báo, chi phí theo giờ, diễn biến một mã, phát lại phiên với bản đồ nhiệt thẻ lật; điều khiển ở bảng bên trái |
 | Bộ lọc cổ phiếu HOSE (`screen_page.py`) | Cổng thanh khoản (Đạt / Không đạt / Ít giao dịch / Thiếu dữ liệu); xếp hạng động lượng 6-1 (nến SSI); cờ Sát ngưỡng, Bước nhảy, NN vượt GT; cột Radar cho mã VN30; bảng tiêu chí bên trái để tự chọn điều kiện lọc (giá trị khớp, lợi suất, nước ngoài, giá, cờ...); chọn dòng để mở biểu đồ nến |
-| Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi |
+| Chi tiết mã (`stock.py`, địa chỉ `?ma=FPT`) | Giá, sổ lệnh 3 mức, thanh khoản, vị trí trong bộ lọc, dòng tiền nước ngoài theo ngày, nút theo dõi. Ngày NEO không ghi được thì giá, khối lượng và sổ lệnh cuối ngày lấy từ SSI, có ghi nguồn |
 
 Danh sách theo dõi ở thanh bên (mọi trang) lưu trong `data/watchlist.json` (không commit); mã bị Loại hoặc có đợt cảnh báo
 được đánh dấu. Số liệu dùng chung ở `src/app/shared.py`, nên cùng một mã luôn ra cùng một con số trên mọi trang.
@@ -25,7 +25,7 @@ Danh sách theo dõi ở thanh bên (mọi trang) lưu trong `data/watchlist.jso
 ## Trạng thái hiện tại
 - Chạy trên **dữ liệu NEO thật** do bộ ghi lưu vào `data/market.db` (các phiên từ 28/10/2026; đến 20/11/2026 có 13 phiên đủ 225 lần
   chụp sổ lệnh mỗi phiên: 28/10, 29/10, 3/11, 4/11, 9/11, 10/11, 11/11, 13/11, 16/11, 17/11, 18/11, 19/11, 20/11; phiên 30/10 có 221 lần;
-  2/11, 5/11, 6/11 dở dang). Phiên 12/11 (bộ ghi NEO dừng sớm) và 26/11 (không ghi được NEO) dùng dữ liệu SSI, có nhãn "SSI" (xem mục Nguồn phụ SSI).
+  2/11, 5/11, 6/11 dở dang). Phiên 12/11 (bộ ghi NEO dừng sớm), 26/11 và 27/11 (không ghi được NEO) dùng dữ liệu SSI, có nhãn "SSI" (xem mục Nguồn phụ SSI).
   Giao diện chỉ dùng dữ liệu thật: NEO là nguồn chính, SSI bù các ngày NEO không ghi được (có nhãn "SSI"). Dữ liệu mô phỏng (`data_sample/`) KHÔNG còn là lựa chọn trên
   giao diện (25/11/2026), chỉ còn trong mã để kiểm thử; máy chưa có dữ liệu thật thì các trang báo rõ "Chưa có dữ liệu".
 - REST đã xác nhận bằng dữ liệu thật: 4.3, 4.4, 4.5, 4.6, 4.7 (30 mã VN30 một lần gọi), 4.9. REST là nguồn chính thức.
@@ -49,7 +49,7 @@ chưa có chữ ký của pandas (xem nhật ký Code Integrity). Cách an toàn
 ## Chạy
 ```
 streamlit run src/app/app.py     # mở bảng điều khiển tại http://localhost:8501
-python -m pytest                 # chạy kiểm thử (429 bài, khoảng 2 phút)
+python -m pytest                 # chạy kiểm thử (435 bài, khoảng 2 phút)
 python scripts/run_live.py       # ngày giao dịch: ghi dữ liệu NEO (hỏi mật khẩu) và mở bảng điều khiển
 python scripts/validate_alerts.py   # kiểm chứng cảnh báo (chữ U, event study, độ nhạy ngưỡng), ghi vào report/kiem-chung/ (chỉ đọc market.db)
 python scripts/record_ssi.py     # (tùy chọn) cửa sổ thứ hai: ghi sổ lệnh SSI song song, dự phòng khi NEO mất kết nối
@@ -146,9 +146,9 @@ Repo công khai nên **không bao giờ commit `.env`** hay `data/market.db`.
   30 mã VN30 và nến 1 phút của chỉ số. Trang hiện ngày đó khi đủ cả 4 chỉ số; chỉ có VN30, không có giá trần/sàn, bảng giá các sàn khác, phái sinh,
   số mã tăng giảm ngoài VN-Index. Đối chiếu với NEO (19 và 20/11): giá, tham chiếu, khối lượng, giá trị khớp VN30 khớp 60/60; điểm VN-Index, VN30, HNX trùng;
   **UPCoM-Index lệch số chốt NEO 0,01 đến 0,72 điểm** (8 phiên); khối lượng và giá trị chỉ số gồm cả thỏa thuận nên khác NEO; giá trị nước ngoài không khớp nên để trống.
-- **Bù ngày NEO thiếu:** ngày NEO không có lần chụp nào trong phiên liên tục mà `ssi_quotes` có (hiện là 12/11 và 26/11) thì `shared.load_source` lấy sổ lệnh SSI,
+- **Bù ngày NEO thiếu:** ngày NEO không có lần chụp nào trong phiên liên tục mà `ssi_quotes` có (hiện là 12/11, 26/11 và 27/11) thì `shared.load_source` lấy sổ lệnh SSI,
   lấy mẫu mỗi phút (`ssi.load_ssi_minute_quotes`, cùng các phút với NEO; thanh cũ quá 60 giây thì bỏ, không điền). Ngày có NEO luôn dùng NEO. Quy tắc để số không đổi và không lẫn nguồn:
-  - SSI không có giá khớp và tổng khối lượng khớp nên các cột đó để trống (giá hiện "–"), không tính tỷ lệ hấp thụ và cờ "không khớp".
+  - Sổ lệnh SSI không có giá khớp và tổng khối lượng khớp nên trong phần phân tích các cột đó để trống, không tính tỷ lệ hấp thụ và cờ "không khớp". Giá và khối lượng hiện ở Tổng quan và Chi tiết mã lấy từ tổng kết ngày của SSI (chỉ để hiển thị); trần, sàn và nước ngoài ròng để trống.
   - **Ngày SSI không làm mốc so sánh cho ngày NEO** và không vào nền tính ngưỡng LRS; nên số của các phiên NEO giữ nguyên (đã so 64.473 dòng x 64 cột giống hệt
     khi bật và tắt phần bù). Bản thân ngày SSI được so với mốc là các phiên NEO trước đó, tức là một phép so chéo nguồn.
   - Nhãn "· SSI" ở danh sách phiên (Tổng quan, Radar, Chi tiết mã) và ghi chú nguồn trên các trang đó. Trang Bộ lọc không dùng ngày SSI (cần giá khớp và nước ngoài của NEO).
@@ -173,7 +173,7 @@ src/finance/    chỉ số thanh khoản (spread, độ sâu, mất cân bằng,
 src/analytics/  cảnh báo bất thường theo khung giờ (baseline.py), điểm rủi ro LRS, bộ lọc cổ phiếu toàn HOSE (universe.py)
 config.toml     MỌI hằng số và ngưỡng của phần phân tích (đọc bằng src/model_config.py; cần Python từ 3.11); ngày đặc biệt ở data/special_days.csv
 src/app/        bảng điều khiển Streamlit: app.py (cổng vào), 4 trang, shared.py (số liệu dùng chung), flipgrid*.py (bản đồ nhiệt thẻ lật)
-tests/          429 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, gộp dữ liệu, bản đồ nhiệt
+tests/          435 bài kiểm thử: hàm tính toán, làm sạch dữ liệu, lưu trữ, bộ ghi, SSI, gộp dữ liệu, bản đồ nhiệt
 scripts/        ghi dữ liệu (ghi_hang_ngay, gop_va_day, run_live, record_rest, record_ws, record_ssi, fetch_ssi_candles, fetch_ssi_overview),
                 kiểm tra và đối chiếu (check_*, compare_ws_rest, fetch_ssi_history --check), dựng lại phiên từ dữ liệu gốc (restore_session),
                 xuất dữ liệu (export_web_data, export_data), tạo dữ liệu mô phỏng
@@ -228,8 +228,8 @@ NEO API (và SSI làm nguồn phụ) → thu thập (bộ ghi: `rest_recorder.py
 - NEO chưa công bố giới hạn tần suất, số mã tối đa hay số kết nối tối đa của WebSocket; chưa biết theo dõi 30 mã có ổn không.
 - NEO không có giá nhiều phiên: động lượng 5/10/20 phiên phải tự lưu giá đóng cửa mỗi ngày (`finance/factors.py: daily_closes`).
 - Phát lại theo phút (từ lần chụp REST), chưa phát theo từng thanh 5 giây của WebSocket dù đã ghi.
-- Phiên SSI (12/11, 26/11): sổ lệnh SSI không có giá khớp, khối lượng khớp và nước ngoài, nên Chi tiết mã hiện "–" ở các ô đó, Bộ lọc không có ngày này và không tính tỷ lệ hấp thụ; đây là phép so chéo nguồn, không tính vào các phiên đủ để kiểm chứng bằng NEO.
-- Giá đóng cửa SSI có dấu hiệu là giá điều chỉnh cổ tức ở một số ngày (xem mục Nguồn phụ SSI); giá SSI chỉ để hiển thị (Tổng quan ở ngày NEO không ghi được), không dùng để tính điểm.
+- Phiên SSI (12/11, 26/11, 27/11): Chi tiết mã hiện giá và khối lượng từ tổng kết ngày của SSI nhưng trần, sàn và nước ngoài để trống; Bộ lọc không có các ngày này và không tính tỷ lệ hấp thụ; đây là phép so chéo nguồn, không tính vào các phiên đủ để kiểm chứng bằng NEO.
+- Giá đóng cửa SSI có dấu hiệu là giá điều chỉnh cổ tức ở một số ngày (xem mục Nguồn phụ SSI); giá SSI chỉ để hiển thị (Tổng quan và Chi tiết mã ở ngày NEO không ghi được), không dùng để tính điểm.
 - Sổ lệnh SSI thời gian thực chỉ là nguồn dự phòng: bộ ghi `record_ssi.py` chạy ở cửa sổ riêng (không nằm trong `run_live.py`; `ghi_hang_ngay.py` mở sẵn), và ngày nào NEO đã có đủ lần chụp thì app luôn dùng NEO.
 - Quy trình ghi hằng ngày chưa được chạy trọn một ngày với bước nạp số SSI; chưa biết lúc 15:05 SSI đã chốt đủ số hay chưa (có cảnh báo nếu thiếu).
 
